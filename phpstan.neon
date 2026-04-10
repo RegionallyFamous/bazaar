@@ -10,3 +10,8 @@ parameters:
         - vendor/php-stubs/wp-cli-stubs/wp-cli-i18n-stubs.php
         - bazaar.php
     treatPhpDocTypesAsCertain: false
+    # Run single-process in CI so all memory stays in one PHP process.
+    # PHPStan's parallel workers each inherit the PHP memory_limit; with the
+    # heavyweight WordPress stubs this tips the total well over 512 MB.
+    parallel:
+        maximumNumberOfProcesses: 1

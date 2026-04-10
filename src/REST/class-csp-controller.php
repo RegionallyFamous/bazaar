@@ -31,44 +31,24 @@ namespace Bazaar\REST;
 
 defined( 'ABSPATH' ) || exit;
 
-use WP_REST_Controller;
+use Bazaar\CspPolicy;
 use WP_REST_Server;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_Error;
 
 /**
- * Build and persist per-ware Content-Security-Policy headers.
+ * REST surface for per-ware CSP management.
+ * All policy logic lives in {@see \Bazaar\CspPolicy}.
  */
-final class CspController extends WP_REST_Controller {
+final class CspController extends BazaarController {
 
-	/**
-	 * REST API namespace.
-	 *
-	 * @var string
-	 */
-	protected $namespace = 'bazaar/v1';
 	/**
 	 * Route base (the part after the namespace).
 	 *
 	 * @var string
 	 */
 	protected $rest_base = 'csp';
-
-	/** Directives that may never be removed (security invariants). */
-	private const REQUIRED = array(
-		'frame-ancestors' => "'self'",
-	);
-
-	/** Baseline applied when no custom config exists. */
-	private const BASELINE = array(
-		'default-src'     => "'self'",
-		'script-src'      => "'self' 'unsafe-inline'",
-		'style-src'       => "'self' 'unsafe-inline'",
-		'img-src'         => "'self' data: https:",
-		'connect-src'     => "'self'",
-		'frame-ancestors' => "'self'",
-	);
 
 	/**
 	 * Register all REST routes for this controller.
@@ -81,12 +61,12 @@ final class CspController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'get_csp' ),
-					'permission_callback' => fn() => current_user_can( 'manage_options' ),
+					'permission_callback' => $this->require_admin(),
 				),
 				array(
 					'methods'             => 'PATCH',
 					'callback'            => array( $this, 'update_csp' ),
-					'permission_callback' => fn() => current_user_can( 'manage_options' ),
+					'permission_callback' => $this->require_admin(),
 					'args'                => array(
 						'directives' => array(
 							'required' => true,
@@ -97,7 +77,7 @@ final class CspController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( $this, 'reset_csp' ),
-					'permission_callback' => fn() => current_user_can( 'manage_options' ),
+					'permission_callback' => $this->require_admin(),
 				),
 			)
 		);
@@ -111,12 +91,12 @@ final class CspController extends WP_REST_Controller {
 	 */
 	public function get_csp( WP_REST_Request $request ): WP_REST_Response {
 		$slug       = sanitize_key( $request->get_param( 'slug' ) );
-		$directives = $this->load( $slug );
+		$directives = CspPolicy::load( $slug );
 		return new WP_REST_Response(
 			array(
 				'slug'       => $slug,
 				'directives' => $directives,
-				'header'     => $this->compile( $directives ),
+				'header'     => CspPolicy::compile( $directives ),
 			),
 			200
 		);
@@ -131,28 +111,24 @@ final class CspController extends WP_REST_Controller {
 	public function update_csp( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$slug       = sanitize_key( $request->get_param( 'slug' ) );
 		$incoming   = (array) $request->get_param( 'directives' );
-		$directives = $this->load( $slug );
+		$directives = CspPolicy::load( $slug );
 
 		foreach ( $incoming as $directive => $sources ) {
 			$directive = sanitize_text_field( (string) $directive );
 
-			// Never let callers override security invariants.
-			if ( isset( self::REQUIRED[ $directive ] ) ) {
+			if ( isset( CspPolicy::REQUIRED[ $directive ] ) ) {
 				/* translators: %s: CSP directive name */
 				return new WP_Error( 'locked', sprintf( __( 'Directive "%s" cannot be modified.', 'bazaar' ), $directive ), array( 'status' => 422 ) );
 			}
 			$directives[ $directive ] = sanitize_text_field( (string) $sources );
 		}
 
-		// Re-apply required directives.
-		foreach ( self::REQUIRED as $d => $v ) {
-			$directives[ $d ] = $v; }
-
-		$this->save( $slug, $directives );
+		CspPolicy::save( $slug, $directives );
+		$directives = CspPolicy::load( $slug ); // Re-read to get enforced invariants.
 		return new WP_REST_Response(
 			array(
 				'directives' => $directives,
-				'header'     => $this->compile( $directives ),
+				'header'     => CspPolicy::compile( $directives ),
 			),
 			200
 		);
@@ -170,82 +146,9 @@ final class CspController extends WP_REST_Controller {
 		return new WP_REST_Response(
 			array(
 				'reset'      => true,
-				'directives' => self::BASELINE,
+				'directives' => CspPolicy::BASELINE,
 			),
 			200
 		);
-	}
-
-	// ─── Helpers used by WareServer ────────────────────────────────────────
-
-	/**
-	 * Build the CSP header value for a ware.
-	 * Called by WareServer when serving ware HTML.
-	 *
-	 * @param string $slug Description.
-	 * @return string
-	 */
-	public static function header_for( string $slug ): string {
-		$raw = get_option( "bazaar_csp_{$slug}", '' );
-		if ( '' === $raw ) {
-			return self::compile_static( self::BASELINE );
-		}
-
-		$data = json_decode( (string) $raw, true );
-		$dirs = is_array( $data ) ? $data : self::BASELINE;
-		foreach ( self::REQUIRED as $d => $v ) {
-			$dirs[ $d ] = $v; }
-		return self::compile_static( $dirs );
-	}
-
-	/**
-	 * Compile a directives map into a single CSP header value string.
-	 *
-	 * @param array<string,string> $directives Directive-to-sources map.
-	 * @return string
-	 */
-	private function compile( array $directives ): string {
-		return self::compile_static( $directives ); }
-
-	/**
-	 * Compile a directives map into a CSP header value string (static variant).
-	 *
-	 * @param array<string,string> $directives Directive-to-sources map.
-	 * @return string
-	 */
-	private static function compile_static( array $directives ): string {
-		$parts = array();
-		foreach ( $directives as $directive => $sources ) {
-			$parts[] = trim( "$directive $sources" );
-		}
-		return implode( '; ', $parts );
-	}
-
-	/**
-	 * Load persisted CSP directives for a ware, merged with the baseline.
-	 *
-	 * @param string $slug Ware slug.
-	 * @return array<string,string>
-	 */
-	private function load( string $slug ): array {
-		$raw = get_option( "bazaar_csp_{$slug}", '' );
-		if ( '' === $raw ) {
-			return self::BASELINE;
-		}
-		$dec = json_decode( (string) $raw, true );
-		return is_array( $dec ) ? array_merge( self::BASELINE, $dec ) : self::BASELINE;
-	}
-
-	/**
-	 * Persist CSP directives for a ware.
-	 *
-	 * @param string               $slug Ware slug.
-	 * @param array<string,string> $data Directives to persist.
-	 */
-	private function save( string $slug, array $data ): void {
-		$enc = wp_json_encode( $data );
-		if ( false !== $enc ) {
-			update_option( "bazaar_csp_{$slug}", $enc, false );
-		}
 	}
 }

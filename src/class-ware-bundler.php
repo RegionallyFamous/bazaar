@@ -59,7 +59,6 @@ final class WareBundler {
 	 */
 	public function install( string $bundle_path ): array {
 		if ( ! file_exists( $bundle_path ) ) {
-			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception messages are not rendered as HTML
 			throw new \RuntimeException( "Bundle file not found: {$bundle_path}" );
 		}
 
@@ -69,7 +68,6 @@ final class WareBundler {
 		$tmp    = get_temp_dir() . 'bazaar_bundle_' . wp_generate_password( 8, false );
 		$result = unzip_file( $bundle_path, $tmp );
 		if ( is_wp_error( $result ) ) {
-			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception messages are not rendered as HTML
 			throw new \RuntimeException( 'Could not unzip bundle: ' . $result->get_error_message() );
 		}
 
@@ -79,8 +77,8 @@ final class WareBundler {
 			throw new \RuntimeException( 'bundle.json not found inside .wpbundle archive.' );
 		}
 
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- reading a local temp file, not an HTTP URL
-		$manifest = json_decode( (string) file_get_contents( $manifest_path ), true );
+		global $wp_filesystem;
+		$manifest = json_decode( (string) $wp_filesystem->get_contents( $manifest_path ), true );
 		if ( ! is_array( $manifest ) || empty( $manifest['wares'] ) ) {
 			$this->cleanup( $tmp );
 			throw new \RuntimeException( 'bundle.json is invalid or missing "wares" list.' );
@@ -118,7 +116,7 @@ final class WareBundler {
 					update_option( "bazaar_config_{$slug}", (string) wp_json_encode( $merged ), false );
 				}
 
-				AuditController::record(
+				AuditLog::record(
 					$slug,
 					'install',
 					array(
@@ -160,18 +158,11 @@ final class WareBundler {
 	 * @param string $path Description.
 	 */
 	private function rm_rf( string $path ): void {
-		if ( ! is_dir( $path ) ) {
+		global $wp_filesystem;
+		if ( is_dir( $path ) ) {
+			$wp_filesystem->rmdir( $path, true );
+		} else {
 			wp_delete_file( $path );
-			return;
 		}
-		$entries = scandir( $path );
-		foreach ( $entries ? $entries : array() as $f ) {
-			if ( in_array( $f, array( '.', '..' ), true ) ) {
-				continue;
-			}
-			$this->rm_rf( $path . '/' . $f );
-		}
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- no WP_Filesystem equivalent for recursive dir removal
-		rmdir( $path );
 	}
 }

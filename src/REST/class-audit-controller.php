@@ -23,15 +23,16 @@ namespace Bazaar\REST;
 
 defined( 'ABSPATH' ) || exit;
 
-use WP_REST_Controller;
+use Bazaar\AuditLog;
 use WP_REST_Server;
 use WP_REST_Request;
 use WP_REST_Response;
+use Bazaar\Db\Tables;
 
 /**
  * Append-only audit log for ware lifecycle events.
  */
-final class AuditController extends WP_REST_Controller {
+final class AuditController extends BazaarController {
 
 	/**
 	 * REST API namespace.
@@ -72,12 +73,12 @@ final class AuditController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'list_log' ),
-					'permission_callback' => fn() => current_user_can( 'manage_options' ),
+					'permission_callback' => $this->require_admin(),
 				),
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( $this, 'create_entry' ),
-					'permission_callback' => fn() => is_user_logged_in(),
+					'permission_callback' => $this->require_login(),
 					'args'                => array(
 						'slug'  => array(
 							'required' => true,
@@ -100,7 +101,7 @@ final class AuditController extends WP_REST_Controller {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'list_by_slug' ),
-				'permission_callback' => fn() => current_user_can( 'manage_options' ),
+				'permission_callback' => $this->require_admin(),
 			)
 		);
 	}
@@ -152,36 +153,12 @@ final class AuditController extends WP_REST_Controller {
 	 * @return WP_REST_Response
 	 */
 	public function create_entry( WP_REST_Request $request ): WP_REST_Response {
-		self::record(
+		AuditLog::record(
 			sanitize_key( $request->get_param( 'slug' ) ),
 			sanitize_text_field( $request->get_param( 'event' ) ),
 			(array) ( $request->get_param( 'meta' ) ?? array() )
 		);
 		return new WP_REST_Response( array( 'recorded' => true ), 201 );
-	}
-
-	// ─── Static record helper (called from PHP hooks) ─────────────────────
-
-	/**
-	 * Append an audit log entry.
-	 *
-	 * @param string               $slug  Ware slug.
-	 * @param string               $event One of EVENTS.
-	 * @param array<string, mixed> $meta  Arbitrary context (JSON-encoded in DB).
-	 */
-	public static function record( string $slug, string $event, array $meta = array() ): void {
-		global $wpdb;
-		$table = $wpdb->prefix . 'bazaar_audit_log';
-		$wpdb->insert(
-			$table,
-			array(
-				'slug'       => substr( $slug, 0, 100 ),
-				'event'      => substr( $event, 0, 50 ),
-				'user_id'    => get_current_user_id(),
-				'meta'       => (string) wp_json_encode( $meta ),
-				'created_at' => current_time( 'mysql', true ),
-			)
-		);
 	}
 
 	// ─── Query helper ─────────────────────────────────────────────────────
@@ -194,37 +171,29 @@ final class AuditController extends WP_REST_Controller {
 	 */
 	private function query( array $args ): array {
 		global $wpdb;
-		$table = $wpdb->prefix . 'bazaar_audit_log';
+		$table = $wpdb->prefix . Tables::AUDIT_LOG;
 		$page  = max( 1, $args['page'] );
 		$per   = min( 100, max( 1, $args['per_page'] ) );
 		$off   = ( $page - 1 ) * $per;
 
-		$wheres = array();
-		$values = array();
+		// Branch on the filter combination so every query uses %i/%s/%d
+		// placeholders — no variable interpolation in the SQL template.
+		$slug  = $args['slug'] ?? '';
+		$event = $args['event'] ?? '';
 
-		if ( ! empty( $args['slug'] ) ) {
-			$wheres[] = 'slug = %s';
-			$values[] = $args['slug']; }
-		if ( ! empty( $args['event'] ) ) {
-			$wheres[] = 'event = %s';
-			$values[] = $args['event']; }
-
-		$where_sql = $wheres ? 'WHERE ' . implode( ' AND ', $wheres ) : '';
-
-		if ( $values ) {
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $table is trusted prefix-derived; $per/$off are validated ints
-			$base = $wpdb->prepare( "SELECT * FROM `{$table}` {$where_sql} ORDER BY id DESC LIMIT {$per} OFFSET {$off}", ...$values );
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-			$cnt = $wpdb->prepare( "SELECT COUNT(*) FROM `{$table}` {$where_sql}", ...$values );
+		if ( $slug && $event ) {
+			$rows  = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i WHERE slug = %s AND event = %s ORDER BY id DESC LIMIT %d OFFSET %d', $table, $slug, $event, $per, $off ), ARRAY_A ) ?? array();
+			$total = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE slug = %s AND event = %s', $table, $slug, $event ) );
+		} elseif ( $slug ) {
+			$rows  = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i WHERE slug = %s ORDER BY id DESC LIMIT %d OFFSET %d', $table, $slug, $per, $off ), ARRAY_A ) ?? array();
+			$total = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE slug = %s', $table, $slug ) );
+		} elseif ( $event ) {
+			$rows  = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i WHERE event = %s ORDER BY id DESC LIMIT %d OFFSET %d', $table, $event, $per, $off ), ARRAY_A ) ?? array();
+			$total = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE event = %s', $table, $event ) );
 		} else {
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$base = "SELECT * FROM `{$table}` ORDER BY id DESC LIMIT {$per} OFFSET {$off}";
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$cnt = "SELECT COUNT(*) FROM `{$table}`";
+			$rows  = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i ORDER BY id DESC LIMIT %d OFFSET %d', $table, $per, $off ), ARRAY_A ) ?? array();
+			$total = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $table ) );
 		}
-
-		$rows  = $wpdb->get_results( $base, ARRAY_A ) ?? array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		$total = (int) $wpdb->get_var( $cnt ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 		// Decode meta for API consumers.
 		foreach ( $rows as &$row ) {
@@ -235,32 +204,6 @@ final class AuditController extends WP_REST_Controller {
 			'entries' => $rows,
 			'total'   => $total,
 			'pages'   => (int) ceil( $total / $per ),
-		);
-	}
-
-	// ─── DB table ────────────────────────────────────────────────────────
-
-	/**
-	 * Create table.
-	 */
-	public static function create_table(): void {
-		global $wpdb;
-		$table   = $wpdb->prefix . 'bazaar_audit_log';
-		$charset = $wpdb->get_charset_collate();
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-		dbDelta(
-			"CREATE TABLE `{$table}` (
-			id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-			slug        VARCHAR(100)    NOT NULL DEFAULT '',
-			event       VARCHAR(50)     NOT NULL DEFAULT '',
-			user_id     BIGINT UNSIGNED NOT NULL DEFAULT 0,
-			meta        LONGTEXT        NOT NULL DEFAULT '{}',
-			created_at  DATETIME        NOT NULL,
-			PRIMARY KEY  (id),
-			KEY slug (slug),
-			KEY event (event),
-			KEY created_at (created_at)
-		) {$charset};"
 		);
 	}
 }

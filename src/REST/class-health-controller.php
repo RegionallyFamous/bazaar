@@ -28,7 +28,6 @@ namespace Bazaar\REST;
 defined( 'ABSPATH' ) || exit;
 
 use Bazaar\WareRegistry;
-use WP_REST_Controller;
 use WP_REST_Server;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -37,7 +36,7 @@ use WP_Error;
 /**
  * Aggregates and caches ware health-check results.
  */
-final class HealthController extends WP_REST_Controller {
+final class HealthController extends BazaarController {
 
 	/**
 	 * REST API namespace.
@@ -81,7 +80,7 @@ final class HealthController extends WP_REST_Controller {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'get_all' ),
-				'permission_callback' => fn() => is_user_logged_in(),
+				'permission_callback' => $this->require_login(),
 			)
 		);
 
@@ -91,7 +90,7 @@ final class HealthController extends WP_REST_Controller {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'get_one' ),
-				'permission_callback' => fn() => is_user_logged_in(),
+				'permission_callback' => $this->require_login(),
 			)
 		);
 	}

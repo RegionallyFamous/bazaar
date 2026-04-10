@@ -273,14 +273,18 @@ final class WareServer {
 
 		if ( $is_html ) {
 			// CSP — uses per-ware builder config with a mandatory frame-ancestors fallback.
-			$csp = CspController::header_for( $slug );
+			$csp = \Bazaar\CspPolicy::header_for( $slug );
 			header( "Content-Security-Policy: $csp" );
 
 			// Read HTML into memory — we need to inject the <base href> that
 			// makes Vite's relative asset paths resolve to directly-served static
 			// files at wp-content/bazaar/{slug}/, bypassing PHP for all assets.
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-			$content = file_get_contents( $full_path );
+			if ( ! function_exists( 'WP_Filesystem' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+			}
+			WP_Filesystem();
+			global $wp_filesystem;
+			$content = $wp_filesystem->get_contents( $full_path );
 			if ( false === $content ) {
 				return new WP_Error( 'file_read_error', esc_html__( 'Could not read file.', 'bazaar' ), array( 'status' => 500 ) );
 			}
@@ -294,7 +298,6 @@ final class WareServer {
 
 			header( 'Content-Type: ' . $mime_type );
 			// Content-Length changes after injection; omit to avoid truncation.
-			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			echo $content;
 			exit;
 		}
@@ -303,7 +306,6 @@ final class WareServer {
 		// This avoids exhausting PHP's memory limit for large fonts/images/videos.
 		header( 'Content-Type: ' . $mime_type );
 		header( 'Content-Length: ' . $file_size );
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_readfile,WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- streaming a file directly to the REST response; WP_Filesystem has no equivalent
 		readfile( $full_path );
 		exit;
 	}
@@ -332,8 +334,7 @@ final class WareServer {
 	 */
 	private function inject_vite_client( string $html, string $dev_url ): string {
 		$dev_url = esc_url( trailingslashit( $dev_url ) );
-		// phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- injecting a Vite HMR client script directly into a proxied HTML response, wp_enqueue_script() is not applicable here
-		$tag = '<script type="module" src="' . $dev_url . '@vite/client"></script>';
+		$tag     = '<script type="module" src="' . $dev_url . '@vite/client"></script>';
 		return (string) preg_replace( '/(<\/head>)/i', $tag . '$1', $html, 1 );
 	}
 

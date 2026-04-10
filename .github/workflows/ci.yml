@@ -27,6 +27,7 @@ jobs:
           php-version: ${{ matrix.php }}
           extensions: zip, mbstring
           coverage: none
+          ini-values: memory_limit=1G
 
       - name: Get Composer cache directory
         id: composer-cache

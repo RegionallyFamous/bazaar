@@ -138,7 +138,6 @@ final class WareBlock {
 			)
 		);
 
-		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- URL-safe base64 encoding for block tokens, not code obfuscation
 		return rtrim( strtr( base64_encode( $token ), '+/', '-_' ), '=' );
 	}
 
@@ -149,7 +148,6 @@ final class WareBlock {
 	 * @return string|false Verified ware slug on success, false on failure.
 	 */
 	public static function verify_token( string $raw_token ): string|false {
-		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- decoding URL-safe base64 block tokens
 		$json = base64_decode( strtr( $raw_token, '-_', '+/' ) . str_repeat( '=', 4 ) );
 		if ( false === $json ) {
 			return false;

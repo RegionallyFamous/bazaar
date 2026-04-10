@@ -23,16 +23,16 @@ namespace Bazaar\REST;
 
 defined( 'ABSPATH' ) || exit;
 
-use WP_REST_Controller;
 use WP_REST_Server;
 use WP_REST_Request;
 use WP_REST_Response;
+use Bazaar\Db\Tables;
 use WP_Error;
 
 /**
  * Error log management.
  */
-final class ErrorsController extends WP_REST_Controller {
+final class ErrorsController extends BazaarController {
 
 	/**
 	 * REST API namespace.
@@ -58,12 +58,12 @@ final class ErrorsController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'list_errors' ),
-					'permission_callback' => fn() => current_user_can( 'manage_options' ),
+					'permission_callback' => $this->require_admin(),
 				),
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( $this, 'create_error' ),
-					'permission_callback' => fn() => is_user_logged_in(),
+					'permission_callback' => $this->require_login(),
 					'args'                => array(
 						'slug'    => array(
 							'required' => true,
@@ -80,7 +80,7 @@ final class ErrorsController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( $this, 'clear_errors' ),
-					'permission_callback' => fn() => current_user_can( 'manage_options' ),
+					'permission_callback' => $this->require_admin(),
 				),
 			)
 		);
@@ -92,7 +92,7 @@ final class ErrorsController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( $this, 'delete_error' ),
-					'permission_callback' => fn() => current_user_can( 'manage_options' ),
+					'permission_callback' => $this->require_admin(),
 				),
 			)
 		);
@@ -108,17 +108,19 @@ final class ErrorsController extends WP_REST_Controller {
 	 */
 	public function list_errors( WP_REST_Request $request ): WP_REST_Response {
 		global $wpdb;
-		$table = $wpdb->prefix . 'bazaar_errors';
+		$table = $wpdb->prefix . Tables::ERRORS;
 		$slug  = sanitize_key( (string) $request->get_param( 'slug' ) );
 		$page  = max( 1, (int) ( $request->get_param( 'page' ) ?? 1 ) );
 		$per   = min( 100, max( 1, (int) ( $request->get_param( 'per_page' ) ?? 50 ) ) );
 		$off   = ( $page - 1 ) * $per;
 
-		$where = $slug ? $wpdb->prepare( 'WHERE slug = %s', $slug ) : '';
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$rows = $wpdb->get_results( "SELECT * FROM `{$table}` {$where} ORDER BY id DESC LIMIT {$per} OFFSET {$off}", ARRAY_A );
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$table}` {$where}" );
+		if ( $slug ) {
+			$rows  = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i WHERE slug = %s ORDER BY id DESC LIMIT %d OFFSET %d', $table, $slug, $per, $off ), ARRAY_A );
+			$total = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE slug = %s', $table, $slug ) );
+		} else {
+			$rows  = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i ORDER BY id DESC LIMIT %d OFFSET %d', $table, $per, $off ), ARRAY_A );
+			$total = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $table ) );
+		}
 
 		return new WP_REST_Response(
 			array(
@@ -138,7 +140,7 @@ final class ErrorsController extends WP_REST_Controller {
 	 */
 	public function create_error( WP_REST_Request $request ): WP_REST_Response {
 		global $wpdb;
-		$table = $wpdb->prefix . 'bazaar_errors';
+		$table = $wpdb->prefix . Tables::ERRORS;
 
 		$wpdb->insert(
 			$table,
@@ -163,7 +165,7 @@ final class ErrorsController extends WP_REST_Controller {
 	 */
 	public function delete_error( WP_REST_Request $request ): WP_REST_Response {
 		global $wpdb;
-		$wpdb->delete( $wpdb->prefix . 'bazaar_errors', array( 'id' => (int) $request->get_param( 'id' ) ) );
+		$wpdb->delete( $wpdb->prefix . Tables::ERRORS, array( 'id' => (int) $request->get_param( 'id' ) ) );
 		return new WP_REST_Response( array( 'deleted' => true ), 200 );
 	}
 
@@ -176,12 +178,14 @@ final class ErrorsController extends WP_REST_Controller {
 	public function clear_errors( WP_REST_Request $request ): WP_REST_Response {
 		global $wpdb;
 		$slug  = sanitize_key( (string) $request->get_param( 'slug' ) );
-		$table = $wpdb->prefix . 'bazaar_errors';
+		$table = $wpdb->prefix . Tables::ERRORS;
 		if ( $slug ) {
 			$wpdb->delete( $table, array( 'slug' => $slug ) );
 		} else {
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$wpdb->query( "TRUNCATE TABLE `{$table}`" );
+			// DELETE without a WHERE clause removes all rows.  TRUNCATE is
+			// avoided because it is DDL (resets AUTO_INCREMENT, bypasses
+			// foreign-key checks on some engines) and cannot be prepared.
+			$wpdb->query( $wpdb->prepare( 'DELETE FROM %i', $table ) );
 		}
 		return new WP_REST_Response( array( 'cleared' => true ), 200 );
 	}
@@ -191,7 +195,7 @@ final class ErrorsController extends WP_REST_Controller {
 	/** Create the errors table on plugin activation / dbDelta. */
 	public static function create_table(): void {
 		global $wpdb;
-		$table   = $wpdb->prefix . 'bazaar_errors';
+		$table   = $wpdb->prefix . Tables::ERRORS;
 		$charset = $wpdb->get_charset_collate();
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';

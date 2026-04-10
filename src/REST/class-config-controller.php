@@ -34,7 +34,6 @@ namespace Bazaar\REST;
 defined( 'ABSPATH' ) || exit;
 
 use Bazaar\WareRegistry;
-use WP_REST_Controller;
 use WP_REST_Server;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -43,7 +42,7 @@ use WP_Error;
 /**
  * Serves and persists manifest-declared ware configuration.
  */
-final class ConfigController extends WP_REST_Controller {
+final class ConfigController extends BazaarController {
 
 	/**
 	 * REST API namespace.
@@ -85,12 +84,12 @@ final class ConfigController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'get_config' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_admin(),
 				),
 				array(
 					'methods'             => 'PATCH',
 					'callback'            => array( $this, 'update_config' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_admin(),
 					'args'                => array(
 						'values' => array(
 							'required' => true,
@@ -108,7 +107,7 @@ final class ConfigController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( $this, 'reset_key' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_admin(),
 				),
 			)
 		);
@@ -119,9 +118,6 @@ final class ConfigController extends WP_REST_Controller {
 	 *
 	 * @return bool
 	 */
-	public function auth(): bool {
-		return current_user_can( 'manage_options' ); }
-
 	/**
 	 * GET /bazaar/v1/config/{slug}
 	 * Returns the schema plus current values (with defaults filled in).

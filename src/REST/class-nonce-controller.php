@@ -19,7 +19,6 @@ namespace Bazaar\REST;
 
 defined( 'ABSPATH' ) || exit;
 
-use WP_REST_Controller;
 use WP_REST_Server;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -27,7 +26,7 @@ use WP_REST_Response;
 /**
  * Provides a fresh WP REST nonce on demand.
  */
-final class NonceController extends WP_REST_Controller {
+final class NonceController extends BazaarController {
 
 	/**
 	 * REST API namespace.
@@ -54,7 +53,7 @@ final class NonceController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'get_nonce' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_login(),
 				),
 			)
 		);
@@ -65,9 +64,6 @@ final class NonceController extends WP_REST_Controller {
 	 *
 	 * @return bool
 	 */
-	public function auth(): bool {
-		return is_user_logged_in();
-	}
 
 	/**
 	 * GET /bazaar/v1/nonce

@@ -60,8 +60,7 @@ final class WareSigner {
 		}
 
 		$sig_b64 = (string) $manifest['signature'];
-		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- required for cryptographic signature decoding
-		$sig = base64_decode( $sig_b64, true );
+		$sig     = base64_decode( $sig_b64, true );
 		if ( false === $sig ) {
 			return new WP_Error( 'invalid_signature_encoding', esc_html__( 'Signature is not valid base64.', 'bazaar' ) );
 		}
@@ -92,8 +91,12 @@ final class WareSigner {
 		// Read archive bytes (without the signature — the signature itself is
 		// excluded from the signed content in the manifest, so we sign the
 		// original archive bytes directly).
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- reading local binary archive, not an HTTP URL
-		$data = file_get_contents( $archive_path );
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+		WP_Filesystem();
+		global $wp_filesystem;
+		$data = $wp_filesystem->get_contents( $archive_path );
 		if ( false === $data ) {
 			return new WP_Error( 'read_error', esc_html__( 'Could not read archive for signature verification.', 'bazaar' ) );
 		}
@@ -131,8 +134,12 @@ final class WareSigner {
 			return new WP_Error( 'key_not_found', esc_html__( 'Private key file not found.', 'bazaar' ) );
 		}
 
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- reading local PEM key file
-		$pem = file_get_contents( $privkey_path );
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+		WP_Filesystem();
+		global $wp_filesystem;
+		$pem = $wp_filesystem->get_contents( $privkey_path );
 		if ( false === $pem ) {
 			return new WP_Error( 'key_read_error', esc_html__( 'Could not read private key file.', 'bazaar' ) );
 		}
@@ -143,8 +150,7 @@ final class WareSigner {
 			return new WP_Error( 'invalid_private_key', esc_html__( 'Private key is not valid PEM or passphrase is wrong.', 'bazaar' ) );
 		}
 
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- reading local binary archive, not an HTTP URL
-		$data = file_get_contents( $archive_path );
+		$data = $wp_filesystem->get_contents( $archive_path );
 		if ( false === $data ) {
 			return new WP_Error( 'read_error', esc_html__( 'Could not read archive for signing.', 'bazaar' ) );
 		}
@@ -156,7 +162,6 @@ final class WareSigner {
 			return new WP_Error( 'sign_failed', esc_html__( 'openssl_sign() failed.', 'bazaar' ) );
 		}
 
-		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- required for cryptographic signature encoding
 		return base64_encode( $sig );
 	}
 

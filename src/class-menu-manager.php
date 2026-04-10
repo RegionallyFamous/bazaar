@@ -138,7 +138,7 @@ final class MenuManager {
 			$svg = ! empty( $wp_filesystem ) ? $wp_filesystem->get_contents( $full_path ) : false;
 			if ( is_string( $svg ) && '' !== $svg ) {
 				$safe = $this->sanitize_svg( $svg );
-				return 'data:image/svg+xml;base64,' . base64_encode( $safe ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+				return 'data:image/svg+xml;base64,' . base64_encode( $safe );
 			}
 		}
 

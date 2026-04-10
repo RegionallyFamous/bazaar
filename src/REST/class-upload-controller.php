@@ -68,7 +68,7 @@ final class UploadController {
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'handle_upload' ),
-				'permission_callback' => static fn() => current_user_can( 'manage_options' ),
+				'permission_callback' => $this->require_admin(),
 			)
 		);
 	}

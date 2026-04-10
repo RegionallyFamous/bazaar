@@ -67,7 +67,7 @@ final class WareController {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'get_index' ),
-					'permission_callback' => static fn() => current_user_can( 'manage_options' ),
+					'permission_callback' => $this->require_admin(),
 				),
 			)
 		);
@@ -80,7 +80,7 @@ final class WareController {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'list_wares' ),
-					'permission_callback' => static fn() => current_user_can( 'manage_options' ),
+					'permission_callback' => $this->require_admin(),
 					'args'                => array(
 						'status' => array(
 							'type'              => 'string',
@@ -101,7 +101,7 @@ final class WareController {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'get_ware' ),
-					'permission_callback' => static fn() => current_user_can( 'manage_options' ),
+					'permission_callback' => $this->require_admin(),
 					'args'                => array(
 						'slug' => array(
 							'type'              => 'string',
@@ -113,7 +113,7 @@ final class WareController {
 				array(
 					'methods'             => WP_REST_Server::EDITABLE,
 					'callback'            => array( $this, 'toggle' ),
-					'permission_callback' => static fn() => current_user_can( 'manage_options' ),
+					'permission_callback' => $this->require_admin(),
 					'args'                => array(
 						'slug'    => array(
 							'type'              => 'string',
@@ -130,7 +130,7 @@ final class WareController {
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( $this, 'delete' ),
-					'permission_callback' => static fn() => current_user_can( 'manage_options' ),
+					'permission_callback' => $this->require_admin(),
 					'args'                => array(
 						'slug' => array(
 							'type'              => 'string',

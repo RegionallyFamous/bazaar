@@ -26,7 +26,6 @@ namespace Bazaar\REST;
 
 defined( 'ABSPATH' ) || exit;
 
-use WP_REST_Controller;
 use WP_REST_Server;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -35,7 +34,7 @@ use WP_Error;
 /**
  * Webhook registration and management.
  */
-final class WebhooksController extends WP_REST_Controller {
+final class WebhooksController extends BazaarController {
 
 	/**
 	 * REST API namespace.
@@ -64,12 +63,12 @@ final class WebhooksController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'list_webhooks' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_admin(),
 				),
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( $this, 'create_webhook' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_admin(),
 					'args'                => array(
 						'event'  => array(
 							'required'          => true,
@@ -99,7 +98,7 @@ final class WebhooksController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( $this, 'delete_webhook' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_admin(),
 				),
 			)
 		);
@@ -110,9 +109,6 @@ final class WebhooksController extends WP_REST_Controller {
 	 *
 	 * @return bool
 	 */
-	public function auth(): bool {
-		return current_user_can( 'manage_options' ); }
-
 	// ─── Handlers ─────────────────────────────────────────────────────────
 
 	/**
@@ -206,53 +202,6 @@ final class WebhooksController extends WP_REST_Controller {
 		$enc = wp_json_encode( $data );
 		if ( false !== $enc ) {
 			update_option( 'bazaar_webhooks', $enc, false );
-		}
-	}
-
-	// ─── Outbound dispatch (called from WP-Cron) ──────────────────────────
-
-	/**
-	 * Fire registered webhooks matching the event + ware slug.
-	 *
-	 * @param string $event Event name (e.g. 'ware.installed').
-	 * @param mixed  $data  Arbitrary event payload (JSON-serialised).
-	 * @param string $from  Slug of the ware that emitted the event.
-	 */
-	public static function dispatch( string $event, mixed $data, string $from ): void {
-		$all   = json_decode( (string) get_option( 'bazaar_webhooks', '[]' ), true );
-		$hooks = array_filter( (array) $all, fn( $w ) => $w['slug'] === $from && $w['event'] === $event );
-
-		if ( empty( $hooks ) ) {
-			return;
-		}
-
-		$payload_json = (string) wp_json_encode(
-			array(
-				'event'     => $event,
-				'data'      => $data,
-				'ware'      => $from,
-				'timestamp' => time(),
-			)
-		);
-
-		foreach ( $hooks as $hook ) {
-			$headers = array(
-				'Content-Type'      => 'application/json',
-				'X-Bazaar-Event'    => $event,
-				'X-Bazaar-Delivery' => wp_generate_uuid4(),
-			);
-			if ( ! empty( $hook['secret'] ) ) {
-				$headers['X-Bazaar-Signature-256'] = 'sha256=' . hash_hmac( 'sha256', $payload_json, $hook['secret'] );
-			}
-			wp_remote_post(
-				$hook['url'],
-				array(
-					'body'     => $payload_json,
-					'headers'  => $headers,
-					'timeout'  => 5,
-					'blocking' => false,
-				)
-			);
 		}
 	}
 }

@@ -26,14 +26,13 @@ namespace Bazaar\REST;
 
 defined( 'ABSPATH' ) || exit;
 
-use WP_REST_Controller;
 use WP_REST_Server;
 use WP_REST_Request;
 
 /**
  * SSE stream endpoint.
  */
-final class StreamController extends WP_REST_Controller {
+final class StreamController extends BazaarController {
 
 	/**
 	 * REST API namespace.
@@ -72,7 +71,7 @@ final class StreamController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'stream' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_admin(),
 				),
 			)
 		);
@@ -83,9 +82,6 @@ final class StreamController extends WP_REST_Controller {
 	 *
 	 * @return bool
 	 */
-	public function auth(): bool {
-		return current_user_can( 'manage_options' );
-	}
 
 	/**
 	 * Long-running SSE response.
@@ -224,8 +220,6 @@ final class StreamController extends WP_REST_Controller {
 	private function send( string $type, array $data ): void {
 		$json = wp_json_encode( $data );
 		if ( false !== $json ) {
-			// SSE protocol is raw text/event-stream, not HTML — escaping is not applicable.
-			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			echo "event: $type\ndata: $json\n\n";
 		}
 	}

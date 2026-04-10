@@ -34,7 +34,6 @@ defined( 'ABSPATH' ) || exit;
 
 use Bazaar\WareRegistry;
 use Bazaar\REST\AuditController;
-use WP_REST_Controller;
 use WP_REST_Server;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -43,7 +42,7 @@ use WP_Error;
 /**
  * Manages manifest-declared background jobs.
  */
-final class JobsController extends WP_REST_Controller {
+final class JobsController extends BazaarController {
 
 	/**
 	 * REST API namespace.
@@ -84,7 +83,7 @@ final class JobsController extends WP_REST_Controller {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'list_jobs' ),
-				'permission_callback' => fn() => current_user_can( 'manage_options' ),
+				'permission_callback' => $this->require_admin(),
 			)
 		);
 
@@ -94,7 +93,7 @@ final class JobsController extends WP_REST_Controller {
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'trigger_job' ),
-				'permission_callback' => fn() => current_user_can( 'manage_options' ),
+				'permission_callback' => $this->require_admin(),
 			)
 		);
 	}
@@ -142,7 +141,7 @@ final class JobsController extends WP_REST_Controller {
 		}
 
 		do_action( $this->cron_hook( $slug, $job_id ) );
-		AuditController::record(
+		\Bazaar\AuditLog::record(
 			$slug,
 			'job_ran',
 			array(
@@ -220,7 +219,7 @@ final class JobsController extends WP_REST_Controller {
 		);
 		$ok       = ! is_wp_error( $response ) && wp_remote_retrieve_response_code( $response ) < 400;
 
-		AuditController::record(
+		\Bazaar\AuditLog::record(
 			$ware['slug'],
 			'job_ran',
 			array(

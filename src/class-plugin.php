@@ -11,6 +11,7 @@ namespace Bazaar;
 
 defined( 'ABSPATH' ) || exit;
 
+use Bazaar\AuditLog;
 use Bazaar\Blocks\WareBlock;
 use Bazaar\CLI\BazaarCommand;
 use Bazaar\REST\AnalyticsController;
@@ -27,7 +28,7 @@ use Bazaar\REST\StreamController;
 use Bazaar\REST\UploadController;
 use Bazaar\REST\WareController;
 use Bazaar\REST\WareServer;
-use Bazaar\REST\WebhooksController;
+use Bazaar\WebhookDispatcher;
 use Bazaar\RemoteRegistry;
 use Bazaar\WareLoader;
 use Bazaar\WareUpdater;
@@ -119,7 +120,7 @@ final class Plugin {
 		// Create all DB tables.
 		AnalyticsController::create_table();
 		ErrorsController::create_table();
-		AuditController::create_table();
+		AuditLog::create_table();
 
 		// Schedule the auto-update + health-check cron jobs.
 		WareUpdater::schedule();
@@ -171,9 +172,9 @@ final class Plugin {
 		add_action( 'bazaar_bus_event', array( WebhooksController::class, 'dispatch' ), 10, 3 );
 
 		// Audit log lifecycle events.
-		add_action( 'bazaar_ware_installed', fn( $slug ) => AuditController::record( $slug, 'install' ) );
-		add_action( 'bazaar_ware_deleted', fn( $slug ) => AuditController::record( $slug, 'uninstall' ) );
-		add_action( 'bazaar_ware_toggled', fn( $slug, $enabled ) => AuditController::record( $slug, $enabled ? 'enable' : 'disable' ), 10, 2 );
+		add_action( 'bazaar_ware_installed', fn( $slug ) => AuditLog::record( $slug, 'install' ) );
+		add_action( 'bazaar_ware_deleted', fn( $slug ) => AuditLog::record( $slug, 'uninstall' ) );
+		add_action( 'bazaar_ware_toggled', fn( $slug, $enabled ) => AuditLog::record( $slug, $enabled ? 'enable' : 'disable' ), 10, 2 );
 
 		// Multisite support.
 		$this->multisite->register_hooks();

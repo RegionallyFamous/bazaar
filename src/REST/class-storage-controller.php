@@ -25,7 +25,6 @@ namespace Bazaar\REST;
 
 defined( 'ABSPATH' ) || exit;
 
-use WP_REST_Controller;
 use WP_REST_Server;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -34,7 +33,7 @@ use WP_Error;
 /**
  * Per-user, per-ware key-value storage.
  */
-final class StorageController extends WP_REST_Controller {
+final class StorageController extends BazaarController {
 
 	/**
 	 * REST API namespace.
@@ -77,12 +76,12 @@ final class StorageController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'list_keys' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_login(),
 				),
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( $this, 'clear_all' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_login(),
 				),
 			)
 		);
@@ -94,12 +93,12 @@ final class StorageController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'get_value' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_login(),
 				),
 				array(
 					'methods'             => 'PUT',
 					'callback'            => array( $this, 'set_value' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_login(),
 					'args'                => array(
 						'value' => array( 'required' => true ),
 					),
@@ -107,7 +106,7 @@ final class StorageController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( $this, 'delete_value' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_login(),
 				),
 			)
 		);
@@ -118,9 +117,6 @@ final class StorageController extends WP_REST_Controller {
 	 *
 	 * @return bool
 	 */
-	public function auth(): bool {
-		return is_user_logged_in(); }
-
 	// ─── Handlers ─────────────────────────────────────────────────────────
 
 	/**

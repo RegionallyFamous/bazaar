@@ -29,16 +29,16 @@ namespace Bazaar\REST;
 
 defined( 'ABSPATH' ) || exit;
 
-use WP_REST_Controller;
 use WP_REST_Server;
 use WP_REST_Request;
 use WP_REST_Response;
+use Bazaar\Db\Tables;
 use WP_Error;
 
 /**
  * Ware analytics REST controller.
  */
-final class AnalyticsController extends WP_REST_Controller {
+final class AnalyticsController extends BazaarController {
 
 	/**
 	 * REST API namespace.
@@ -64,7 +64,7 @@ final class AnalyticsController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( $this, 'record' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_admin(),
 					'args'                => array(
 						'slug'        => array(
 							'required'          => true,
@@ -88,7 +88,7 @@ final class AnalyticsController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'get_aggregate' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_admin(),
 				),
 			)
 		);
@@ -100,7 +100,7 @@ final class AnalyticsController extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'get_ware_stats' ),
-					'permission_callback' => array( $this, 'auth' ),
+					'permission_callback' => $this->require_admin(),
 				),
 			)
 		);
@@ -111,9 +111,6 @@ final class AnalyticsController extends WP_REST_Controller {
 	 *
 	 * @return bool
 	 */
-	public function auth(): bool {
-		return current_user_can( 'manage_options' );
-	}
 
 	/**
 	 * POST /bazaar/v1/analytics
@@ -133,12 +130,11 @@ final class AnalyticsController extends WP_REST_Controller {
 			return new WP_REST_Response( array( 'error' => 'Invalid slug' ), 400 );
 		}
 
-		$table = $wpdb->prefix . 'bazaar_analytics';
+		$table = $wpdb->prefix . Tables::ANALYTICS;
 
 		// Silently ignore if the table doesn't exist yet (e.g. fresh install where
 		// activation hook hasn't run yet in this request).
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$exists = $wpdb->get_var( "SHOW TABLES LIKE '{$table}'" );
+		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
 		if ( $table !== $exists ) {
 			return new WP_REST_Response(
 				array(
@@ -177,25 +173,24 @@ final class AnalyticsController extends WP_REST_Controller {
 		$days  = absint( $request->get_param( 'days' ) ?? 30 );
 		$days  = max( 1, min( $days, 365 ) );
 		$since = gmdate( 'Y-m-d H:i:s', (int) strtotime( "-{$days} days" ) );
-		$table = $wpdb->prefix . 'bazaar_analytics';
+		$table = $wpdb->prefix . Tables::ANALYTICS;
 
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT slug,
 			        COUNT(*) AS views,
 			        COALESCE(SUM(duration_ms), 0) AS total_ms,
 			        COUNT(DISTINCT user_id) AS unique_users
-			 FROM {$table}
+			 FROM %i
 			 WHERE event_type = 'view'
 			   AND created_at >= %s
 			 GROUP BY slug
 			 ORDER BY total_ms DESC",
+				$table,
 				$since
 			),
 			ARRAY_A
 		);
-		// phpcs:enable
 
 		return new WP_REST_Response( $rows ?? array(), 200 );
 	}
@@ -214,26 +209,25 @@ final class AnalyticsController extends WP_REST_Controller {
 		$days  = absint( $request->get_param( 'days' ) ?? 30 );
 		$days  = max( 1, min( $days, 365 ) );
 		$since = gmdate( 'Y-m-d H:i:s', (int) strtotime( "-{$days} days" ) );
-		$table = $wpdb->prefix . 'bazaar_analytics';
+		$table = $wpdb->prefix . Tables::ANALYTICS;
 
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT DATE(created_at) AS day,
 			        COUNT(*)          AS views,
 			        COALESCE(SUM(duration_ms), 0) AS total_ms
-			 FROM {$table}
+			 FROM %i
 			 WHERE slug = %s
 			   AND event_type = 'view'
 			   AND created_at >= %s
 			 GROUP BY DATE(created_at)
 			 ORDER BY day ASC",
+				$table,
 				$slug,
 				$since
 			),
 			ARRAY_A
 		);
-		// phpcs:enable
 
 		return new WP_REST_Response( $rows ?? array(), 200 );
 	}
@@ -244,7 +238,7 @@ final class AnalyticsController extends WP_REST_Controller {
 	public static function create_table(): void {
 		global $wpdb;
 
-		$table           = $wpdb->prefix . 'bazaar_analytics';
+		$table           = $wpdb->prefix . Tables::ANALYTICS;
 		$charset_collate = $wpdb->get_charset_collate();
 
 		$sql = "CREATE TABLE IF NOT EXISTS {$table} (
@@ -268,7 +262,7 @@ final class AnalyticsController extends WP_REST_Controller {
 	 */
 	public static function drop_table(): void {
 		global $wpdb;
-		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}bazaar_analytics" );
+		$table = $wpdb->prefix . Tables::ANALYTICS;
+		$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', $table ) );
 	}
 }

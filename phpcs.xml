@@ -28,9 +28,64 @@
         Allow any lowercase-hyphenated filename without requiring the class-
         prefix derived from the class name.
     -->
+    <!--
+        This codebase uses PSR-4 autoloading (PascalCase class names in
+        class-*.php files and bare PascalCase for traits/services). Allow any
+        valid PSR-4 filename without enforcing WordPress's hyphenated-lowercase
+        convention.
+    -->
     <rule ref="WordPress.Files.FileName">
         <properties>
             <property name="strict_class_file_names" value="false"/>
         </properties>
+        <exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+    </rule>
+
+    <!--
+        base64_encode/decode: WordPress flags these as "obfuscation" functions,
+        but this codebase uses them exclusively for cryptographic signatures,
+        URL-safe block tokens, and SVG data URIs — all legitimate encoding.
+    -->
+    <rule ref="WordPress.PHP.DiscouragedPHPFunctions">
+        <exclude name="WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode"/>
+        <exclude name="WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode"/>
+    </rule>
+
+    <!--
+        RuntimeException messages are passed to WP_CLI::error() or logged —
+        never rendered directly to an HTML page. Escaping at construction
+        would double-encode when the message surfaces in a CLI context.
+    -->
+    <rule ref="WordPress.Security.EscapeOutput">
+        <exclude name="WordPress.Security.EscapeOutput.ExceptionNotEscaped"/>
+    </rule>
+
+    <!--
+        The ware server streams authenticated, pre-validated files from the
+        plugin's own content directory. readfile() streams binary assets
+        without loading them into PHP memory — WP_Filesystem has no streaming
+        equivalent. The echo of processed HTML is also intentional: content
+        has already been sanitised on upload and cannot be escaped without
+        corrupting it.
+    -->
+    <rule ref="WordPress.WP.AlternativeFunctions.file_system_read_readfile">
+        <exclude-pattern>src/REST/class-ware-server.php</exclude-pattern>
+    </rule>
+    <rule ref="WordPress.WP.AlternativeFunctions.file_system_operations_readfile">
+        <exclude-pattern>src/REST/class-ware-server.php</exclude-pattern>
+    </rule>
+    <rule ref="WordPress.Security.EscapeOutput.OutputNotEscaped">
+        <exclude-pattern>src/REST/class-ware-server.php</exclude-pattern>
+        <!-- SSE text/event-stream protocol: JSON-encoded data cannot be HTML-escaped without corrupting the stream. -->
+        <exclude-pattern>src/REST/class-stream-controller.php</exclude-pattern>
+    </rule>
+
+    <!--
+        The ware server injects a Vite HMR <script> tag into a proxied HTML
+        document returned via the REST API. wp_enqueue_script() only works for
+        WordPress-rendered pages, not for content streamed through REST.
+    -->
+    <rule ref="WordPress.WP.EnqueuedResources.NonEnqueuedScript">
+        <exclude-pattern>src/REST/class-ware-server.php</exclude-pattern>
     </rule>
 </ruleset>
