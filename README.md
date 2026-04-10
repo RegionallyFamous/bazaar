@@ -23,6 +23,7 @@ invoice-generator.wp   →   upload   →   "Invoices" appears in your sidebar
 
 ## Table of Contents
 
+- [Why This Exists](#why-this-exists)
 - [The Name](#the-name)
 - [What is a Ware?](#what-is-a-ware)
 - [How It Works](#how-it-works)
@@ -33,6 +34,20 @@ invoice-generator.wp   →   upload   →   "Invoices" appears in your sidebar
 - [REST API](#rest-api)
 - [Development](#development)
 - [Documentation](#documentation)
+
+---
+
+## Why This Exists
+
+We're living through a genuinely strange and exciting moment in software. AI has changed what it means to write code — the pace of ideas, the speed of prototypes, the sheer *fun* of it. Coding is my full-time job, my obsession, and my hobby all at once, and right now that feels like the best possible thing to be.
+
+The problem I kept running into: every time I had a new idea, I'd spin up a new server. A new domain, a new deploy pipeline, a new VPS — just to run something I wanted to play with. It was friction that didn't need to exist.
+
+WordPress is my digital home. It's where I've lived on the web for years, where my content lives, where I feel at home in the stack. And I started thinking — why isn't this my app platform too? Why am I spinning up infrastructure elsewhere when I've already got a perfectly good authenticated, multi-user, extensible web application sitting right there?
+
+That's where Bazaar came from. Build something cool, package it, drop it into your WordPress admin. No new servers. No new domains. No new deploys. Your WordPress install becomes the platform for everything you're building.
+
+It was born out of the AI moment — the abundance of ideas, the joy of building fast — and the very practical desire to stop managing infrastructure every time inspiration strikes.
 
 ---
 
