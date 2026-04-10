@@ -25,10 +25,7 @@ use WP_REST_Server;
  *
  * Expects a multipart/form-data request with a `file` field containing the .wp archive.
  */
-final class UploadController {
-
-	/** REST API namespace for all Bazaar routes. */
-	private const NAMESPACE = 'bazaar/v1';
+final class UploadController extends BazaarController {
 
 	/**
 	 * Registry used to store the installed ware.
@@ -63,7 +60,7 @@ final class UploadController {
 	 */
 	public function register_routes(): void {
 		register_rest_route(
-			self::NAMESPACE,
+			$this->namespace,
 			'/wares',
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,

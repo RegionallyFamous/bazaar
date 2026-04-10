@@ -26,10 +26,7 @@ use WP_REST_Server;
  * PATCH  /wp-json/bazaar/v1/wares/{slug}     — toggle enabled state
  * DELETE /wp-json/bazaar/v1/wares/{slug}     — unregister + delete files
  */
-final class WareController {
-
-	/** REST API namespace for all Bazaar routes. */
-	private const NAMESPACE = 'bazaar/v1';
+final class WareController extends BazaarController {
 
 	/**
 	 * Registry used to read and update ware state.
@@ -61,7 +58,7 @@ final class WareController {
 	public function register_routes(): void {
 		// Index: GET /index — lightweight list for the shell nav rail.
 		register_rest_route(
-			self::NAMESPACE,
+			$this->namespace,
 			'/index',
 			array(
 				array(
@@ -74,7 +71,7 @@ final class WareController {
 
 		// Collection: GET /wares.
 		register_rest_route(
-			self::NAMESPACE,
+			$this->namespace,
 			'/wares',
 			array(
 				array(
@@ -95,7 +92,7 @@ final class WareController {
 
 		// Item: GET / PATCH / DELETE /wares/{slug}.
 		register_rest_route(
-			self::NAMESPACE,
+			$this->namespace,
 			'/wares/(?P<slug>[a-z0-9-]+)',
 			array(
 				array(

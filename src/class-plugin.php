@@ -28,6 +28,7 @@ use Bazaar\REST\StreamController;
 use Bazaar\REST\UploadController;
 use Bazaar\REST\WareController;
 use Bazaar\REST\WareServer;
+use Bazaar\REST\WebhooksController;
 use Bazaar\WebhookDispatcher;
 use Bazaar\RemoteRegistry;
 use Bazaar\WareLoader;
@@ -169,7 +170,7 @@ final class Plugin {
 		add_action( 'bazaar_health_refresh', array( HealthController::class, 'cron_refresh' ) );
 
 		// Webhook dispatch when bus event fires.
-		add_action( 'bazaar_bus_event', array( WebhooksController::class, 'dispatch' ), 10, 3 );
+		add_action( 'bazaar_bus_event', array( WebhookDispatcher::class, 'dispatch' ), 10, 3 );
 
 		// Audit log lifecycle events.
 		add_action( 'bazaar_ware_installed', fn( $slug ) => AuditLog::record( $slug, 'install' ) );
