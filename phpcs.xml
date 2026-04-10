@@ -30,8 +30,4 @@
         </properties>
     </rule>
 
-    <!-- Allow short ternary / null coalescing (PHP 8.1+) -->
-    <rule ref="WordPress.PHP.DisallowShortTernary">
-        <severity>0</severity>
-    </rule>
 </ruleset>

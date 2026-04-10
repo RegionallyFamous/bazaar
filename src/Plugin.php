@@ -6,6 +6,7 @@ namespace Bazaar;
 
 defined( 'ABSPATH' ) || exit;
 
+use Bazaar\CLI\BazaarCommand;
 use Bazaar\REST\UploadController;
 use Bazaar\REST\WareController;
 use Bazaar\REST\WareServer;
@@ -64,6 +65,10 @@ final class Plugin {
 		add_action( 'admin_menu', [ $this->bazaar_page, 'register_page' ] );
 		add_action( 'admin_enqueue_scripts', [ $this->bazaar_page, 'enqueue_assets' ] );
 		add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
+
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			WP_CLI::add_command( 'bazaar', BazaarCommand::class );
+		}
 	}
 
 	public function load_textdomain(): void {
