@@ -315,4 +315,88 @@ TS;
 			WP_CLI::log( $output );
 		}
 	}
+
+	// ── Private helpers ───────────────────────────────────────────────────────
+
+	/**
+	 * Activate dev mode: store the Vite dev server URL in the ware registry.
+	 *
+	 * @param string $slug Ware slug.
+	 * @param string $url  Local dev server URL (e.g. http://localhost:5173).
+	 */
+	private function dev_start( string $slug, string $url ): void {
+		if ( '' === $url ) {
+			WP_CLI::error( __( 'Please provide the dev server URL, e.g. http://localhost:5173.', 'bazaar' ) );
+			return;
+		}
+
+		if ( ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
+			WP_CLI::error(
+				sprintf(
+					/* translators: %s: URL provided by the user */
+					__( '"%s" is not a valid URL.', 'bazaar' ),
+					$url
+				)
+			);
+			return;
+		}
+
+		if ( ! $this->registry->set_dev_url( $slug, $url ) ) {
+			WP_CLI::error(
+				sprintf(
+					/* translators: %s: ware slug */
+					__( 'Could not set dev URL for "%s".', 'bazaar' ),
+					$slug
+				)
+			);
+			return;
+		}
+
+		$debug_status = ( defined( 'WP_DEBUG' ) && WP_DEBUG )
+			? __( 'WP_DEBUG is true — dev mode will be active immediately.', 'bazaar' )
+			: __( 'Note: WP_DEBUG is false on this site. Set WP_DEBUG=true for dev mode to take effect.', 'bazaar' );
+
+		WP_CLI::success(
+			sprintf(
+				/* translators: 1: ware slug, 2: dev server URL */
+				__( 'Dev mode started for "%1$s" → %2$s', 'bazaar' ),
+				$slug,
+				$url
+			)
+		);
+		WP_CLI::line( $debug_status );
+		WP_CLI::line(
+			sprintf(
+				/* translators: %s: ware slug */
+				__( 'Stop with: wp bazaar dev stop %s', 'bazaar' ),
+				$slug
+			)
+		);
+	}
+
+	/**
+	 * Deactivate dev mode, returning the ware to its installed files.
+	 *
+	 * @param string $slug Ware slug.
+	 */
+	private function dev_stop( string $slug ): void {
+		if ( ! $this->registry->clear_dev_url( $slug ) ) {
+			WP_CLI::error(
+				sprintf(
+					/* translators: %s: ware slug */
+					__( 'Could not clear dev URL for "%s" (was it in dev mode?).', 'bazaar' ),
+					$slug
+				)
+			);
+			return;
+		}
+
+		WP_CLI::success(
+			sprintf(
+				/* translators: %s: ware slug */
+				__( 'Dev mode stopped for "%s". Ware is back on its installed files.', 'bazaar' ),
+				$slug
+			)
+		);
+	}
 }

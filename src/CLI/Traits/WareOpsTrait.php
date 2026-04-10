@@ -426,4 +426,23 @@ trait WareOpsTrait {
 		WP_CLI::log( WP_CLI::colorize( '%BContent-Security-Policy:%n' ) );
 		WP_CLI::log( $header );
 	}
+
+	// ── Private helpers ───────────────────────────────────────────────────────
+
+	/**
+	 * Recursively calculate the total size of a directory in bytes.
+	 *
+	 * @param string $path Absolute filesystem path to the directory.
+	 * @return int Total size in bytes, or 0 if the path is not a directory.
+	 */
+	private function dir_size( string $path ): int {
+		if ( ! is_dir( $path ) ) {
+			return 0;
+		}
+		$total = 0;
+		foreach ( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $path, \FilesystemIterator::SKIP_DOTS ) ) as $file ) {
+			$total += $file->getSize();
+		}
+		return $total;
+	}
 }

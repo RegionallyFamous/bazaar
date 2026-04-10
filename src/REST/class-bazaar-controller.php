@@ -32,9 +32,12 @@ abstract class BazaarController extends WP_REST_Controller {
 	/**
 	 * REST namespace shared by all Bazaar endpoints.
 	 *
+	 * No native type: WP_REST_Controller::$namespace is untyped and PHP 8.2+
+	 * disallows adding a type when overriding an untyped parent property.
+	 *
 	 * @var string
 	 */
-	protected string $namespace = 'bazaar/v1';
+	protected $namespace = 'bazaar/v1';
 
 	/**
 	 * Permission callback: user must be logged in.
