@@ -357,16 +357,13 @@ final class WareLoader {
 			$filesystem->delete( $dest_dir, true );
 		}
 
-		// Atomic rename: move staging dir to final location.
-		if ( ! rename( $temp_dir, $dest_dir ) ) {
-			// Fallback: WP_Filesystem move (for cases where rename crosses mount points).
-			if ( ! $filesystem->move( $temp_dir, $dest_dir ) ) {
-				$filesystem->delete( $temp_dir, true );
-				return new WP_Error(
-					'extract_rename_failed',
-					esc_html__( 'Could not finalize ware installation.', 'bazaar' )
-				);
-			}
+		// Move staging dir to final location via WP_Filesystem.
+		if ( ! $filesystem->move( $temp_dir, $dest_dir ) ) {
+			$filesystem->delete( $temp_dir, true );
+			return new WP_Error(
+				'extract_rename_failed',
+				esc_html__( 'Could not finalize ware installation.', 'bazaar' )
+			);
 		}
 
 		return true;

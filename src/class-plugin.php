@@ -215,14 +215,14 @@ final class Plugin {
 		$errors = array();
 
 		if ( ! class_exists( 'ZipArchive' ) ) {
-			$errors[] = esc_html__( 'The PHP ZipArchive extension is required but not installed.', 'bazaar' );
+			$errors[] = __( 'The PHP ZipArchive extension is required but not installed.', 'bazaar' );
 		}
 
-		if ( ! is_writable( WP_CONTENT_DIR ) ) {
+		if ( ! wp_is_writable( WP_CONTENT_DIR ) ) {
 			$errors[] = sprintf(
-				/* translators: %s: path to wp-content directory */
-				esc_html__( 'The wp-content directory (%s) must be writable.', 'bazaar' ),
-				esc_html( WP_CONTENT_DIR )
+				/* translators: %s: path to wp-content directory. */
+				__( 'The wp-content directory (%s) must be writable.', 'bazaar' ),
+				WP_CONTENT_DIR
 			);
 		}
 
@@ -233,10 +233,15 @@ final class Plugin {
 		// Deactivate ourselves and show the errors rather than leaving a broken plugin active.
 		deactivate_plugins( plugin_basename( BAZAAR_FILE ) );
 
+		$error_items = '';
+		foreach ( $errors as $error ) {
+			$error_items .= '<li>' . esc_html( $error ) . '</li>';
+		}
+
 		wp_die(
-			'<p><strong>' . esc_html__( 'Bazaar could not be activated:', 'bazaar' ) . '</strong></p><ul><li>' .
-			implode( '</li><li>', $errors ) .
-			'</li></ul>',
+			wp_kses_post(
+				'<p><strong>' . esc_html__( 'Bazaar could not be activated:', 'bazaar' ) . '</strong></p><ul>' . $error_items . '</ul>'
+			),
 			esc_html__( 'Plugin activation error', 'bazaar' ),
 			array( 'back_link' => true )
 		);

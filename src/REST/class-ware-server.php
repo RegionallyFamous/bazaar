@@ -186,7 +186,7 @@ final class WareServer {
 	 * the client's cached copy is still valid.
 	 *
 	 * @param WP_REST_Request $request The incoming REST request.
-	 * @return WP_REST_Response|WP_Error Never returns normally — exits after output.
+	 * @return WP_Error|never Returns a WP_Error on failure; exits directly after streaming on success.
 	 */
 	public function serve_file( WP_REST_Request $request ): WP_Error {
 		$slug      = sanitize_key( $request->get_param( 'slug' ) );

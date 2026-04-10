@@ -59,7 +59,7 @@ final class WareController {
 	 * Register all ware management REST routes.
 	 */
 	public function register_routes(): void {
-		// Collection: GET /wares
+		// Collection: GET /wares.
 		register_rest_route(
 			self::NAMESPACE,
 			'/wares',
@@ -80,7 +80,7 @@ final class WareController {
 			)
 		);
 
-		// Item: GET / PATCH / DELETE /wares/{slug}
+		// Item: GET / PATCH / DELETE /wares/{slug}.
 		register_rest_route(
 			self::NAMESPACE,
 			'/wares/(?P<slug>[a-z0-9-]+)',
@@ -202,9 +202,9 @@ final class WareController {
 				'slug'    => $slug,
 				'enabled' => $enabled,
 				'message' => $enabled
-					/* translators: %s: ware slug */
+					/* translators: %s: ware slug. */
 					? sprintf( esc_html__( '"%s" enabled.', 'bazaar' ), esc_html( $slug ) )
-					/* translators: %s: ware slug */
+					/* translators: %s: ware slug. */
 					: sprintf( esc_html__( '"%s" disabled.', 'bazaar' ), esc_html( $slug ) ),
 			),
 			200

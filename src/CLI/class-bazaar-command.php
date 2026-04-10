@@ -173,6 +173,7 @@ final class BazaarCommand {
 
 		if ( false === $file_path || ! is_file( $file_path ) ) {
 			WP_CLI::error( "File not found: {$args[0]}" );
+			return;
 		}
 
 		$filename = basename( $file_path );
@@ -182,6 +183,7 @@ final class BazaarCommand {
 		$manifest = $this->loader->validate( $file_path, $filename );
 		if ( is_wp_error( $manifest ) ) {
 			WP_CLI::error( $manifest->get_error_message() );
+			return;
 		}
 
 		$slug = $manifest['slug'];
@@ -203,6 +205,7 @@ final class BazaarCommand {
 		$result = $this->loader->install( $file_path, $filename );
 		if ( is_wp_error( $result ) ) {
 			WP_CLI::error( $result->get_error_message() );
+			return;
 		}
 
 		$registered = $this->registry->register( $result );
@@ -321,6 +324,7 @@ final class BazaarCommand {
 		$ware = $this->registry->get( $slug );
 		if ( null === $ware ) {
 			WP_CLI::error( "Ware \"{$slug}\" not found." );
+			return;
 		}
 
 		WP_CLI::confirm( "Delete \"{$ware['name']}\" and all its files?", $assoc_args );
@@ -375,6 +379,7 @@ final class BazaarCommand {
 		$ware = $this->registry->get( $slug );
 		if ( null === $ware ) {
 			WP_CLI::error( "Ware \"{$slug}\" not found." );
+			return;
 		}
 
 		$format = Utils\get_flag_value( $assoc_args, 'format', 'table' );
