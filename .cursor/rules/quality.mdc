@@ -1,0 +1,67 @@
+---
+description: Code quality non-negotiables — zero suppression comments, autoload hygiene, and CspPolicy compile rules
+globs:
+alwaysApply: true
+---
+
+# Code Quality Non-Negotiables
+
+## Zero suppression comments — always
+
+Never add these to any production file in `src/`, `bazaar.php`, or `templates/`:
+
+```
+// phpcs:ignore
+// phpcs:disable
+// @phpstan-ignore
+// @phpstan-ignore-next-line
+```
+
+If a linter flags something, **fix the code**. The only legitimate alternatives:
+
+| Situation | Right fix |
+|---|---|
+| PHPCS rule is wrong for this entire file/pattern | Add a config-level `<exclude-pattern>` in `phpcs.xml` |
+| PHPStan doesn't know about a WP method | Use a `stubs/` file and reference it in `phpstan.neon` `stubFiles:`, or rewrite the call to use a stubbed API |
+| A native function isn't in stubs | Add it to `patchwork.json` `redefinable-internals` (for tests) |
+| WP_REST_Request method missing from stubs | Use `$_SERVER` with `wp_unslash` + `sanitize_text_field` instead |
+
+Test files in `tests/` are not scanned by PHPCS — no suppressions needed there either.
+
+## Classmap autoload — regenerate after adding files
+
+This project uses `"classmap": ["src/"]` in `composer.json`. **Any new file in `src/` is invisible to autoloading until the classmap is regenerated.**
+
+```bash
+php composer.phar dump-autoload --no-scripts
+```
+
+Run this after:
+- Creating a new class, interface, or trait in `src/`
+- Renaming or moving a file in `src/`
+
+Symptom when missing: `Error: Class "Bazaar\MyNewClass" not found` at test time despite the file existing.
+
+## CspPolicy::compile() — trim sources before concatenating
+
+When building a `directive value` string, always trim the value *before* joining with the directive name. Trimming the outer string leaves internal whitespace intact:
+
+```php
+// ❌ Leading whitespace survives — "script-src   'self'"
+$parts[] = trim( "$directive $sources" );
+
+// ✅ Sources trimmed independently — "script-src 'self'"
+$parts[] = $directive . ' ' . trim( (string) $sources );
+```
+
+## WareRegistryInterface — depend on the abstraction
+
+`WareRegistry` is `final`. Any class that accepts it as a constructor parameter and needs to be unit-tested **must** type-hint `WareRegistryInterface`, not the concrete class, so tests can mock the interface.
+
+```php
+// ❌ Cannot be tested — WareRegistry is final
+public function __construct( WareRegistry $registry ) { … }
+
+// ✅ Mockable and still accepts the real WareRegistry
+public function __construct( WareRegistryInterface $registry ) { … }
+```

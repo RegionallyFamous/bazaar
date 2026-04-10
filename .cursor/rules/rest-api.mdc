@@ -82,6 +82,24 @@ await apiFetch( {
 ],
 ```
 
+## WP_REST_Request — stub gaps
+
+`WP_REST_Request::get_header()` **exists in production WordPress but is absent from `php-stubs/wordpress-stubs`**. Calling it causes a PHPStan `method.notFound` error that cannot be silenced without a suppression comment.
+
+For HTTP conditional-request headers (caching), read from `$_SERVER` instead — it is the canonical HTTP-level source and PHPStan can verify it:
+
+```php
+// ❌ PHPStan method.notFound — get_header() not in stubs
+$if_none_match = $request->get_header( 'If-None-Match' );
+
+// ✅ PHPStan-clean — $_SERVER with proper sanitization
+$if_none_match = isset( $_SERVER['HTTP_IF_NONE_MATCH'] )
+    ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_IF_NONE_MATCH'] ) )
+    : null;
+```
+
+Header name mapping: `If-None-Match` → `HTTP_IF_NONE_MATCH`, `If-Modified-Since` → `HTTP_IF_MODIFIED_SINCE`.
+
 ## Things to avoid
 
 1. **No permission callback** — WordPress will reject the route entirely (5.5+)
@@ -89,3 +107,4 @@ await apiFetch( {
 3. **Ignoring WP_Error** — check `is_wp_error()` on internal calls before returning
 4. **String method names** — use `WP_REST_Server::READABLE` not `'GET'`
 5. **Missing arg validation** — every arg should have `type` + `sanitize_callback` at minimum
+6. **`$request->get_header()`** — not in PHPStan stubs; use `$_SERVER` with `wp_unslash` + `sanitize_text_field`

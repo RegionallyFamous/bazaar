@@ -48,6 +48,54 @@ final class FormatterTest extends TestCase {
 }
 ```
 
+#### Stub completeness — every WP function called in production code under test needs a stub
+
+Common functions to remember:
+```php
+Functions\when( 'sanitize_key' )->returnArg();
+Functions\when( 'sanitize_text_field' )->returnArg();
+Functions\when( 'sanitize_textarea_field' )->returnArg();
+Functions\when( 'esc_url_raw' )->returnArg();
+Functions\when( 'esc_html' )->returnArg();
+Functions\when( 'esc_html__' )->returnArg();
+Functions\when( 'absint' )->alias( 'intval' );
+Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+Functions\when( 'gmdate' )->alias( 'gmdate' );   // needs patchwork.json entry — see below
+Functions\when( 'get_option' )->justReturn( '{}' );
+Functions\when( 'update_option' )->justReturn( true );
+```
+
+Missing a stub causes `Error: Call to undefined function Bazaar\esc_url_raw()` — CI fails on all PHP versions.
+
+#### patchwork.json — native PHP functions need explicit opt-in
+
+Brain Monkey uses Patchwork to intercept calls. Native PHP built-ins (`gmdate`, `sprintf`, etc.) are **not** interceptable by default. Without the config entry you get:
+
+```
+Patchwork\Exceptions\NotUserDefined: Please include {"redefinable-internals": ["gmdate"]} in your patchwork.json.
+```
+
+Add to `patchwork.json`:
+```json
+{ "redefinable-internals": ["sprintf", "gmdate"] }
+```
+
+#### Testing `final` classes — createMock() fails at runtime
+
+```php
+// ❌ ClassIsFinalException — WareRegistry is final
+$mock = $this->createMock( WareRegistry::class );
+```
+
+Three solutions (in order of preference):
+
+1. **Extract an interface** — `WareRegistryInterface`, make the concrete class implement it, mock the interface:
+   ```php
+   $mock = $this->createMock( WareRegistryInterface::class );
+   ```
+2. **Seed real class via Brain Monkey option stubs** — stub `get_option` with a closure that returns different JSON per key, construct the real class, it reads from the seeded store.
+3. **In-memory store helper** — shared `seed_ware()` / `stub_wp_functions()` helpers in `setUp()` so every test in the suite gets a fully configured real instance.
+
 Mock external HTTP in tests with `pre_http_request` filter.
 
 ## JS — Jest via @wordpress/scripts
