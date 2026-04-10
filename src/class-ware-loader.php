@@ -48,16 +48,16 @@ final class WareLoader {
 	/**
 	 * Registry used to check slug uniqueness and update state.
 	 *
-	 * @var WareRegistry
+	 * @var WareRegistryInterface
 	 */
-	private WareRegistry $registry;
+	private WareRegistryInterface $registry;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param WareRegistry $registry Registry instance.
+	 * @param WareRegistryInterface $registry Registry instance.
 	 */
-	public function __construct( WareRegistry $registry ) {
+	public function __construct( WareRegistryInterface $registry ) {
 		$this->registry = $registry;
 	}
 

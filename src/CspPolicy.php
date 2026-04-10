@@ -97,7 +97,7 @@ final class CspPolicy {
 	public static function compile( array $directives ): string {
 		$parts = array();
 		foreach ( $directives as $directive => $sources ) {
-			$parts[] = trim( "$directive $sources" );
+			$parts[] = $directive . ' ' . trim( (string) $sources );
 		}
 		return implode( '; ', $parts );
 	}

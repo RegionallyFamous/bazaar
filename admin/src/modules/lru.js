@@ -35,7 +35,7 @@ export class LruIframeManager {
 		const f = document.createElement('iframe');
 		f.id = `bsh-frame-${slug}`;
 		f.className = 'bsh-iframe';
-		f.sandbox = sandbox;
+		f.setAttribute('sandbox', sandbox);
 		f.referrerPolicy = 'same-origin';
 		f.title = slug;
 		f.setAttribute('aria-hidden', 'true');

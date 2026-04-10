@@ -12,7 +12,7 @@ namespace Bazaar\REST;
 defined( 'ABSPATH' ) || exit;
 
 use Bazaar\WareLoader;
-use Bazaar\WareRegistry;
+use Bazaar\WareRegistryInterface;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -31,9 +31,9 @@ final class WareController extends BazaarController {
 	/**
 	 * Registry used to read and update ware state.
 	 *
-	 * @var WareRegistry
+	 * @var WareRegistryInterface
 	 */
-	private WareRegistry $registry;
+	private WareRegistryInterface $registry;
 
 	/**
 	 * Loader used when deleting ware files from disk.
@@ -45,9 +45,9 @@ final class WareController extends BazaarController {
 	/**
 	 * Constructor.
 	 *
-	 * @param WareRegistry $registry Registry instance.
+	 * @param WareRegistryInterface $registry Registry instance.
 	 */
-	public function __construct( WareRegistry $registry ) {
+	public function __construct( WareRegistryInterface $registry ) {
 		$this->registry = $registry;
 		$this->loader   = new WareLoader( $registry );
 	}

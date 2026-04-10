@@ -32,7 +32,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Stores and retrieves ware metadata across the two-tier option layout.
  */
-final class WareRegistry {
+final class WareRegistry implements WareRegistryInterface {
 
 	/** Option key for the flat index. */
 	private const INDEX_KEY = 'bazaar_index';

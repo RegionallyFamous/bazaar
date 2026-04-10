@@ -46,7 +46,12 @@ final class WareLoaderTest extends TestCase {
 	 * @param string[]             $extra_files Extra filenames to add.
 	 */
 	private function make_wp_archive( array $manifest = array(), array $extra_files = array() ): string {
-		$default  = array( 'name' => 'Test', 'slug' => 'test-ware', 'version' => '1.0.0', 'entry' => 'index.html' );
+		$default  = array(
+			'name'    => 'Test',
+			'slug'    => 'test-ware',
+			'version' => '1.0.0',
+			'entry'   => 'index.html',
+		);
 		$manifest = array_merge( $default, $manifest );
 
 		$path = $this->tmp_dir . '/test.wp';
@@ -137,5 +142,105 @@ final class WareLoaderTest extends TestCase {
 
 		$this->assertIsArray( $result );
 		$this->assertSame( 'test-ware', $result['slug'] );
+	}
+
+	public function test_rejects_invalid_manifest_json(): void {
+		$loader = new WareLoader( $this->make_registry() );
+
+		Functions\when( 'esc_html__' )->returnArg();
+		Functions\when( 'get_option' )->justReturn( BAZAAR_MAX_UNCOMPRESSED_SIZE );
+		Functions\when( 'absint' )->alias( 'intval' );
+		Functions\when( 'number_format_i18n' )->alias( 'number_format' );
+
+		$path = $this->tmp_dir . '/bad-json.wp';
+		$zip  = new ZipArchive();
+		$zip->open( $path, ZipArchive::CREATE | ZipArchive::OVERWRITE );
+		$zip->addFromString( 'manifest.json', '{not valid json' );
+		$zip->addFromString( 'index.html', 'hello' );
+		$zip->close();
+
+		$result = $loader->validate( $path, 'bad-json.wp' );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'invalid_manifest', $result->get_error_code() );
+	}
+
+	public function test_rejects_manifest_missing_required_fields(): void {
+		$loader = new WareLoader( $this->make_registry() );
+
+		Functions\when( 'esc_html__' )->returnArg();
+		Functions\when( 'esc_html' )->returnArg();
+		Functions\when( 'get_option' )->justReturn( BAZAAR_MAX_UNCOMPRESSED_SIZE );
+		Functions\when( 'absint' )->alias( 'intval' );
+		Functions\when( 'number_format_i18n' )->alias( 'number_format' );
+		Functions\when( 'sanitize_key' )->returnArg();
+
+		// Missing 'version' field.
+		$path   = $this->make_wp_archive( array( 'version' => '' ) );
+		$result = $loader->validate( $path, 'test.wp' );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'missing_manifest_field', $result->get_error_code() );
+	}
+
+	public function test_rejects_slug_that_is_already_installed(): void {
+		Functions\when( 'sanitize_key' )->returnArg();
+		Functions\when( 'esc_html__' )->returnArg();
+		Functions\when( 'esc_html' )->returnArg();
+		Functions\when( 'absint' )->alias( 'intval' );
+		Functions\when( 'number_format_i18n' )->alias( 'number_format' );
+
+		// Seed the registry index so 'test-ware' already appears as installed.
+		Functions\when( 'get_option' )->alias(
+			static function ( string $opt, mixed $default = false ): mixed {
+				if ( 'bazaar_max_ware_size' === $opt ) {
+					return BAZAAR_MAX_UNCOMPRESSED_SIZE;
+				}
+				if ( 'bazaar_index' === $opt ) {
+					return (string) json_encode( array( 'test-ware' => array( 'slug' => 'test-ware' ) ) );
+				}
+				return $default;
+			}
+		);
+
+		$registry = new WareRegistry();
+		$loader   = new WareLoader( $registry );
+		$path     = $this->make_wp_archive();
+		$result   = $loader->validate( $path, 'test.wp' );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'slug_exists', $result->get_error_code() );
+	}
+
+	public function test_rejects_archive_with_path_traversal(): void {
+		$loader = new WareLoader( $this->make_registry() );
+
+		Functions\when( 'esc_html__' )->returnArg();
+		Functions\when( 'esc_html' )->returnArg();
+		Functions\when( 'get_option' )->justReturn( BAZAAR_MAX_UNCOMPRESSED_SIZE );
+		Functions\when( 'absint' )->alias( 'intval' );
+		Functions\when( 'number_format_i18n' )->alias( 'number_format' );
+
+		$path = $this->tmp_dir . '/traversal.wp';
+		$zip  = new ZipArchive();
+		$zip->open( $path, ZipArchive::CREATE | ZipArchive::OVERWRITE );
+		$zip->addFromString(
+			'manifest.json',
+			json_encode(
+				array(
+					'name'    => 'Traversal',
+					'slug'    => 'traversal',
+					'version' => '1.0.0',
+					'entry'   => 'index.html',
+				)
+			)
+		);
+		$zip->addFromString( '../escape.html', 'pwned' );
+		$zip->close();
+
+		$result = $loader->validate( $path, 'traversal.wp' );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'path_traversal', $result->get_error_code() );
 	}
 }

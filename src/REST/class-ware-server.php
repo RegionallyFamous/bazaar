@@ -250,8 +250,13 @@ final class WareServer {
 		$last_modified = gmdate( 'D, d M Y H:i:s', $mtime ) . ' GMT';
 
 		// Check conditional request headers — serve 304 without reading the file.
-		$if_none_match     = $request->get_header( 'If-None-Match' );
-		$if_modified_since = $request->get_header( 'If-Modified-Since' );
+		// $_SERVER is the canonical source for raw HTTP headers in WordPress REST handlers.
+		$if_none_match     = isset( $_SERVER['HTTP_IF_NONE_MATCH'] )
+			? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_IF_NONE_MATCH'] ) )
+			: null;
+		$if_modified_since = isset( $_SERVER['HTTP_IF_MODIFIED_SINCE'] )
+			? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_IF_MODIFIED_SINCE'] ) )
+			: null;
 
 		$etag_match  = $if_none_match && trim( $if_none_match ) === $etag;
 		$mtime_match = $if_modified_since && strtotime( $if_modified_since ) >= $mtime;

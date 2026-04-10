@@ -11,14 +11,19 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Unit tests for WareRegistry.
- *
- * Uses Brain Monkey to mock WordPress functions so no WP install is required.
  */
 final class WareRegistryTest extends TestCase {
+
+	/** @var array<string, mixed> In-memory option store for test isolation. */
+	private array $store = array();
 
 	protected function setUp(): void {
 		parent::setUp();
 		Monkey\setUp();
+		$this->store = array(
+			'bazaar_index' => '{}',
+		);
+		$this->stub_wp_functions();
 	}
 
 	protected function tearDown(): void {
@@ -26,53 +31,286 @@ final class WareRegistryTest extends TestCase {
 		parent::tearDown();
 	}
 
-	public function test_register_stores_ware(): void {
-		Functions\when( 'get_option' )->justReturn( '[]' );
+	// -------------------------------------------------------------------------
+	// Helpers
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Wire up the minimal set of WordPress functions every test needs.
+	 * Uses the in-memory $store so option reads/writes are fully controlled.
+	 */
+	private function stub_wp_functions(): void {
 		Functions\when( 'sanitize_key' )->returnArg();
 		Functions\when( 'sanitize_text_field' )->returnArg();
 		Functions\when( 'sanitize_textarea_field' )->returnArg();
 		Functions\when( 'esc_url_raw' )->returnArg();
 		Functions\when( 'absint' )->alias( 'intval' );
 		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
-		Functions\when( 'update_option' )->justReturn( true );
+		Functions\when( 'gmdate' )->alias( 'gmdate' );
 
+		$store = &$this->store;
+
+		Functions\when( 'get_option' )->alias(
+			function ( string $opt, mixed $default = false ) use ( &$store ): mixed {
+				return $store[ $opt ] ?? $default;
+			}
+		);
+
+		Functions\when( 'update_option' )->alias(
+			function ( string $opt, mixed $val, mixed $autoload = null ) use ( &$store ): bool {
+				$store[ $opt ] = $val;
+				return true;
+			}
+		);
+
+		Functions\when( 'delete_option' )->alias(
+			function ( string $opt ) use ( &$store ): bool {
+				unset( $store[ $opt ] );
+				return true;
+			}
+		);
+	}
+
+	/**
+	 * Pre-populate the store with a registered ware so read-path tests work.
+	 *
+	 * @param string               $slug
+	 * @param array<string, mixed> $overrides
+	 */
+	private function seed_ware( string $slug, array $overrides = array() ): void {
+		$ware = array_merge(
+			array(
+				'slug'        => $slug,
+				'name'        => 'Test Ware',
+				'version'     => '1.0.0',
+				'author'      => '',
+				'description' => '',
+				'icon'        => 'icon.svg',
+				'entry'       => 'index.html',
+				'menu'        => array(
+					'title'      => 'Test Ware',
+					'position'   => null,
+					'capability' => 'manage_options',
+					'parent'     => null,
+					'group'      => null,
+				),
+				'permissions' => array(),
+				'license'     => array(
+					'type'     => 'free',
+					'url'      => '',
+					'required' => 'false',
+				),
+				'registry'    => array(),
+				'enabled'     => true,
+				'installed'   => '2025-01-01T00:00:00Z',
+			),
+			$overrides
+		);
+
+		$index_entry = array(
+			'slug'        => $ware['slug'],
+			'name'        => $ware['name'],
+			'enabled'     => $ware['enabled'],
+			'version'     => $ware['version'],
+			'icon'        => $ware['icon'],
+			'entry'       => $ware['entry'],
+			'menu_title'  => $ware['menu']['title'],
+			'capability'  => $ware['menu']['capability'],
+			'group'       => null,
+			'dev_url'     => null,
+			'permissions' => array(),
+		);
+
+		$index                                 = json_decode( (string) ( $this->store['bazaar_index'] ?? '{}' ), true ) ?? array();
+		$index[ $slug ]                        = $index_entry;
+		$this->store['bazaar_index']           = (string) json_encode( $index );
+		$this->store[ 'bazaar_ware_' . $slug ] = (string) json_encode( $ware );
+	}
+
+	// -------------------------------------------------------------------------
+	// Registration
+	// -------------------------------------------------------------------------
+
+	public function test_register_stores_ware(): void {
 		$registry = new WareRegistry();
-		$result   = $registry->register( [
-			'name'    => 'Test Ware',
-			'slug'    => 'test-ware',
-			'version' => '1.0.0',
-		] );
+		$result   = $registry->register(
+			array(
+				'name'    => 'Test Ware',
+				'slug'    => 'test-ware',
+				'version' => '1.0.0',
+			)
+		);
 
 		$this->assertTrue( $result );
+		$this->assertArrayHasKey( 'bazaar_ware_test-ware', $this->store );
 	}
 
 	public function test_register_rejects_empty_slug(): void {
-		Functions\when( 'get_option' )->justReturn( '[]' );
-		Functions\when( 'sanitize_key' )->justReturn( '' );
-
 		$registry = new WareRegistry();
-		$result   = $registry->register( [
-			'name'    => 'Bad Ware',
-			'slug'    => '',
-			'version' => '1.0.0',
-		] );
+		$result   = $registry->register(
+			array(
+				'name'    => 'Bad Ware',
+				'slug'    => '',
+				'version' => '1.0.0',
+			)
+		);
 
 		$this->assertFalse( $result );
 	}
 
-	public function test_get_returns_null_for_missing_slug(): void {
-		Functions\when( 'get_option' )->justReturn( '[]' );
-		Functions\when( 'sanitize_key' )->returnArg();
+	public function test_register_persists_index_entry(): void {
+		$registry = new WareRegistry();
+		$registry->register(
+			array(
+				'name'    => 'My Ware',
+				'slug'    => 'my-ware',
+				'version' => '2.3.4',
+			)
+		);
 
+		$index = json_decode( (string) ( $this->store['bazaar_index'] ?? '{}' ), true );
+		$this->assertArrayHasKey( 'my-ware', $index );
+		$this->assertSame( '2.3.4', $index['my-ware']['version'] );
+	}
+
+	// -------------------------------------------------------------------------
+	// Read operations
+	// -------------------------------------------------------------------------
+
+	public function test_get_returns_null_for_missing_slug(): void {
 		$registry = new WareRegistry();
 		$this->assertNull( $registry->get( 'nonexistent' ) );
 	}
 
 	public function test_exists_returns_false_for_unknown_slug(): void {
-		Functions\when( 'get_option' )->justReturn( '[]' );
-		Functions\when( 'sanitize_key' )->returnArg();
-
 		$registry = new WareRegistry();
 		$this->assertFalse( $registry->exists( 'ghost' ) );
+	}
+
+	public function test_get_returns_ware_for_known_slug(): void {
+		$this->seed_ware( 'crm' );
+		$registry = new WareRegistry();
+
+		$ware = $registry->get( 'crm' );
+
+		$this->assertIsArray( $ware );
+		$this->assertSame( 'crm', $ware['slug'] );
+		$this->assertSame( 'Test Ware', $ware['name'] );
+	}
+
+	public function test_exists_returns_true_for_known_slug(): void {
+		$this->seed_ware( 'crm' );
+		$registry = new WareRegistry();
+
+		$this->assertTrue( $registry->exists( 'crm' ) );
+	}
+
+	public function test_get_index_returns_all_slugs(): void {
+		$this->seed_ware( 'crm' );
+		$this->seed_ware( 'kanban' );
+		$registry = new WareRegistry();
+
+		$index = $registry->get_index();
+
+		$this->assertArrayHasKey( 'crm', $index );
+		$this->assertArrayHasKey( 'kanban', $index );
+	}
+
+	public function test_get_all_returns_full_manifests(): void {
+		$this->seed_ware( 'crm' );
+		$registry = new WareRegistry();
+
+		$all = $registry->get_all();
+
+		$this->assertArrayHasKey( 'crm', $all );
+		$this->assertArrayHasKey( 'license', $all['crm'] );
+	}
+
+	// -------------------------------------------------------------------------
+	// Unregister
+	// -------------------------------------------------------------------------
+
+	public function test_unregister_removes_ware(): void {
+		$this->seed_ware( 'crm' );
+		$registry = new WareRegistry();
+
+		$result = $registry->unregister( 'crm' );
+
+		$this->assertTrue( $result );
+		$this->assertNull( $registry->get( 'crm' ) );
+		$this->assertArrayNotHasKey( 'bazaar_ware_crm', $this->store );
+	}
+
+	public function test_unregister_returns_false_for_missing_ware(): void {
+		$registry = new WareRegistry();
+		$this->assertFalse( $registry->unregister( 'nobody' ) );
+	}
+
+	// -------------------------------------------------------------------------
+	// Enable / Disable
+	// -------------------------------------------------------------------------
+
+	public function test_disable_sets_enabled_false(): void {
+		$this->seed_ware( 'crm', array( 'enabled' => true ) );
+		$registry = new WareRegistry();
+
+		$result = $registry->disable( 'crm' );
+
+		$this->assertTrue( $result );
+		$ware = $registry->get( 'crm' );
+		$this->assertFalse( $ware['enabled'] ?? true );
+	}
+
+	public function test_enable_sets_enabled_true(): void {
+		$this->seed_ware( 'crm', array( 'enabled' => false ) );
+		// Also mark the index entry as disabled.
+		$index                       = json_decode( (string) $this->store['bazaar_index'], true );
+		$index['crm']['enabled']     = false;
+		$this->store['bazaar_index'] = (string) json_encode( $index );
+
+		$registry = new WareRegistry();
+
+		$result = $registry->enable( 'crm' );
+
+		$this->assertTrue( $result );
+		$ware = $registry->get( 'crm' );
+		$this->assertTrue( $ware['enabled'] ?? false );
+	}
+
+	public function test_enable_returns_false_for_missing_ware(): void {
+		$registry = new WareRegistry();
+		$this->assertFalse( $registry->enable( 'ghost' ) );
+	}
+
+	// -------------------------------------------------------------------------
+	// Dev URL
+	// -------------------------------------------------------------------------
+
+	public function test_set_dev_url_stores_url(): void {
+		$this->seed_ware( 'crm' );
+		$registry = new WareRegistry();
+
+		$result = $registry->set_dev_url( 'crm', 'http://localhost:5173' );
+
+		$this->assertTrue( $result );
+		$ware = $registry->get( 'crm' );
+		$this->assertSame( 'http://localhost:5173', $ware['dev_url'] ?? '' );
+	}
+
+	public function test_set_dev_url_returns_false_for_missing_ware(): void {
+		$registry = new WareRegistry();
+		$this->assertFalse( $registry->set_dev_url( 'ghost', 'http://localhost' ) );
+	}
+
+	public function test_clear_dev_url_removes_dev_url(): void {
+		$this->seed_ware( 'crm', array( 'dev_url' => 'http://localhost:5173' ) );
+		$registry = new WareRegistry();
+
+		$result = $registry->clear_dev_url( 'crm' );
+
+		$this->assertTrue( $result );
+		$ware = $registry->get( 'crm' );
+		$this->assertNotNull( $ware );
+		$this->assertArrayNotHasKey( 'dev_url', $ware );
 	}
 }
