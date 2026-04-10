@@ -17,6 +17,11 @@
   - [icon](#icon)
   - [entry](#entry)
   - [menu](#menu)
+  - [permissions](#permissions)
+  - [health_check](#health_check)
+  - [jobs](#jobs)
+  - [license](#license)
+  - [registry](#registry)
 - [Validation Rules](#validation-rules)
 - [Versioning Your Ware](#versioning-your-ware)
 
@@ -51,7 +56,32 @@ That's all you need. Bazaar fills in sensible defaults for everything else.
     "title": "Invoices",
     "position": 30,
     "capability": "manage_options",
-    "parent": null
+    "parent": null,
+    "group": "finance"
+  },
+  "permissions": {
+    "network": [
+      "https://api.stripe.com",
+      "https://cdn.example.com"
+    ]
+  },
+  "health_check": "https://api.example.com/health",
+  "jobs": [
+    {
+      "id":       "sync_invoices",
+      "label":    "Sync invoices from payment provider",
+      "interval": "hourly",
+      "endpoint": "/wp-json/bazaar/v1/jobs/invoice-generator/sync_invoices"
+    }
+  ],
+  "license": {
+    "type":     "key",
+    "url":      "https://example.com/api/validate-license",
+    "required": true
+  },
+  "registry": {
+    "updateUrl": "https://registry.example.com/wares/invoice-generator.json",
+    "homepage":  "https://example.com/wares/invoice-generator"
   }
 }
 ```
@@ -257,6 +287,158 @@ When set, the ware becomes a submenu item under an existing top-level menu.
 
 ---
 
+#### `menu.group`
+
+| Property | Value |
+|:---|:---|
+| Type | `string \| null` |
+| Required | No |
+| Default | `null` |
+| Example | `"finance"` |
+
+An arbitrary group label used by the Bazaar shell to visually cluster related wares in the sidebar nav. Multiple wares with the same `group` value are rendered under a shared section header. Has no effect on WordPress's own menu registration.
+
+---
+
+### `permissions`
+
+| Property | Value |
+|:---|:---|
+| Type | `object` |
+| Required | No |
+
+Declares what external resources this ware is allowed to access. Bazaar uses these declarations to enforce network policies via the zero-trust service worker.
+
+**`permissions.network`** — `string[]`
+
+An allowlist of origins the ware is permitted to fetch from. Any fetch request to an origin *not* in this list (and not to the WordPress site itself) will be blocked with a `403` response by the service worker.
+
+```json
+{
+  "permissions": {
+    "network": [
+      "https://api.stripe.com",
+      "https://fonts.googleapis.com"
+    ]
+  }
+}
+```
+
+> [!NOTE]
+> The WordPress site's own origin is always implicitly allowed regardless of this field. Zero-trust enforcement only activates if the ware declares `"zero_trust": true` or if it is enabled globally by the admin.
+
+---
+
+### `health_check`
+
+| Property | Value |
+|:---|:---|
+| Type | `string` (URL) |
+| Required | No |
+| Example | `"https://api.example.com/health"` |
+
+A URL that Bazaar polls to determine whether an external dependency (API, service, etc.) is reachable. The result is surfaced in the Bazaar shell UI as a status indicator (ok / warn / error) and pushed in real-time via the SSE stream.
+
+Bazaar performs a `GET` request with a 5-second timeout and maps HTTP status codes to:
+
+| HTTP range | Status |
+|:---:|:---|
+| 200–299 | `ok` |
+| 300–499 | `warn` |
+| 500+ or network error | `error` |
+
+---
+
+### `jobs`
+
+| Property | Value |
+|:---|:---|
+| Type | `array` |
+| Required | No |
+
+Declares background jobs that Bazaar should schedule via WP-Cron on install. Each job is an object:
+
+| Field | Type | Required | Description |
+|:---|:---|:---:|:---|
+| `id` | `string` | **Yes** | Unique identifier within this ware (e.g. `sync_orders`) |
+| `label` | `string` | **Yes** | Human-readable description shown in the Bazaar shell |
+| `interval` | `string` | **Yes** | WP-Cron schedule: `hourly`, `twicedaily`, `daily`, or any custom schedule name |
+| `endpoint` | `string` | No | REST URL Bazaar calls when the job fires. Omit if you register a WP-Cron hook directly in a companion plugin. |
+
+```json
+{
+  "jobs": [
+    {
+      "id":       "sync_products",
+      "label":    "Sync products from API",
+      "interval": "hourly",
+      "endpoint": "/wp-json/bazaar/v1/jobs/my-ware/sync_products"
+    }
+  ]
+}
+```
+
+Admins can view scheduled jobs and trigger them manually via `GET /bazaar/v1/jobs/{slug}` and `POST /bazaar/v1/jobs/{slug}/{job_id}`.
+
+---
+
+### `license`
+
+| Property | Value |
+|:---|:---|
+| Type | `object` |
+| Required | No |
+
+Controls license-key enforcement for paid wares.
+
+| Field | Type | Default | Description |
+|:---|:---|:---:|:---|
+| `type` | `"free"` \| `"key"` | `"free"` | `"key"` enables license-key gating |
+| `url` | `string` | `""` | URL Bazaar POSTs `{ slug, key, site }` to for remote validation |
+| `required` | `boolean` | `false` | When `true`, installation is blocked until a key is stored |
+
+```json
+{
+  "license": {
+    "type":     "key",
+    "url":      "https://example.com/api/validate-license",
+    "required": true
+  }
+}
+```
+
+Set and validate keys with `wp bazaar license set <slug> <key>` or through the Bazaar admin UI.
+
+---
+
+### `registry`
+
+| Property | Value |
+|:---|:---|
+| Type | `object` |
+| Required | No |
+
+Metadata linking this ware to a remote registry entry so Bazaar can check for updates.
+
+| Field | Type | Description |
+|:---|:---|:---|
+| `updateUrl` | `string` | URL to a JSON file describing the latest available version |
+| `homepage` | `string` | Canonical page for this ware (shown in the gallery) |
+| `signature` | `string` | Base64-encoded RSA signature over the archive (verified on install) |
+
+```json
+{
+  "registry": {
+    "updateUrl": "https://registry.example.com/wares/my-ware.json",
+    "homepage":  "https://example.com/wares/my-ware"
+  }
+}
+```
+
+`updateUrl` should return a JSON object with at least a `version` field. Bazaar compares it to the installed version and flags the ware as outdated if a newer one is available (`wp bazaar outdated`).
+
+---
+
 ## Validation Rules
 
 Bazaar runs these checks on upload and rejects the ware if any fail:
@@ -275,11 +457,28 @@ Bazaar runs these checks on upload and rejects the ware if any fail:
 
 ## Versioning Your Ware
 
-Bazaar stores the version string from your manifest but does not currently automate updates. The recommended workflow:
+### Manual updates
 
 1. Bump the version in `manifest.json`
 2. Re-package: `npm run package`
 3. Install with force: `wp bazaar install my-ware.wp --force`
 
-> [!NOTE]
-> A GUI update flow with version comparison is planned for a future release.
+### Remote updates
+
+If your ware declares a `registry.updateUrl`, Bazaar can check for and apply updates automatically:
+
+```bash
+wp bazaar outdated                          # list wares with newer versions available
+wp bazaar update invoice-generator          # update to the latest version
+wp bazaar update --all                      # update everything
+```
+
+The URL should serve a JSON file like:
+
+```json
+{
+  "version":   "1.3.0",
+  "downloadUrl": "https://registry.example.com/wares/invoice-generator-1.3.0.wp",
+  "changelog": "Fixed date formatting on generated PDFs."
+}
+```

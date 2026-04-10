@@ -1,6 +1,6 @@
 # REST API
 
-Bazaar registers four REST endpoints under the `bazaar/v1` namespace. All endpoints require authentication — there is no anonymous access to ware files or management actions.
+Bazaar registers endpoints under the `bazaar/v1` namespace. All endpoints require authentication — there is no anonymous access to ware files or management actions.
 
 **Base URL:** `https://your-site.com/wp-json/bazaar/v1`
 
@@ -10,10 +10,20 @@ Bazaar registers four REST endpoints under the `bazaar/v1` namespace. All endpoi
 
 - [Authentication](#authentication)
 - [Endpoints](#endpoints)
-  - [GET /serve/{slug}/{file}](#get-serveslugfile)
-  - [POST /wares](#post-wares)
-  - [PATCH /wares/{slug}](#patch-waresslug)
-  - [DELETE /wares/{slug}](#delete-waresslug)
+  - [Wares](#wares)
+  - [File Serving](#file-serving)
+  - [Config](#config)
+  - [Health](#health)
+  - [Analytics](#analytics)
+  - [Audit Log](#audit-log)
+  - [Badges](#badges)
+  - [Content Security Policy](#content-security-policy)
+  - [Errors](#errors)
+  - [Jobs](#jobs)
+  - [Nonce](#nonce)
+  - [Storage](#storage)
+  - [Stream (SSE)](#stream-sse)
+  - [Webhooks](#webhooks)
 - [Using the REST API from Inside Your Ware](#using-the-rest-api-from-inside-your-ware)
 - [Registering Your Own REST Endpoints](#registering-your-own-rest-endpoints)
 
@@ -27,84 +37,65 @@ Bazaar registers four REST endpoints under the `bazaar/v1` namespace. All endpoi
 | External clients | [Application Passwords](https://developer.wordpress.org/rest-api/using-the-rest-api/authentication/#application-passwords) via HTTP Basic auth |
 
 > [!NOTE]
-> `@wordpress/api-fetch` (used by the Bazaar admin UI) attaches the nonce automatically via the `X-WP-Nonce` header. You only need to think about this when making fetch calls from inside your own ware.
+> `@wordpress/api-fetch` (used by the Bazaar admin UI) attaches the nonce automatically via the `X-WP-Nonce` header. `@bazaar/client` does the same from inside your ware.
+
+**Auth shorthand used below:**
+- `admin` — logged in + `manage_options` capability
+- `login` — any logged-in user
 
 ---
 
 ## Endpoints
 
-### GET /serve/{slug}/{file}
+### Wares
 
-Serves any static file from an installed ware's directory.
-
-```
-GET /wp-json/bazaar/v1/serve/{slug}/{file}
-```
-
-| Parameter | Type | Description |
-|:---|:---|:---|
-| `slug` | `string` | The ware slug, e.g. `invoice-generator` |
-| `file` | `string` | Path to the file within the ware, e.g. `index.html` or `assets/app.js` |
-
-**Required permission:** Logged in + capability declared in the ware's `manifest.json` (default: `manage_options`)
-
-**Response:** Raw file contents with the correct `Content-Type` header — not a JSON response.
-
-```
-GET /wp-json/bazaar/v1/serve/invoice-generator/index.html
-→ 200 Content-Type: text/html; charset=UTF-8
-
-GET /wp-json/bazaar/v1/serve/invoice-generator/assets/app.js
-→ 200 Content-Type: application/javascript
-```
-
-<details>
-<summary><strong>Error responses</strong></summary>
-
-| Status | Code | Meaning |
-|:---:|:---|:---|
-| 401 | `rest_forbidden` | Not logged in |
-| 403 | `rest_forbidden` | Logged in but lacks required capability |
-| 403 | `ware_disabled` | Ware is installed but disabled |
-| 404 | `ware_not_found` | No ware with that slug |
-| 404 | `file_not_found` | File doesn't exist in the ware |
-| 400 | `path_traversal` | File path contains `..` |
-
-</details>
-
-> [!TIP]
-> **Relative asset paths just work.** Your `index.html` can reference `./assets/app.js` and the browser resolves it against the iframe's `src` URL, which already points at this endpoint. You never need to construct the full URL for assets.
+Ware management: install, list, toggle, delete.
 
 ---
 
-### POST /wares
+#### `GET /wares`
+
+List all installed wares. Optional `?status=enabled|disabled` filter.
+
+**Auth:** admin
+
+**Response — `200 OK`**
+```json
+[
+  {
+    "slug": "invoice-generator",
+    "name": "Invoice Generator",
+    "version": "1.0.0",
+    "enabled": true,
+    "installed": "2026-04-10T12:00:00Z"
+  }
+]
+```
+
+---
+
+#### `POST /wares`
 
 Upload and install a new `.wp` ware file.
 
-```
-POST /wp-json/bazaar/v1/wares
-Content-Type: multipart/form-data
-```
+**Auth:** admin · `Content-Type: multipart/form-data`
 
-**Required permission:** `manage_options`
-
-**Request body:** Multipart form data with a `file` field containing the `.wp` archive.
+**Request body:** `file` field containing the `.wp` archive.
 
 <details>
-<summary><strong>JS example (from inside wp-admin)</strong></summary>
+<summary><strong>JS example</strong></summary>
 
 ```js
 import apiFetch from '@wordpress/api-fetch';
 
 const formData = new FormData();
-formData.append( 'file', fileInput.files[ 0 ] );
+formData.append('file', fileInput.files[0]);
 
-const result = await apiFetch( {
+const result = await apiFetch({
   path: '/bazaar/v1/wares',
   method: 'POST',
   body: formData,
-} );
-// result.ware contains the new ware's full registry entry
+});
 ```
 
 </details>
@@ -120,34 +111,17 @@ curl -X POST https://your-site.com/wp-json/bazaar/v1/wares \
 
 </details>
 
-**Success response — `201 Created`**
-
+**Success — `201 Created`**
 ```json
 {
   "success": true,
   "message": "\"Invoice Generator\" installed successfully.",
-  "ware": {
-    "name": "Invoice Generator",
-    "slug": "invoice-generator",
-    "version": "1.0.0",
-    "author": "Nick",
-    "description": "Generate and manage invoices from wp-admin.",
-    "icon": "icon.svg",
-    "entry": "index.html",
-    "menu": {
-      "title": "Invoices",
-      "position": 30,
-      "capability": "manage_options",
-      "parent": null
-    },
-    "enabled": true,
-    "installed": "2026-04-10T12:00:00Z"
-  }
+  "ware": { "slug": "invoice-generator", "name": "Invoice Generator", "..." }
 }
 ```
 
 <details>
-<summary><strong>Error responses</strong></summary>
+<summary><strong>Error codes</strong></summary>
 
 | Status | Code | Meaning |
 |:---:|:---|:---|
@@ -159,156 +133,606 @@ curl -X POST https://your-site.com/wp-json/bazaar/v1/wares \
 | 422 | `invalid_manifest` | `manifest.json` is not valid JSON |
 | 422 | `missing_manifest_field` | Required field (`name`, `slug`, or `version`) missing |
 | 422 | `invalid_slug` | Slug contains invalid characters |
-| 422 | `slug_exists` | A ware with that slug is already installed |
+| 422 | `slug_exists` | A ware with that slug is already installed (use `--force` via CLI) |
 | 422 | `missing_entry` | Entry file not found in archive |
 | 422 | `php_not_allowed` | Archive contains a `.php` / `.phar` / `.phtml` file |
 | 422 | `too_large` | Uncompressed size exceeds configured limit |
+| 422 | `license_required` | Paid ware — store a license key first |
 | 500 | `registry_failed` | Files extracted but registry write failed |
 
 </details>
 
 ---
 
-### PATCH /wares/{slug}
+#### `GET /wares/{slug}`
+
+Retrieve the full manifest for a single installed ware.
+
+**Auth:** admin
+
+**Response — `200 OK`** — full ware manifest object.
+
+---
+
+#### `PATCH /wares/{slug}`
 
 Enable or disable an installed ware.
 
-```
-PATCH /wp-json/bazaar/v1/wares/{slug}
-Content-Type: application/json
-```
-
-**Required permission:** `manage_options`
-
-**Request body:**
+**Auth:** admin · `Content-Type: application/json`
 
 ```json
 { "enabled": true }
 ```
 
-**JS example:**
-
-```js
-await apiFetch( {
-  path: `/bazaar/v1/wares/invoice-generator`,
-  method: 'PATCH',
-  data: { enabled: false },
-} );
+**Response — `200 OK`**
+```json
+{ "success": true, "slug": "invoice-generator", "enabled": false }
 ```
 
-**Success response — `200 OK`**
+---
 
+#### `DELETE /wares/{slug}`
+
+Remove a ware from the registry and permanently delete its files.
+
+**Auth:** admin
+
+> [!WARNING]
+> Irreversible. Files are deleted from `wp-content/bazaar/{slug}/` immediately.
+
+**Response — `200 OK`**
+```json
+{ "success": true, "slug": "invoice-generator" }
+```
+
+---
+
+#### `GET /index`
+
+Lightweight ware index — slugs with name, enabled state, capability, and icon only. Used by the shell for fast nav rendering.
+
+**Auth:** admin
+
+**Response — `200 OK`** — `object` keyed by slug.
+
+---
+
+### File Serving
+
+#### `GET /serve/{slug}/{file}`
+
+Serve any static file from an installed ware's directory.
+
+**Auth:** login + capability declared in the ware's `manifest.json` (default: `manage_options`)
+
+| Parameter | Description |
+|:---|:---|
+| `slug` | Ware slug, e.g. `invoice-generator` |
+| `file` | Path within the ware, e.g. `index.html` or `assets/app.js` |
+
+**Response:** Raw file contents with the correct `Content-Type` header.
+
+> [!TIP]
+> **Relative asset paths just work.** Your `index.html` can reference `./assets/app.js` and the browser resolves it against the iframe's `src` URL — you never need to hard-code the full serve URL.
+
+<details>
+<summary><strong>Error codes</strong></summary>
+
+| Status | Code | Meaning |
+|:---:|:---|:---|
+| 401 | `rest_forbidden` | Not logged in |
+| 403 | `rest_forbidden` | Lacks required capability |
+| 403 | `ware_disabled` | Ware is installed but disabled |
+| 404 | `ware_not_found` | No ware with that slug |
+| 404 | `file_not_found` | File not in ware directory |
+| 400 | `path_traversal` | File path contains `..` |
+
+</details>
+
+---
+
+### Config
+
+Per-ware admin-editable configuration, declared in the ware manifest's `config` schema.
+
+#### `GET /config/{slug}`
+
+Retrieve the config schema and current values for a ware.
+
+**Auth:** admin
+
+**Response — `200 OK`**
 ```json
 {
-  "success": true,
-  "slug": "invoice-generator",
-  "enabled": false,
-  "message": "\"invoice-generator\" disabled."
+  "schema": { "api_key": { "type": "string", "label": "API Key" } },
+  "values": { "api_key": "sk-…" }
 }
 ```
 
 ---
 
-### DELETE /wares/{slug}
+#### `PATCH /config/{slug}`
 
-Remove a ware from the registry and permanently delete its files from disk.
+Update config values. Body is a flat object of key → value pairs.
 
+**Auth:** admin · `Content-Type: application/json`
+
+---
+
+#### `DELETE /config/{slug}/{key}`
+
+Reset a single config key to its manifest default.
+
+**Auth:** admin
+
+---
+
+### Health
+
+#### `GET /health`
+
+Aggregated health status for all wares that declare a `health_check` URL in their manifest. Results are cached for 30 seconds.
+
+**Auth:** login
+
+**Response — `200 OK`**
+```json
+[
+  { "slug": "invoice-generator", "status": "ok" },
+  { "slug": "crm", "status": "warn" }
+]
 ```
-DELETE /wp-json/bazaar/v1/wares/{slug}
+
+Status values: `ok` (2xx), `warn` (3xx–4xx), `error` (5xx or network failure), `unknown` (no `health_check` URL).
+
+---
+
+#### `GET /health/{slug}`
+
+Check health for a single ware. Always performs a live probe (bypasses cache).
+
+**Auth:** login
+
+---
+
+### Analytics
+
+Page-view and engagement tracking for wares.
+
+#### `POST /analytics`
+
+Record an analytics event (view, click, duration) from inside a ware.
+
+**Auth:** login · `Content-Type: application/json`
+
+```json
+{ "slug": "invoice-generator", "event_type": "view", "duration_ms": 4200 }
 ```
 
-**Required permission:** `manage_options`
+---
 
-> [!WARNING]
-> This is irreversible. The ware's files are deleted from `wp-content/bazaar/{slug}/` immediately.
+#### `GET /analytics`
 
-**JS example:**
+Aggregate stats across all wares — views, total time, unique users — for the past N days.
 
-```js
-await apiFetch( {
-  path: `/bazaar/v1/wares/invoice-generator`,
-  method: 'DELETE',
-} );
+**Auth:** admin
+
+**Query params:** `?days=30`
+
+---
+
+#### `GET /analytics/{slug}`
+
+Per-day breakdown for a single ware.
+
+**Auth:** admin
+
+**Query params:** `?days=30`
+
+---
+
+### Audit Log
+
+Immutable log of all install / enable / disable / delete / update / dev-mode events.
+
+#### `GET /audit`
+
+Paginated audit log, most recent first.
+
+**Auth:** admin
+
+**Query params:** `?per_page=50&page=1&event=install`
+
+---
+
+#### `POST /audit`
+
+Append a custom audit entry (for ware-initiated events).
+
+**Auth:** login · `Content-Type: application/json`
+
+```json
+{ "slug": "invoice-generator", "event": "export", "context": { "format": "pdf" } }
 ```
 
-**Success response — `200 OK`**
+---
+
+#### `GET /audit/{slug}`
+
+Audit entries for a single ware.
+
+**Auth:** admin
+
+---
+
+### Badges
+
+Per-user notification counts shown as badges on ware sidebar items.
+
+#### `GET /badges`
+
+All badge counts for the current user.
+
+**Auth:** admin
+
+**Response — `200 OK`**
+```json
+{ "invoice-generator": 3, "crm": 0 }
+```
+
+---
+
+#### `POST /badges/{slug}`
+
+Set a badge count for the current user.
+
+**Auth:** admin · `Content-Type: application/json`
+
+```json
+{ "count": 5 }
+```
+
+---
+
+#### `DELETE /badges/{slug}`
+
+Clear the badge for a ware (set to 0).
+
+**Auth:** admin
+
+---
+
+### Content Security Policy
+
+Per-ware CSP configuration. Bazaar injects the compiled `Content-Security-Policy` header when serving the ware's HTML.
+
+#### `GET /csp/{slug}`
+
+Retrieve current CSP directives and the compiled header string.
+
+**Auth:** admin
+
+**Response — `200 OK`**
+```json
+{
+  "directives": {
+    "default-src": "'self'",
+    "script-src":  "'self' 'unsafe-inline'",
+    "img-src":     "'self' data: https:"
+  },
+  "header": "default-src 'self'; script-src 'self' 'unsafe-inline'; img-src 'self' data: https:"
+}
+```
+
+---
+
+#### `PATCH /csp/{slug}`
+
+Update one or more CSP directives. Body is an object of `directive → value`.
+
+**Auth:** admin · `Content-Type: application/json`
+
+```json
+{ "connect-src": "'self' https://api.stripe.com" }
+```
+
+---
+
+#### `DELETE /csp/{slug}`
+
+Reset the ware's CSP to the Bazaar baseline.
+
+**Auth:** admin
+
+---
+
+### Errors
+
+Client-side error reports from wares, stored server-side for admin review.
+
+#### `GET /errors`
+
+Paginated error log, most recent first.
+
+**Auth:** admin
+
+**Query params:** `?per_page=50&slug=invoice-generator`
+
+---
+
+#### `POST /errors`
+
+Record a client-side error from inside a ware.
+
+**Auth:** login · `Content-Type: application/json`
 
 ```json
 {
-  "success": true,
-  "slug": "invoice-generator",
-  "message": "\"invoice-generator\" deleted successfully."
+  "slug":    "invoice-generator",
+  "message": "TypeError: Cannot read property 'id' of undefined",
+  "stack":   "…",
+  "context": { "route": "/invoices/new" }
 }
 ```
+
+---
+
+#### `DELETE /errors`
+
+Clear all errors, or all errors for a specific ware (`?slug=invoice-generator`).
+
+**Auth:** admin
+
+---
+
+#### `DELETE /errors/{id}`
+
+Delete a single error record by ID.
+
+**Auth:** admin
+
+---
+
+### Jobs
+
+Manifest-declared WP-Cron background jobs.
+
+#### `GET /jobs/{slug}`
+
+List all jobs declared in a ware's manifest, with their schedule and next run time.
+
+**Auth:** admin
+
+**Response — `200 OK`**
+```json
+[
+  {
+    "id":       "sync_invoices",
+    "label":    "Sync invoices",
+    "interval": "hourly",
+    "next_run": "2026-04-10T13:00:00Z"
+  }
+]
+```
+
+---
+
+#### `POST /jobs/{slug}/{job_id}`
+
+Manually trigger a declared job immediately, outside its schedule.
+
+**Auth:** admin
+
+---
+
+### Nonce
+
+#### `GET /nonce`
+
+Issue a fresh `wp_rest` nonce. Useful for wares that need to refresh the nonce before it expires (nonces are valid for 24 hours).
+
+**Auth:** login
+
+**Response — `200 OK`**
+```json
+{
+  "nonce":   "a1b2c3d4e5",
+  "expires": 1713744000
+}
+```
+
+---
+
+### Storage
+
+Server-backed key-value store per ware per user. Survives browser cache clears and is shared across devices. Backend: `wp_usermeta`.
+
+#### `GET /store/{slug}`
+
+List all stored keys for the current user for this ware.
+
+**Auth:** login
+
+---
+
+#### `GET /store/{slug}/{key}`
+
+Read a stored value.
+
+**Auth:** login
+
+**Response — `200 OK`**
+```json
+{ "key": "theme", "value": "dark" }
+```
+
+---
+
+#### `PUT /store/{slug}/{key}`
+
+Write a value. Accepts any JSON-serialisable value.
+
+**Auth:** login · `Content-Type: application/json`
+
+```json
+{ "value": "dark" }
+```
+
+---
+
+#### `DELETE /store/{slug}/{key}`
+
+Delete a stored value.
+
+**Auth:** login
+
+---
+
+#### `DELETE /store/{slug}`
+
+Delete all stored values for this ware for the current user.
+
+**Auth:** login
+
+---
+
+### Stream (SSE)
+
+#### `GET /stream`
+
+Server-Sent Events stream. The shell subscribes on load and receives real-time events: `health`, `badge`, `install`, `ware_update`, `error`.
+
+**Auth:** admin
+
+**Response:** `Content-Type: text/event-stream` (long-lived connection)
+
+```
+event: health
+data: {"slug":"invoice-generator","status":"ok"}
+
+event: badge
+data: {"slug":"crm","count":7}
+```
+
+---
+
+### Webhooks
+
+Outbound HTTP POST notifications on bus events. When the Bazaar event bus broadcasts the configured event, WP-Cron fires an outbound POST to the registered URL.
+
+#### `GET /webhooks/{slug}`
+
+List registered webhooks for a ware.
+
+**Auth:** admin
+
+**Response — `200 OK`**
+```json
+[
+  {
+    "id":    "wh_1234",
+    "event": "invoice.paid",
+    "url":   "https://example.com/hooks/bazaar"
+  }
+]
+```
+
+---
+
+#### `POST /webhooks/{slug}`
+
+Register a new webhook.
+
+**Auth:** admin · `Content-Type: application/json`
+
+```json
+{ "event": "invoice.paid", "url": "https://example.com/hooks/bazaar" }
+```
+
+**Response — `201 Created`** — the new webhook object including its generated `id`.
+
+---
+
+#### `DELETE /webhooks/{slug}/{id}`
+
+Remove a webhook.
+
+**Auth:** admin
 
 ---
 
 ## Using the REST API from Inside Your Ware
 
-Your ware runs in a same-origin iframe, so it can call any WordPress REST endpoint directly using `fetch`.
+Your ware runs in a same-origin iframe and can call any WordPress REST endpoint directly.
+
+### With `@bazaar/client` (recommended)
+
+```ts
+import { wpJson } from '@bazaar/client';
+
+const posts = await wpJson<WpPost[]>('/wp/v2/posts?per_page=5');
+const me    = await wpJson<WpUser>('/wp/v2/users/me');
+```
+
+### With raw `fetch`
 
 **1. Get the nonce from the iframe URL:**
 
 ```js
-const nonce = new URLSearchParams( window.location.search ).get( '_wpnonce' );
+const nonce = new URLSearchParams(window.location.search).get('_wpnonce');
 ```
 
 **2. Make authenticated requests:**
 
 ```js
-// Read posts
-const posts = await fetch( '/wp-json/wp/v2/posts', {
+const posts = await fetch('/wp-json/wp/v2/posts', {
   headers: { 'X-WP-Nonce': nonce },
-} ).then( r => r.json() );
+}).then(r => r.json());
 
-// Create a post
-await fetch( '/wp-json/wp/v2/posts', {
+await fetch('/wp-json/wp/v2/posts', {
   method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-WP-Nonce': nonce,
-  },
+  headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': nonce },
   body: JSON.stringify({ title: 'New Post', status: 'publish' }),
-} );
-
-// Get current user
-const me = await fetch( '/wp-json/wp/v2/users/me', {
-  headers: { 'X-WP-Nonce': nonce },
-} ).then( r => r.json() );
+});
 ```
 
 ---
 
 ## Registering Your Own REST Endpoints
 
-If your ware needs server-side logic or persistent storage, create a companion WordPress plugin that registers custom REST routes. Your ware calls them using the same nonce pattern.
+If your ware needs server-side logic, create a companion WordPress plugin:
 
 ```php
 // companion-plugin.php
-add_action( 'rest_api_init', function () {
-    register_rest_route( 'my-ware/v1', '/settings', [
+add_action('rest_api_init', function () {
+    register_rest_route('my-ware/v1', '/settings', [
         [
             'methods'             => WP_REST_Server::READABLE,
-            'callback'            => fn() => new WP_REST_Response( get_option( 'my_ware_settings', [] ) ),
-            'permission_callback' => fn() => current_user_can( 'manage_options' ),
+            'callback'            => fn() => new WP_REST_Response(get_option('my_ware_settings', [])),
+            'permission_callback' => fn() => current_user_can('manage_options'),
         ],
         [
             'methods'             => WP_REST_Server::CREATABLE,
-            'callback'            => function ( WP_REST_Request $req ) {
-                update_option( 'my_ware_settings', $req->get_json_params(), false );
-                return new WP_REST_Response( [ 'success' => true ] );
+            'callback'            => function (WP_REST_Request $req) {
+                update_option('my_ware_settings', $req->get_json_params(), false);
+                return new WP_REST_Response(['success' => true]);
             },
-            'permission_callback' => fn() => current_user_can( 'manage_options' ),
+            'permission_callback' => fn() => current_user_can('manage_options'),
         ],
-    ] );
-} );
+    ]);
+});
 ```
 
 From your ware:
 
-```js
-const nonce    = new URLSearchParams( window.location.search ).get( '_wpnonce' );
-const settings = await fetch( '/wp-json/my-ware/v1/settings', {
-  headers: { 'X-WP-Nonce': nonce },
-} ).then( r => r.json() );
+```ts
+import { wpJson } from '@bazaar/client';
+
+const settings = await wpJson('/my-ware/v1/settings');
+```
+
+Or scaffold the stub with WP-CLI:
+
+```bash
+wp bazaar scaffold endpoint settings --namespace=my-ware/v1
 ```

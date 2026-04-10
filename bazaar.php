@@ -5,7 +5,7 @@
  * Description:       Turn wp-admin into an app marketplace. Install .wp ware packages and they appear as menu pages in your sidebar.
  * Version:           1.0.0
  * Requires at least: 6.6
- * Requires PHP:      8.1
+ * Requires PHP:      8.2
  * Author:            Nick
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
