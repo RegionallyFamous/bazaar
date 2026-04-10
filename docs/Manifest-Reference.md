@@ -1,6 +1,24 @@
 # Manifest Reference
 
-`manifest.json` is the only WordPress-specific file in a ware. It lives at the root of the archive and tells Bazaar how to register your app.
+`manifest.json` is the only WordPress-specific file in a ware. It lives at the **root** of the archive and tells Bazaar how to register your app — its name, where to find the entry HTML, where to put it in the sidebar, and who can access it.
+
+---
+
+## Table of Contents
+
+- [Minimal Example](#minimal-example)
+- [Full Example](#full-example)
+- [Field Reference](#field-reference)
+  - [name](#name)
+  - [slug](#slug)
+  - [version](#version)
+  - [author](#author)
+  - [description](#description)
+  - [icon](#icon)
+  - [entry](#entry)
+  - [menu](#menu)
+- [Validation Rules](#validation-rules)
+- [Versioning Your Ware](#versioning-your-ware)
 
 ---
 
@@ -44,133 +62,141 @@ That's all you need. Bazaar fills in sensible defaults for everything else.
 
 ### `name`
 
-| | |
-|---|---|
-| **Type** | string |
-| **Required** | Yes |
-| **Example** | `"Invoice Generator"` |
+| Property | Value |
+|:---|:---|
+| Type | `string` |
+| Required | **Yes** |
+| Example | `"Invoice Generator"` |
 
-Human-readable display name. Shown in the Bazaar gallery and as the browser tab title when the ware is open.
+Human-readable display name. Shown in the Bazaar gallery card and as the browser tab title when the ware is open.
 
 ---
 
 ### `slug`
 
-| | |
-|---|---|
-| **Type** | string |
-| **Required** | Yes |
-| **Pattern** | `[a-z0-9-]+` (lowercase letters, numbers, hyphens only) |
-| **Example** | `"invoice-generator"` |
+| Property | Value |
+|:---|:---|
+| Type | `string` |
+| Required | **Yes** |
+| Pattern | `[a-z0-9-]+` |
+| Example | `"invoice-generator"` |
 
-Unique identifier for the ware. Used as the directory name under `wp-content/bazaar/` and in all REST API URLs. Must be unique across all installed wares.
+Unique identifier for the ware. Used as:
+- the directory name under `wp-content/bazaar/`
+- the path segment in all REST API URLs (`/bazaar/v1/serve/invoice-generator/…`)
+- the WordPress menu slug (`bazaar-ware-invoice-generator`)
 
-> **Choose carefully.** The slug is permanent — changing it after installation requires deleting and re-installing the ware.
+> [!CAUTION]
+> **The slug is permanent.** Changing it after installation requires deleting and re-installing the ware. Choose it carefully — lowercase letters, numbers, and hyphens only.
 
 ---
 
 ### `version`
 
-| | |
-|---|---|
-| **Type** | string |
-| **Required** | Yes |
-| **Format** | Semver recommended |
-| **Example** | `"1.0.0"` |
+| Property | Value |
+|:---|:---|
+| Type | `string` |
+| Required | **Yes** |
+| Format | Semver recommended (`MAJOR.MINOR.PATCH`) |
+| Example | `"1.0.0"` |
 
-Version string for the ware. Displayed in the Bazaar gallery. Bazaar does not currently enforce semver but it is strongly recommended.
+Version string displayed in the gallery. Bazaar does not currently enforce semver but it is strongly recommended.
 
 ---
 
 ### `author`
 
-| | |
-|---|---|
-| **Type** | string |
-| **Required** | No |
-| **Example** | `"Nick"` |
+| Property | Value |
+|:---|:---|
+| Type | `string` |
+| Required | No |
+| Example | `"Nick"` |
 
-Creator name shown in the gallery card. Can be a person, team, or company name.
+Creator name shown in the gallery card. Can be a person, team, or company.
 
 ---
 
 ### `description`
 
-| | |
-|---|---|
-| **Type** | string |
-| **Required** | No |
-| **Example** | `"Generate and manage invoices from wp-admin."` |
+| Property | Value |
+|:---|:---|
+| Type | `string` |
+| Required | No |
+| Example | `"Generate and manage invoices from wp-admin."` |
 
-Short description shown in the gallery card. Keep it to one or two sentences.
+Short description shown in the gallery card. One or two sentences is ideal.
 
 ---
 
 ### `icon`
 
-| | |
-|---|---|
-| **Type** | string (file path relative to archive root) |
-| **Required** | No |
-| **Default** | `"icon.svg"` |
-| **Example** | `"icon.svg"`, `"assets/logo.png"` |
+| Property | Value |
+|:---|:---|
+| Type | `string` (path relative to archive root) |
+| Required | No |
+| Default | `"icon.svg"` |
+| Example | `"icon.svg"`, `"assets/logo.png"` |
 
-Path to the ware's sidebar icon, relative to the archive root. Supported formats:
+Path to the ware's sidebar icon within the archive. Supported formats:
 
-- **SVG** — recommended. Embedded as a data URI so it scales perfectly and respects WordPress's dark/light admin color schemes. Keep it under 4 KB.
-- **PNG / JPG / GIF / WebP** — served via the Bazaar file server. Use 20×20 or 40×40 (retina) pixels.
+| Format | Notes |
+|:---|:---|
+| **SVG** ✓ recommended | Embedded as a `data:` URI — scales perfectly, respects WP admin colour schemes. Keep under 4 KB. |
+| PNG / JPG / WebP | Served via the Bazaar file server. Use 20×20 px (or 40×40 for retina). |
 
-If the icon file is missing or the path is wrong, Bazaar falls back to the generic `dashicons-admin-plugins` icon.
+If the file is missing or the path is wrong, Bazaar falls back to `dashicons-admin-plugins`.
 
 ---
 
 ### `entry`
 
-| | |
-|---|---|
-| **Type** | string (file path relative to archive root) |
-| **Required** | No |
-| **Default** | `"index.html"` |
-| **Example** | `"app.html"`, `"dist/index.html"` |
+| Property | Value |
+|:---|:---|
+| Type | `string` (path relative to archive root) |
+| Required | No |
+| Default | `"index.html"` |
+| Example | `"app.html"`, `"dist/index.html"` |
 
-The HTML file that Bazaar loads in the iframe. Must exist in the archive.
+The HTML file Bazaar loads in the iframe. Must exist in the archive.
 
-> If your build tool outputs to a subdirectory (e.g. `dist/index.html`), set this accordingly — **or** zip from inside the `dist/` directory so everything sits at the archive root.
+> [!TIP]
+> If your build tool outputs to a subdirectory (e.g. `dist/index.html`), either set `"entry": "dist/index.html"` in the manifest — or zip from *inside* `dist/` so `index.html` sits at the archive root. The latter is usually cleaner.
 
 ---
 
 ### `menu`
 
-An object that controls how the ware's menu page is registered in `wp-admin`.
+An object that controls how the ware's admin page is registered. All sub-fields are optional.
 
-All `menu` fields are optional. If omitted entirely, the ware gets a top-level menu page with its `name` as the title.
+---
 
 #### `menu.title`
 
-| | |
-|---|---|
-| **Type** | string |
-| **Required** | No |
-| **Default** | Same as `name` |
-| **Example** | `"Invoices"` |
+| Property | Value |
+|:---|:---|
+| Type | `string` |
+| Required | No |
+| Default | Same as `name` |
+| Example | `"Invoices"` |
 
-The text shown in the sidebar menu. Shorter than `name` is often better here.
+The label shown in the WordPress sidebar. Shorter than `name` is usually better here.
+
+---
 
 #### `menu.position`
 
-| | |
-|---|---|
-| **Type** | integer |
-| **Required** | No |
-| **Default** | WordPress decides (appended to end) |
-| **Example** | `30` |
+| Property | Value |
+|:---|:---|
+| Type | `integer` |
+| Required | No |
+| Default | Appended to end |
+| Example | `30` |
 
 WordPress menu position integer. Common reference points:
 
 | Position | Default item |
-|---|---|
+|:---:|:---|
 | 2 | Dashboard |
-| 4 | Separator |
 | 5 | Posts |
 | 10 | Media |
 | 20 | Pages |
@@ -180,77 +206,80 @@ WordPress menu position integer. Common reference points:
 | 70 | Users |
 | 75 | Tools |
 | 80 | Settings |
-| 100 | Separator |
 
-Use a non-round number (e.g. `26` instead of `25`) to avoid collisions with core and other plugins.
+> [!TIP]
+> Use a non-round number (e.g. `26` instead of `25`) to avoid collisions with other plugins.
+
+---
 
 #### `menu.capability`
 
-| | |
-|---|---|
-| **Type** | string |
-| **Required** | No |
-| **Default** | `"manage_options"` |
-| **Example** | `"edit_posts"`, `"read"` |
+| Property | Value |
+|:---|:---|
+| Type | `string` |
+| Required | No |
+| Default | `"manage_options"` |
+| Example | `"edit_posts"`, `"read"` |
 
-The WordPress capability a user must have to see and access the ware. Bazaar checks this on both the menu registration and the REST file-serving endpoint.
-
-Common values:
+The WordPress capability a user must have to see and access the ware. Bazaar enforces this on **both** menu registration and the REST file-serving endpoint.
 
 | Capability | Who has it |
-|---|---|
+|:---|:---|
 | `manage_options` | Administrators only |
 | `edit_posts` | Editors, Authors, Administrators |
 | `publish_posts` | Authors and above |
-| `read` | All logged-in users (including Subscribers) |
+| `read` | All logged-in users (Subscribers and above) |
 
-> **Important:** This is a **minimum** capability check. If you need role-based access control inside your ware, implement it yourself using the WordPress REST API.
+> [!NOTE]
+> This is a **minimum** capability check. For finer-grained access control inside your ware, implement it yourself using the WordPress REST API (`/wp/v2/users/me`).
+
+---
 
 #### `menu.parent`
 
-| | |
-|---|---|
-| **Type** | string \| null |
-| **Required** | No |
-| **Default** | `null` (top-level menu) |
-| **Example** | `"tools.php"`, `"options-general.php"` |
+| Property | Value |
+|:---|:---|
+| Type | `string \| null` |
+| Required | No |
+| Default | `null` (top-level menu item) |
+| Example | `"tools.php"` |
 
-When set, the ware becomes a submenu item under an existing top-level menu. Pass the parent menu's file slug.
+When set, the ware becomes a submenu item under an existing top-level menu.
 
-Common parent slugs:
-
-| Slug | Menu |
-|---|---|
+| Slug | Parent menu |
+|:---|:---|
 | `tools.php` | Tools |
 | `options-general.php` | Settings |
 | `upload.php` | Media |
 | `edit.php` | Posts |
 | `edit.php?post_type=page` | Pages |
-
-You can also nest under another ware by using the ware's menu slug: `bazaar-ware-{slug}`.
+| `bazaar-ware-{slug}` | Another installed ware |
 
 ---
 
 ## Validation Rules
 
-Bazaar validates the manifest on upload and rejects the ware if any of these fail:
+Bazaar runs these checks on upload and rejects the ware if any fail:
 
-1. `manifest.json` exists at the archive root
-2. `name`, `slug`, and `version` are present non-empty strings
-3. `slug` matches `[a-z0-9-]+`
-4. `slug` is not already installed
-5. The `entry` file exists in the archive
-6. No PHP files anywhere in the archive (`.php`, `.phtml`, `.phar`, etc.)
-7. Total uncompressed size is under the configured limit (default 50 MB)
+- [x] File has a `.wp` extension
+- [x] File is a valid ZIP archive
+- [x] `manifest.json` exists at the archive root
+- [x] `name`, `slug`, and `version` are present non-empty strings
+- [x] `slug` matches `[a-z0-9-]+`
+- [x] `slug` is not already installed
+- [x] The `entry` file exists in the archive
+- [x] No PHP files anywhere in the archive (`.php`, `.phtml`, `.phar`, etc.)
+- [x] Total uncompressed size is under the configured limit (default 50 MB)
 
 ---
 
 ## Versioning Your Ware
 
-Bazaar stores the version string from your manifest but does not currently enforce or automate updates. The recommended workflow is:
+Bazaar stores the version string from your manifest but does not currently automate updates. The recommended workflow:
 
 1. Bump the version in `manifest.json`
-2. Re-package the ware
-3. Run `wp bazaar install my-ware.wp --force` (or delete + re-upload in the UI)
+2. Re-package: `npm run package`
+3. Install with force: `wp bazaar install my-ware.wp --force`
 
-A GUI update flow and version comparison are planned for a future release.
+> [!NOTE]
+> A GUI update flow with version comparison is planned for a future release.

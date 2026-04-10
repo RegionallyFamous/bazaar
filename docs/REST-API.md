@@ -2,22 +2,38 @@
 
 Bazaar registers four REST endpoints under the `bazaar/v1` namespace. All endpoints require authentication — there is no anonymous access to ware files or management actions.
 
-Base URL: `https://your-site.com/wp-json/bazaar/v1`
+**Base URL:** `https://your-site.com/wp-json/bazaar/v1`
+
+---
+
+## Table of Contents
+
+- [Authentication](#authentication)
+- [Endpoints](#endpoints)
+  - [GET /serve/{slug}/{file}](#get-serveslugfile)
+  - [POST /wares](#post-wares)
+  - [PATCH /wares/{slug}](#patch-waresslug)
+  - [DELETE /wares/{slug}](#delete-waresslug)
+- [Using the REST API from Inside Your Ware](#using-the-rest-api-from-inside-your-ware)
+- [Registering Your Own REST Endpoints](#registering-your-own-rest-endpoints)
 
 ---
 
 ## Authentication
 
-All endpoints use standard WordPress REST API authentication:
+| Context | Method |
+|:---|:---|
+| Browser (wp-admin) | Cookie auth + `X-WP-Nonce` header — get the nonce with `wp_create_nonce('wp_rest')` |
+| External clients | [Application Passwords](https://developer.wordpress.org/rest-api/using-the-rest-api/authentication/#application-passwords) via HTTP Basic auth |
 
-- **Cookie auth** (browser requests from wp-admin): send `X-WP-Nonce: {nonce}` header. Get the nonce with `wp_create_nonce('wp_rest')`.
-- **Application Passwords** (external clients): HTTP Basic auth with an Application Password.
+> [!NOTE]
+> `@wordpress/api-fetch` (used by the Bazaar admin UI) attaches the nonce automatically via the `X-WP-Nonce` header. You only need to think about this when making fetch calls from inside your own ware.
 
 ---
 
 ## Endpoints
 
-### Serve a Ware File
+### GET /serve/{slug}/{file}
 
 Serves any static file from an installed ware's directory.
 
@@ -25,31 +41,28 @@ Serves any static file from an installed ware's directory.
 GET /wp-json/bazaar/v1/serve/{slug}/{file}
 ```
 
-**Parameters**
-
 | Parameter | Type | Description |
-|---|---|---|
-| `slug` | string | The ware slug (e.g. `invoice-generator`) |
-| `file` | string | Path to the file within the ware (e.g. `index.html`, `assets/app.js`) |
+|:---|:---|:---|
+| `slug` | `string` | The ware slug, e.g. `invoice-generator` |
+| `file` | `string` | Path to the file within the ware, e.g. `index.html` or `assets/app.js` |
 
-**Permissions:** Must be logged in + have the capability declared in the ware's `manifest.json` (`manage_options` by default).
+**Required permission:** Logged in + capability declared in the ware's `manifest.json` (default: `manage_options`)
 
-**Response:** The raw file contents with the correct `Content-Type` header. Not a JSON response.
-
-**Example:**
+**Response:** Raw file contents with the correct `Content-Type` header — not a JSON response.
 
 ```
 GET /wp-json/bazaar/v1/serve/invoice-generator/index.html
-→ 200 text/html
+→ 200 Content-Type: text/html; charset=UTF-8
 
 GET /wp-json/bazaar/v1/serve/invoice-generator/assets/app.js
-→ 200 application/javascript
+→ 200 Content-Type: application/javascript
 ```
 
-**Error responses:**
+<details>
+<summary><strong>Error responses</strong></summary>
 
 | Status | Code | Meaning |
-|---|---|---|
+|:---:|:---|:---|
 | 401 | `rest_forbidden` | Not logged in |
 | 403 | `rest_forbidden` | Logged in but lacks required capability |
 | 403 | `ware_disabled` | Ware is installed but disabled |
@@ -57,11 +70,14 @@ GET /wp-json/bazaar/v1/serve/invoice-generator/assets/app.js
 | 404 | `file_not_found` | File doesn't exist in the ware |
 | 400 | `path_traversal` | File path contains `..` |
 
-> **Using this endpoint from inside your ware:** Relative asset paths in your HTML/JS/CSS work automatically. The browser resolves them against the iframe's `src` URL which already points at the Bazaar file server. You don't need to construct the full URL for assets.
+</details>
+
+> [!TIP]
+> **Relative asset paths just work.** Your `index.html` can reference `./assets/app.js` and the browser resolves it against the iframe's `src` URL, which already points at this endpoint. You never need to construct the full URL for assets.
 
 ---
 
-### Upload a Ware
+### POST /wares
 
 Upload and install a new `.wp` ware file.
 
@@ -70,27 +86,31 @@ POST /wp-json/bazaar/v1/wares
 Content-Type: multipart/form-data
 ```
 
-**Permissions:** `manage_options`
+**Required permission:** `manage_options`
 
-**Request body:** Multipart form data with a `file` field containing the `.wp` file.
+**Request body:** Multipart form data with a `file` field containing the `.wp` archive.
 
-**JS example (from inside wp-admin using `@wordpress/api-fetch`):**
+<details>
+<summary><strong>JS example (from inside wp-admin)</strong></summary>
 
 ```js
 import apiFetch from '@wordpress/api-fetch';
 
 const formData = new FormData();
-formData.append( 'file', fileInput.files[0] );
+formData.append( 'file', fileInput.files[ 0 ] );
 
 const result = await apiFetch( {
   path: '/bazaar/v1/wares',
   method: 'POST',
   body: formData,
 } );
-// result.ware contains the installed ware's registry data
+// result.ware contains the new ware's full registry entry
 ```
 
-**curl example:**
+</details>
+
+<details>
+<summary><strong>curl example</strong></summary>
 
 ```bash
 curl -X POST https://your-site.com/wp-json/bazaar/v1/wares \
@@ -98,7 +118,9 @@ curl -X POST https://your-site.com/wp-json/bazaar/v1/wares \
   -F "file=@invoice-generator.wp"
 ```
 
-**Success response (201):**
+</details>
+
+**Success response — `201 Created`**
 
 ```json
 {
@@ -109,37 +131,45 @@ curl -X POST https://your-site.com/wp-json/bazaar/v1/wares \
     "slug": "invoice-generator",
     "version": "1.0.0",
     "author": "Nick",
-    "description": "...",
+    "description": "Generate and manage invoices from wp-admin.",
     "icon": "icon.svg",
     "entry": "index.html",
-    "menu": { "title": "Invoices", "position": 30, "capability": "manage_options", "parent": null },
+    "menu": {
+      "title": "Invoices",
+      "position": 30,
+      "capability": "manage_options",
+      "parent": null
+    },
     "enabled": true,
     "installed": "2026-04-10T12:00:00Z"
   }
 }
 ```
 
-**Error responses:**
+<details>
+<summary><strong>Error responses</strong></summary>
 
 | Status | Code | Meaning |
-|---|---|---|
-| 400 | `no_file` | No file field in request |
-| 400 | `upload_error` | PHP upload error |
+|:---:|:---|:---|
+| 400 | `no_file` | No `file` field in the request |
+| 400 | `upload_error` | PHP upload error (check `upload_max_filesize`) |
 | 422 | `invalid_extension` | File is not `.wp` |
-| 422 | `invalid_zip` | File is not a valid ZIP |
-| 422 | `missing_manifest` | No `manifest.json` in archive |
+| 422 | `invalid_zip` | File is not a valid ZIP archive |
+| 422 | `missing_manifest` | No `manifest.json` at archive root |
 | 422 | `invalid_manifest` | `manifest.json` is not valid JSON |
-| 422 | `missing_manifest_field` | Required manifest field missing |
+| 422 | `missing_manifest_field` | Required field (`name`, `slug`, or `version`) missing |
 | 422 | `invalid_slug` | Slug contains invalid characters |
 | 422 | `slug_exists` | A ware with that slug is already installed |
 | 422 | `missing_entry` | Entry file not found in archive |
-| 422 | `php_not_allowed` | Archive contains a PHP file |
-| 422 | `too_large` | Uncompressed size exceeds limit |
+| 422 | `php_not_allowed` | Archive contains a `.php` / `.phar` / `.phtml` file |
+| 422 | `too_large` | Uncompressed size exceeds configured limit |
 | 500 | `registry_failed` | Files extracted but registry write failed |
+
+</details>
 
 ---
 
-### Toggle Ware Status
+### PATCH /wares/{slug}
 
 Enable or disable an installed ware.
 
@@ -148,14 +178,12 @@ PATCH /wp-json/bazaar/v1/wares/{slug}
 Content-Type: application/json
 ```
 
-**Permissions:** `manage_options`
+**Required permission:** `manage_options`
 
 **Request body:**
 
 ```json
-{
-  "enabled": true
-}
+{ "enabled": true }
 ```
 
 **JS example:**
@@ -168,7 +196,7 @@ await apiFetch( {
 } );
 ```
 
-**Success response (200):**
+**Success response — `200 OK`**
 
 ```json
 {
@@ -181,15 +209,18 @@ await apiFetch( {
 
 ---
 
-### Delete a Ware
+### DELETE /wares/{slug}
 
-Remove a ware from the registry and delete its files from disk.
+Remove a ware from the registry and permanently delete its files from disk.
 
 ```
 DELETE /wp-json/bazaar/v1/wares/{slug}
 ```
 
-**Permissions:** `manage_options`
+**Required permission:** `manage_options`
+
+> [!WARNING]
+> This is irreversible. The ware's files are deleted from `wp-content/bazaar/{slug}/` immediately.
 
 **JS example:**
 
@@ -200,7 +231,7 @@ await apiFetch( {
 } );
 ```
 
-**Success response (200):**
+**Success response — `200 OK`**
 
 ```json
 {
@@ -214,23 +245,31 @@ await apiFetch( {
 
 ## Using the REST API from Inside Your Ware
 
-Your ware runs in an iframe on the same origin as WordPress, so you can call any WordPress REST endpoint directly.
+Your ware runs in a same-origin iframe, so it can call any WordPress REST endpoint directly using `fetch`.
 
-**Get the nonce from the iframe URL:**
+**1. Get the nonce from the iframe URL:**
 
 ```js
 const nonce = new URLSearchParams( window.location.search ).get( '_wpnonce' );
 ```
 
-**Query WordPress data:**
+**2. Make authenticated requests:**
 
 ```js
-const nonce = new URLSearchParams( window.location.search ).get( '_wpnonce' );
-
-// Get posts
+// Read posts
 const posts = await fetch( '/wp-json/wp/v2/posts', {
   headers: { 'X-WP-Nonce': nonce },
 } ).then( r => r.json() );
+
+// Create a post
+await fetch( '/wp-json/wp/v2/posts', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-WP-Nonce': nonce,
+  },
+  body: JSON.stringify({ title: 'New Post', status: 'publish' }),
+} );
 
 // Get current user
 const me = await fetch( '/wp-json/wp/v2/users/me', {
@@ -238,31 +277,37 @@ const me = await fetch( '/wp-json/wp/v2/users/me', {
 } ).then( r => r.json() );
 ```
 
-**Store custom data using the Settings API:**
-
-You can expose custom options to your ware via a custom REST endpoint in your own plugin or theme, then call it from the ware.
-
 ---
 
 ## Registering Your Own REST Endpoints
 
-If your ware needs persistent storage or server-side logic, register a companion WordPress plugin that adds REST routes. Your ware can then call those routes using the same nonce pattern.
-
-Example companion plugin route:
+If your ware needs server-side logic or persistent storage, create a companion WordPress plugin that registers custom REST routes. Your ware calls them using the same nonce pattern.
 
 ```php
-add_action( 'rest_api_init', function() {
+// companion-plugin.php
+add_action( 'rest_api_init', function () {
     register_rest_route( 'my-ware/v1', '/settings', [
-        'methods'             => WP_REST_Server::READABLE,
-        'callback'            => fn() => new WP_REST_Response( get_option( 'my_ware_settings', [] ) ),
-        'permission_callback' => fn() => current_user_can( 'manage_options' ),
+        [
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => fn() => new WP_REST_Response( get_option( 'my_ware_settings', [] ) ),
+            'permission_callback' => fn() => current_user_can( 'manage_options' ),
+        ],
+        [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => function ( WP_REST_Request $req ) {
+                update_option( 'my_ware_settings', $req->get_json_params(), false );
+                return new WP_REST_Response( [ 'success' => true ] );
+            },
+            'permission_callback' => fn() => current_user_can( 'manage_options' ),
+        ],
     ] );
 } );
 ```
 
-Then from your ware:
+From your ware:
 
 ```js
+const nonce    = new URLSearchParams( window.location.search ).get( '_wpnonce' );
 const settings = await fetch( '/wp-json/my-ware/v1/settings', {
   headers: { 'X-WP-Nonce': nonce },
 } ).then( r => r.json() );

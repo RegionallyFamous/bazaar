@@ -2,7 +2,19 @@
 
 WP-CLI is the command-line interface for WordPress. For Bazaar developers it's indispensable: install wares, inspect the registry, test REST endpoints, seed data, and automate entire deployment pipelines without touching the browser.
 
-This guide covers the patterns and tricks that will save you the most time.
+---
+
+## Table of Contents
+
+- [Setup](#setup)
+- [The Interactive Shell](#the-interactive-shell)
+- [Inspecting Bazaar from the Shell](#inspecting-bazaar-from-the-shell)
+- [wp eval and wp eval-file](#wp-eval-and-wp-eval-file)
+- [Multi-Site & Remote Management](#multi-site--remote-management)
+- [Automation Recipes](#automation-recipes)
+- [Useful Commands for Ware Developers](#useful-commands-for-ware-developers)
+- [Must-Have WP-CLI Packages](#must-have-wp-cli-packages)
+- [Shell Aliases Worth Adding](#shell-aliases-worth-adding)
 
 ---
 
@@ -19,83 +31,79 @@ wp --info
 
 ### Enable tab completion
 
-Add to your `~/.zshrc` or `~/.bashrc`:
-
 ```bash
-# WP-CLI tab completion
-source "$(wp cli completions --shell=bash)"   # bash
+# Add to ~/.zshrc or ~/.bashrc
 source "$(wp cli completions --shell=zsh)"    # zsh
+source "$(wp cli completions --shell=bash)"   # bash
 ```
 
-### Set a default path
-
-If you always run WP-CLI from the same WordPress install, set it in `~/.wp-cli/config.yml`:
+### Set a default WordPress path
 
 ```yaml
+# ~/.wp-cli/config.yml
 path: /var/www/html
 ```
+
+With this set, you can run `wp bazaar list` from any directory instead of always `cd`-ing to the WP root.
 
 ---
 
 ## The Interactive Shell
 
-`wp shell` drops you into an interactive PHP REPL with the full WordPress environment loaded. Think of it as `php -a` but with every WordPress function, class, and global already available.
+`wp shell` drops you into an interactive PHP REPL with the full WordPress environment loaded — every function, class, and global available instantly. Think `php -a` but with WordPress already bootstrapped.
 
 ```bash
 wp shell
 ```
 
 ```php
-# Inside the shell:
-wp> get_option('blogname');
+wp> get_option( 'blogname' );
 = "My WordPress Site"
 
-wp> $user = get_user_by('login', 'admin'); $user->display_name;
-= "admin"
-
-wp> update_option('bazaar_max_ware_size', 100 * 1024 * 1024);
-= true
-
-wp> get_option('bazaar_registry');
+wp> get_option( 'bazaar_registry' );
 = "{\"invoice-generator\":{\"name\":\"Invoice Generator\",...}}"
+
+wp> update_option( 'bazaar_max_ware_size', 100 * 1024 * 1024 );
+= true
 ```
 
-### Upgrade to PsySH (strongly recommended)
+### Upgrade to PsySH
 
-The default `wp shell` is basic. PsySH gives you tab completion, syntax highlighting, command history, `ls` to browse objects, and `doc` to read PHPDocs inline.
+> [!TIP]
+> The default `wp shell` is minimal. PsySH gives you **tab completion**, **syntax highlighting**, **command history**, `ls` to browse objects, and `doc` to read PHPDocs without leaving the terminal.
 
 ```bash
 wp package install schlessera/wp-cli-psysh
-wp shell        # now uses PsySH automatically
+wp shell   # now uses PsySH automatically
 ```
 
 Inside PsySH:
 
 ```php
-# Tab complete any WordPress function
-wp> get_op<TAB>   # expands to get_option
+# Tab-complete any WordPress function
+wp> get_op<TAB>    # → get_option
 
-# Browse an object's properties and methods
+# Browse an object's methods and properties
 wp> ls $post
 
-# Read PHPDoc without leaving the terminal
-wp> doc get_option
+# Read PHPDoc inline
+wp> doc update_option
 
-# Dump a variable with syntax highlighting
-wp> var_dump(get_option('bazaar_registry'));
+# Pretty-print any value
+wp> var_dump( json_decode( get_option( 'bazaar_registry' ), true ) );
 ```
 
 ---
 
 ## Inspecting Bazaar from the Shell
 
-### Read the ware registry directly
+### Pretty-print the full registry
 
 ```bash
 wp eval 'echo json_encode(json_decode(get_option("bazaar_registry"), true), JSON_PRETTY_PRINT);'
 ```
 
-### Check what's stored for a specific ware
+### Inspect a single ware
 
 ```bash
 wp eval '
@@ -104,56 +112,57 @@ print_r($registry["invoice-generator"] ?? "not found");
 '
 ```
 
-### Clear the registry (nuclear reset)
+### List ware files on disk
 
 ```bash
-wp eval 'delete_option("bazaar_registry");'
-# Then re-install your wares
+find "$(wp eval 'echo WP_CONTENT_DIR;')/bazaar/invoice-generator/" -type f
 ```
 
-### Check what files are in a ware directory
+### Test the file server with authentication
 
 ```bash
-find $(wp eval 'echo WP_CONTENT_DIR;')/bazaar/invoice-generator/ -type f
-```
-
-### Test a REST endpoint with authentication
-
-```bash
-# Get the nonce
 NONCE=$(wp eval 'echo wp_create_nonce("wp_rest");')
 SITE=$(wp option get siteurl)
 
-# Hit the file server
+# Hit the REST file server
 curl -s -H "X-WP-Nonce: $NONCE" \
   "${SITE}/wp-json/bazaar/v1/serve/invoice-generator/index.html" | head -20
 
-# Upload a ware
+# Upload a ware via REST
 curl -s -X POST \
   -H "X-WP-Nonce: $NONCE" \
   -F "file=@invoice-generator.wp" \
   "${SITE}/wp-json/bazaar/v1/wares" | jq .
 ```
 
+### Nuclear reset — clear the registry
+
+```bash
+wp eval 'delete_option("bazaar_registry");'
+# Re-install your wares after this
+```
+
+> [!CAUTION]
+> The nuclear reset removes all ware *metadata* from the database but leaves the files in `wp-content/bazaar/` untouched.
+
 ---
 
 ## `wp eval` and `wp eval-file`
 
-These two commands are the most powerful in WP-CLI for Bazaar developers.
+These are the most powerful WP-CLI commands for Bazaar developers.
 
 ### `wp eval` — one-liners
 
-Execute a PHP snippet in the WordPress context:
+Execute a PHP snippet in the fully-bootstrapped WordPress environment:
 
 ```bash
-# Get the size of the ware registry option
+# Check registry size
 wp eval 'echo strlen(get_option("bazaar_registry")) . " bytes\n";'
 
-# List all installed wares
+# Print all wares with status
 wp eval '
 foreach (json_decode(get_option("bazaar_registry"), true) as $slug => $ware) {
-    echo $ware["enabled"] ? "✓" : "✗";
-    echo " {$slug} (v{$ware["version"]})\n";
+    echo ($ware["enabled"] ? "✓" : "✗") . " {$slug} v{$ware["version"]}\n";
 }
 '
 
@@ -168,7 +177,7 @@ echo "Done\n";
 
 ### `wp eval-file` — complex scripts
 
-For anything longer than a few lines, put it in a `.php` file and run it:
+For anything longer than a few lines, put it in a `.php` file:
 
 ```bash
 wp eval-file migrate-ware-data.php
@@ -196,11 +205,10 @@ WP_CLI::success( 'Migration complete.' );
 
 ## Multi-Site & Remote Management
 
-### Site aliases
-
-Define aliases for all your environments in `~/.wp-cli/config.yml`:
+### Define environment aliases
 
 ```yaml
+# ~/.wp-cli/config.yml
 @production:
   ssh: deploy@production.example.com
   path: /var/www/html
@@ -213,117 +221,119 @@ Define aliases for all your environments in `~/.wp-cli/config.yml`:
   path: ~/Sites/mysite
 ```
 
-Run any command on any environment:
-
 ```bash
 wp @production bazaar list
-wp @staging bazaar install invoice-generator.wp --force
-wp @local bazaar delete old-ware --yes
+wp @staging    bazaar install invoice-generator.wp --force
+wp @local      bazaar info invoice-generator
 ```
 
-### Sync wares between environments
+### Sync enabled wares from production to staging
 
 ```bash
 #!/usr/bin/env bash
-# Export enabled wares from production and install on staging.
+set -euo pipefail
 
 SLUGS=$(wp @production bazaar list --status=enabled --fields=slug --format=csv | tail -n +2)
 
 for slug in $SLUGS; do
-  # Create a temp .wp file from the installed files
   SRC=$(wp @production eval "echo WP_CONTENT_DIR . '/bazaar/${slug}';")
-  ssh deploy@production.example.com "cd ${SRC} && zip -r /tmp/${slug}.wp ."
+  ssh deploy@production.example.com "cd '${SRC}' && zip -r /tmp/${slug}.wp ."
   scp deploy@production.example.com:/tmp/${slug}.wp /tmp/${slug}.wp
   wp @staging bazaar install /tmp/${slug}.wp --force
   rm /tmp/${slug}.wp
 done
+
+echo "Sync complete."
 ```
 
 ---
 
 ## Automation Recipes
 
-### Morning health check
+### Daily health check cron
 
 ```bash
 #!/usr/bin/env bash
-# Run this as a daily cron job. Sends a summary of ware status.
+# Add to crontab: 0 9 * * * /path/to/bazaar-health.sh
 
-ENABLED=$(wp bazaar list --status=enabled --format=count)
+ENABLED=$(wp bazaar list --status=enabled  --format=count)
 DISABLED=$(wp bazaar list --status=disabled --format=count)
 
-echo "Bazaar status: ${ENABLED} enabled, ${DISABLED} disabled"
+echo "=== Bazaar Health Check ==="
+echo "Enabled:  ${ENABLED}"
+echo "Disabled: ${DISABLED}"
 wp bazaar list --format=table
 ```
 
-### Automated ware deployment in CI/CD (GitHub Actions)
-
-```yaml
-- name: Deploy wares to production
-  run: |
-    npm run package
-    ssh ${{ secrets.PROD_HOST }} \
-      "wp bazaar install /tmp/my-ware.wp --force --path=/var/www/html"
-  env:
-    SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
-```
-
-### Validate a .wp file before deploying
+### Validate before deploying to production
 
 ```bash
 #!/usr/bin/env bash
-# Dry-run validation: install on staging, check it works, then install on prod.
+set -euo pipefail
 
 FILE="$1"
 
 echo "Installing on staging..."
 wp @staging bazaar install "$FILE" --force
 
-echo "Running smoke test..."
 SLUG=$(unzip -p "$FILE" manifest.json | python3 -c "import sys,json; print(json.load(sys.stdin)['slug'])")
-STATUS=$(wp @staging bazaar list --fields=slug,status --format=json | \
-  python3 -c "import sys,json; wares=json.load(sys.stdin); print(next(w['status'] for w in wares if w['slug']=='${SLUG}'))")
+STATUS=$(wp @staging bazaar list --fields=slug,status --format=json \
+  | python3 -c "import sys,json; wares=json.load(sys.stdin); print(next(w['status'] for w in wares if w['slug']=='${SLUG}'))")
 
 if [ "$STATUS" != "enabled" ]; then
-  echo "Smoke test failed. Ware status: $STATUS"
+  echo "Smoke test FAILED. Ware status: $STATUS"
   exit 1
 fi
 
-echo "Staging OK. Deploying to production..."
+echo "Staging OK — deploying to production..."
 wp @production bazaar install "$FILE" --force
 echo "Done."
 ```
 
----
+### GitHub Actions CI deployment
 
-## Useful WP-CLI Commands for Ware Developers
-
-Beyond Bazaar's own commands, these core WP-CLI commands are especially useful during ware development.
-
-### Database
-
-```bash
-# Snapshot the DB before a risky operation
-wp db export pre-migration.sql
-
-# Search for Bazaar data specifically
-wp db query "SELECT option_value FROM wp_options WHERE option_name = 'bazaar_registry'\G"
-
-# Find and replace URLs (handles serialized data correctly)
-wp search-replace 'http://old-site.com' 'https://new-site.com' --dry-run
-wp search-replace 'http://old-site.com' 'https://new-site.com'
+```yaml
+- name: Deploy ware to production
+  run: |
+    npm run package
+    scp my-ware.wp ${{ secrets.PROD_HOST }}:/tmp/my-ware.wp
+    ssh ${{ secrets.PROD_HOST }} \
+      "wp --path=/var/www/html bazaar install /tmp/my-ware.wp --force \
+       && rm /tmp/my-ware.wp"
 ```
 
-### REST API inspection
+---
+
+## Useful Commands for Ware Developers
+
+<details>
+<summary><strong>Database</strong></summary>
+
+```bash
+# Snapshot before anything risky
+wp db export pre-migration.sql
+
+# Query the registry directly
+wp db query "SELECT option_value FROM wp_options WHERE option_name = 'bazaar_registry'\G"
+
+# Search-replace URLs (handles serialized data safely)
+wp search-replace 'http://old.example.com' 'https://new.example.com' --dry-run
+wp search-replace 'http://old.example.com' 'https://new.example.com'
+```
+
+</details>
+
+<details>
+<summary><strong>REST API inspection</strong></summary>
 
 ```bash
 # List all registered REST routes
 wp rest route list --format=table
 
-# Confirm Bazaar's routes are registered
+# Confirm Bazaar routes are registered
 wp rest route list --format=json | grep bazaar
 
-# Make an authenticated GET request
+# Make an authenticated internal request
 wp eval '
 $request  = new WP_REST_Request("GET", "/bazaar/v1/serve/invoice-generator/index.html");
 $response = rest_do_request($request);
@@ -331,97 +341,88 @@ echo $response->get_status() . "\n";
 '
 ```
 
-### Options inspection
+</details>
+
+<details>
+<summary><strong>Options</strong></summary>
 
 ```bash
-# Check Bazaar options
 wp option get bazaar_registry
 wp option get bazaar_max_ware_size
 
-# Set the size limit (in bytes — this sets it to 100 MB)
+# Set size cap to 100 MB
 wp option update bazaar_max_ware_size 104857600
 ```
 
-### Caching
+</details>
+
+<details>
+<summary><strong>Test data</strong></summary>
 
 ```bash
-# Flush everything after manually editing the registry
-wp cache flush
-wp transient delete --all
-```
-
-### Generate test content for your ware
-
-```bash
-# Seed 50 posts so your ware has data to work with
+# Seed 50 posts for your ware to consume
 wp post generate --count=50 --post_type=post
 
-# Create a test user with editor role
+# Create a test editor
 wp user create test-editor editor@example.com --role=editor --user_pass=password
 
-# Create custom taxonomy terms
-wp term create category "Invoices" --description="Invoice category"
+# Flush caches after manual registry edits
+wp cache flush && wp transient delete --all
 ```
 
-### Tail the debug log
+</details>
+
+<details>
+<summary><strong>Debug log</strong></summary>
 
 ```bash
-# Requires WP_DEBUG_LOG=true in wp-config.php
-tail -f $(wp eval 'echo WP_CONTENT_DIR;')/debug.log
+# Requires WP_DEBUG_LOG=true in wp-config.php (or .wp-env.json)
+tail -f "$(wp eval 'echo WP_CONTENT_DIR;')/debug.log"
 ```
+
+</details>
 
 ---
 
 ## Must-Have WP-CLI Packages
 
-Install these globally once and use them on every project:
+Install once, use everywhere:
 
 ```bash
-# Better REPL (replaces wp shell)
-wp package install schlessera/wp-cli-psysh
-
-# Magic login links — share a login URL without sharing credentials
-wp package install aaemnnosttv/wp-cli-login-command
-
-# Site health checks
-wp package install wp-cli/doctor-command
-
-# Read WordPress function PHPDocs in the terminal
-wp package install alleyinteractive/wp-doc-command
+wp package install schlessera/wp-cli-psysh         # PsySH REPL (replaces wp shell)
+wp package install aaemnnosttv/wp-cli-login-command # magic login links
+wp package install wp-cli/doctor-command            # site health checks
+wp package install alleyinteractive/wp-doc-command  # PHPDoc in the terminal
 ```
 
-**Usage examples:**
-
-```bash
-# Generate a magic login link for admin
-wp login create admin
-
-# Run all health checks
-wp doctor check --all
-
-# Read PHPDoc for update_option
-wp doc update_option
-```
+| Package | What it does |
+|:---|:---|
+| `schlessera/wp-cli-psysh` | Replaces `wp shell` with a full-featured REPL: tab completion, history, `ls`, `doc` |
+| `aaemnnosttv/wp-cli-login-command` | `wp login create admin` — generates a magic login URL, no password needed |
+| `wp-cli/doctor-command` | `wp doctor check --all` — automated site health audit |
+| `alleyinteractive/wp-doc-command` | `wp doc update_option` — read WordPress PHPDoc without leaving the terminal |
 
 ---
 
 ## Shell Aliases Worth Adding
 
-Add these to your `~/.zshrc` or `~/.bashrc`:
-
 ```bash
-# Bazaar shortcuts
+# ~/.zshrc or ~/.bashrc
+
+# Bazaar
 alias wbl='wp bazaar list'
 alias wbi='wp bazaar install'
 alias wbe='wp bazaar enable'
 alias wbd='wp bazaar disable'
 alias wbx='wp bazaar delete'
+alias wbn='wp bazaar info'
 
-# General WP-CLI shortcuts
+# General WP-CLI
 alias wpl='wp plugin list'
 alias wpu='wp core update && wp plugin update --all && wp theme update --all'
-alias wpdb='wp db export $(date +%Y%m%d-%H%M%S)-backup.sql && echo "Backup done"'
-alias wplog='tail -f $(wp eval "echo WP_CONTENT_DIR;")/debug.log'
+alias wpdb='wp db export "$(date +%Y%m%d-%H%M%S)-backup.sql" && echo "Backup saved"'
+alias wplog='tail -f "$(wp eval "echo WP_CONTENT_DIR;")/debug.log"'
+alias wpsh='wp shell'
 ```
 
 ---
@@ -430,5 +431,5 @@ alias wplog='tail -f $(wp eval "echo WP_CONTENT_DIR;")/debug.log'
 
 - [WP-CLI official docs](https://wp-cli.org/)
 - [WP-CLI command reference](https://developer.wordpress.org/cli/commands/)
-- [WP-CLI packages directory](https://packagist.org/?tags=wp-cli-package)
+- [WP-CLI packages on Packagist](https://packagist.org/?tags=wp-cli-package)
 - [Bazaar WP-CLI commands](WP-CLI.md)

@@ -71,10 +71,10 @@ final class BazaarPage {
 				self::SCRIPT_HANDLE,
 				'bazaarData',
 				[
-					'restUrl'    => esc_url_raw( rest_url( 'bazaar/v1' ) ),
-					'nonce'      => wp_create_nonce( 'wp_rest' ),
-					'wares'      => $this->registry->get_all(),
-					'maxSizeMb'  => absint( get_option( 'bazaar_max_ware_size', BAZAAR_MAX_UNCOMPRESSED_SIZE ) ) / 1024 / 1024,
+					'restUrl'   => esc_url_raw( rest_url( 'bazaar/v1' ) ),
+					'nonce'     => wp_create_nonce( 'wp_rest' ),
+					'wares'     => $this->registry->get_all(),
+					'maxSizeMb' => absint( get_option( 'bazaar_max_ware_size', BAZAAR_MAX_UNCOMPRESSED_SIZE ) ) / 1024 / 1024,
 				]
 			);
 

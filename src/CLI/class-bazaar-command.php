@@ -30,7 +30,7 @@ use WP_CLI\Utils;
 final class BazaarCommand {
 
 	private WareRegistry $registry;
-	private WareLoader   $loader;
+	private WareLoader $loader;
 
 	public function __construct() {
 		$this->registry = new WareRegistry();
@@ -97,14 +97,17 @@ final class BazaarCommand {
 			return;
 		}
 
-		$rows = array_map( static fn( $w ) => [
-			'slug'        => $w['slug'],
-			'name'        => $w['name'],
-			'version'     => $w['version'],
-			'author'      => $w['author'] ?? '',
-			'status'      => ! empty( $w['enabled'] ) ? 'enabled' : 'disabled',
-			'installed'   => $w['installed'] ?? '',
-		], $wares );
+		$rows = array_map(
+			static fn( $w ) => [
+				'slug'      => $w['slug'],
+				'name'      => $w['name'],
+				'version'   => $w['version'],
+				'author'    => $w['author'] ?? '',
+				'status'    => ! empty( $w['enabled'] ) ? 'enabled' : 'disabled',
+				'installed' => $w['installed'] ?? '',
+			],
+			$wares
+		);
 
 		$default_fields = [ 'slug', 'name', 'version', 'author', 'status' ];
 		$fields         = Utils\get_flag_value( $assoc_args, 'fields', implode( ',', $default_fields ) );
@@ -360,16 +363,46 @@ final class BazaarCommand {
 		$format = Utils\get_flag_value( $assoc_args, 'format', 'table' );
 
 		$rows = [
-			[ 'Field' => 'slug',        'Value' => $ware['slug'] ],
-			[ 'Field' => 'name',        'Value' => $ware['name'] ],
-			[ 'Field' => 'version',     'Value' => $ware['version'] ],
-			[ 'Field' => 'author',      'Value' => $ware['author'] ?? '' ],
-			[ 'Field' => 'description', 'Value' => $ware['description'] ?? '' ],
-			[ 'Field' => 'status',      'Value' => ! empty( $ware['enabled'] ) ? 'enabled' : 'disabled' ],
-			[ 'Field' => 'entry',       'Value' => $ware['entry'] ?? 'index.html' ],
-			[ 'Field' => 'menu_title',  'Value' => $ware['menu']['title'] ?? '' ],
-			[ 'Field' => 'capability',  'Value' => $ware['menu']['capability'] ?? 'manage_options' ],
-			[ 'Field' => 'installed',   'Value' => $ware['installed'] ?? '' ],
+			[
+				'Field' => 'slug',
+				'Value' => $ware['slug'],
+			],
+			[
+				'Field' => 'name',
+				'Value' => $ware['name'],
+			],
+			[
+				'Field' => 'version',
+				'Value' => $ware['version'],
+			],
+			[
+				'Field' => 'author',
+				'Value' => $ware['author'] ?? '',
+			],
+			[
+				'Field' => 'description',
+				'Value' => $ware['description'] ?? '',
+			],
+			[
+				'Field' => 'status',
+				'Value' => ! empty( $ware['enabled'] ) ? 'enabled' : 'disabled',
+			],
+			[
+				'Field' => 'entry',
+				'Value' => $ware['entry'] ?? 'index.html',
+			],
+			[
+				'Field' => 'menu_title',
+				'Value' => $ware['menu']['title'] ?? '',
+			],
+			[
+				'Field' => 'capability',
+				'Value' => $ware['menu']['capability'] ?? 'manage_options',
+			],
+			[
+				'Field' => 'installed',
+				'Value' => $ware['installed'] ?? '',
+			],
 		];
 
 		Utils\format_items( $format, $rows, [ 'Field', 'Value' ] );

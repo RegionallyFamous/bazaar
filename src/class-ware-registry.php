@@ -31,7 +31,7 @@ final class WareRegistry {
 			return false;
 		}
 
-		$registry         = $this->load();
+		$registry          = $this->load();
 		$registry[ $slug ] = [
 			'name'        => sanitize_text_field( $manifest['name'] ),
 			'slug'        => $slug,

@@ -24,7 +24,7 @@ final class WareController {
 	private const NAMESPACE = 'bazaar/v1';
 
 	private WareRegistry $registry;
-	private WareLoader   $loader;
+	private WareLoader $loader;
 
 	public function __construct( WareRegistry $registry ) {
 		$this->registry = $registry;

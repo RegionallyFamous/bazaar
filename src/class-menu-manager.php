@@ -47,12 +47,12 @@ final class MenuManager {
 		$position   = isset( $menu['position'] ) ? absint( $menu['position'] ) : null;
 		$parent     = ! empty( $menu['parent'] ) ? $menu['parent'] : null;
 
-		$menu_title  = esc_html( $title );
-		$page_title  = esc_html( $ware['name'] );
-		$capability  = sanitize_key( $capability );
-		$menu_slug   = 'bazaar-ware-' . sanitize_key( $slug );
-		$icon        = $this->resolve_icon( $slug, $ware['icon'] ?? '' );
-		$callback    = function () use ( $slug ) {
+		$menu_title = esc_html( $title );
+		$page_title = esc_html( $ware['name'] );
+		$capability = sanitize_key( $capability );
+		$menu_slug  = 'bazaar-ware-' . sanitize_key( $slug );
+		$icon       = $this->resolve_icon( $slug, $ware['icon'] ?? '' );
+		$callback   = function () use ( $slug ) {
 			( new WareRenderer( $slug, $this->registry ) )->render();
 		};
 

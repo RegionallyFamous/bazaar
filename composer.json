@@ -18,14 +18,10 @@
         "php-stubs/wordpress-stubs": "^6.6"
     },
     "autoload": {
-        "psr-4": {
-            "Bazaar\\": "src/"
-        }
+        "classmap": ["src/"]
     },
     "autoload-dev": {
-        "psr-4": {
-            "Bazaar\\Tests\\": "tests/php/"
-        }
+        "classmap": ["tests/php/"]
     },
     "scripts": {
         "lint": [

@@ -70,7 +70,7 @@ final class WareLoader {
 		}
 
 		// 2. Valid ZIP.
-		$zip = new ZipArchive();
+		$zip    = new ZipArchive();
 		$status = $zip->open( $tmp_path, ZipArchive::RDONLY );
 		if ( true !== $status ) {
 			return new WP_Error(
@@ -197,7 +197,7 @@ final class WareLoader {
 	 * @return true|WP_Error
 	 */
 	public function delete( string $slug ): bool|WP_Error {
-		$slug    = sanitize_key( $slug );
+		$slug     = sanitize_key( $slug );
 		$ware_dir = BAZAAR_WARES_DIR . $slug;
 
 		if ( ! is_dir( $ware_dir ) ) {

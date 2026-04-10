@@ -146,20 +146,24 @@ defined( 'ABSPATH' ) || exit;
 							class="button bazaar-card__delete"
 							data-slug="<?php echo esc_attr( $slug ); ?>"
 							data-action="delete"
-							data-confirm="<?php
+							data-confirm="
+							<?php
 								printf(
 									/* translators: %s: ware name */
 									esc_attr__( 'Delete "%s"? This cannot be undone.', 'bazaar' ),
 									esc_attr( $ware['name'] )
 								);
-							?>"
-							aria-label="<?php
+							?>
+							"
+							aria-label="
+							<?php
 								printf(
 									/* translators: %s: ware name */
 									esc_attr__( 'Delete %s', 'bazaar' ),
 									esc_attr( $ware['name'] )
 								);
-							?>"
+							?>
+							"
 						>
 							<span class="dashicons dashicons-trash" aria-hidden="true"></span>
 						</button>

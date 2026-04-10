@@ -19,8 +19,8 @@ final class Plugin {
 	private static ?self $instance = null;
 
 	private WareRegistry $registry;
-	private MenuManager  $menu_manager;
-	private BazaarPage   $bazaar_page;
+	private MenuManager $menu_manager;
+	private BazaarPage $bazaar_page;
 
 	private function __construct() {
 		$this->registry     = new WareRegistry();

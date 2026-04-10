@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class WareRenderer {
 
-	private string       $slug;
+	private string $slug;
 	private WareRegistry $registry;
 
 	public function __construct( string $slug, WareRegistry $registry ) {
