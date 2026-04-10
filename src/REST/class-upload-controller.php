@@ -56,6 +56,10 @@ final class UploadController {
 
 	/**
 	 * Register the upload REST route.
+	 *
+	 * No `args` are declared because this endpoint receives multipart/form-data
+	 * (a file upload), not a JSON body. The file is validated manually inside
+	 * handle_upload() via PHP's $_FILES / get_file_params() API.
 	 */
 	public function register_routes(): void {
 		register_rest_route(
@@ -99,8 +103,20 @@ final class UploadController {
 			);
 		}
 
+		// tmp_name is set by PHP's upload handling — it is a server-side temp
+		// path, not user input. sanitize_text_field() strips characters that
+		// are valid in filesystem paths, so we validate the path instead.
+		$tmp_name = realpath( (string) $file['tmp_name'] );
+		if ( false === $tmp_name || ! is_uploaded_file( $tmp_name ) ) {
+			return new WP_Error(
+				'invalid_upload',
+				esc_html__( 'Invalid uploaded file.', 'bazaar' ),
+				array( 'status' => 400 )
+			);
+		}
+
 		$manifest = $this->loader->install(
-			sanitize_text_field( $file['tmp_name'] ),
+			$tmp_name,
 			sanitize_file_name( $file['name'] )
 		);
 

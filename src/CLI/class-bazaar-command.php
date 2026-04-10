@@ -112,7 +112,7 @@ final class BazaarCommand {
 		}
 
 		if ( empty( $wares ) ) {
-			WP_CLI::line( 'No wares found.' );
+			WP_CLI::line( __( 'No wares found.', 'bazaar' ) );
 			return;
 		}
 
@@ -166,13 +166,19 @@ final class BazaarCommand {
 	 */
 	public function install( array $args, array $assoc_args ): void {
 		if ( empty( $args[0] ) ) {
-			WP_CLI::error( 'Please provide the path to a .wp file.' );
+			WP_CLI::error( __( 'Please provide the path to a .wp file.', 'bazaar' ) );
 		}
 
 		$file_path = realpath( $args[0] );
 
 		if ( false === $file_path || ! is_file( $file_path ) ) {
-			WP_CLI::error( "File not found: {$args[0]}" );
+			WP_CLI::error(
+				sprintf(
+					/* translators: %s: file path provided by the user */
+					__( 'File not found: %s', 'bazaar' ),
+					$args[0]
+				)
+			);
 			return;
 		}
 
@@ -190,9 +196,21 @@ final class BazaarCommand {
 
 		if ( $this->registry->exists( $slug ) ) {
 			if ( ! $force ) {
-				WP_CLI::error( "Ware \"{$slug}\" is already installed. Use --force to replace it." );
+				WP_CLI::error(
+					sprintf(
+						/* translators: %s: ware slug */
+						__( 'Ware "%s" is already installed. Use --force to replace it.', 'bazaar' ),
+						$slug
+					)
+				);
 			}
-			WP_CLI::log( "Removing existing ware \"{$slug}\"..." );
+			WP_CLI::log(
+				sprintf(
+					/* translators: %s: ware slug */
+					__( 'Removing existing ware "%s"…', 'bazaar' ),
+					$slug
+				)
+			);
 			$deleted = $this->loader->delete( $slug );
 			if ( is_wp_error( $deleted ) ) {
 				WP_CLI::error( $deleted->get_error_message() );
@@ -200,7 +218,13 @@ final class BazaarCommand {
 			$this->registry->unregister( $slug );
 		}
 
-		WP_CLI::log( "Installing \"{$manifest['name']}\"..." );
+		WP_CLI::log(
+			sprintf(
+				/* translators: %s: ware display name */
+				__( 'Installing "%s"…', 'bazaar' ),
+				$manifest['name']
+			)
+		);
 
 		$result = $this->loader->install( $file_path, $filename );
 		if ( is_wp_error( $result ) ) {
@@ -210,10 +234,18 @@ final class BazaarCommand {
 
 		$registered = $this->registry->register( $result );
 		if ( ! $registered ) {
-			WP_CLI::error( 'Ware installed but could not be added to the registry.' );
+			WP_CLI::error( __( 'Ware installed but could not be added to the registry.', 'bazaar' ) );
 		}
 
-		WP_CLI::success( "Installed \"{$manifest['name']}\" ({$slug} v{$manifest['version']})." );
+		WP_CLI::success(
+			sprintf(
+				/* translators: 1: ware display name, 2: ware slug, 3: version number */
+				__( 'Installed "%1$s" (%2$s v%3$s).', 'bazaar' ),
+				$manifest['name'],
+				$slug,
+				$manifest['version']
+			)
+		);
 	}
 
 	// -------------------------------------------------------------------------
@@ -239,18 +271,36 @@ final class BazaarCommand {
 	public function enable( array $args ): void {
 		$slug = sanitize_key( $args[0] ?? '' );
 		if ( '' === $slug ) {
-			WP_CLI::error( 'Please provide a ware slug.' );
+			WP_CLI::error( __( 'Please provide a ware slug.', 'bazaar' ) );
 		}
 
 		if ( ! $this->registry->exists( $slug ) ) {
-			WP_CLI::error( "Ware \"{$slug}\" not found." );
+			WP_CLI::error(
+				sprintf(
+					/* translators: %s: ware slug */
+					__( 'Ware "%s" not found.', 'bazaar' ),
+					$slug
+				)
+			);
 		}
 
 		if ( ! $this->registry->enable( $slug ) ) {
-			WP_CLI::error( "Could not enable \"{$slug}\"." );
+			WP_CLI::error(
+				sprintf(
+					/* translators: %s: ware slug */
+					__( 'Could not enable "%s".', 'bazaar' ),
+					$slug
+				)
+			);
 		}
 
-		WP_CLI::success( "Enabled \"{$slug}\"." );
+		WP_CLI::success(
+			sprintf(
+				/* translators: %s: ware slug */
+				__( 'Enabled "%s".', 'bazaar' ),
+				$slug
+			)
+		);
 	}
 
 	// -------------------------------------------------------------------------
@@ -276,18 +326,36 @@ final class BazaarCommand {
 	public function disable( array $args ): void {
 		$slug = sanitize_key( $args[0] ?? '' );
 		if ( '' === $slug ) {
-			WP_CLI::error( 'Please provide a ware slug.' );
+			WP_CLI::error( __( 'Please provide a ware slug.', 'bazaar' ) );
 		}
 
 		if ( ! $this->registry->exists( $slug ) ) {
-			WP_CLI::error( "Ware \"{$slug}\" not found." );
+			WP_CLI::error(
+				sprintf(
+					/* translators: %s: ware slug */
+					__( 'Ware "%s" not found.', 'bazaar' ),
+					$slug
+				)
+			);
 		}
 
 		if ( ! $this->registry->disable( $slug ) ) {
-			WP_CLI::error( "Could not disable \"{$slug}\"." );
+			WP_CLI::error(
+				sprintf(
+					/* translators: %s: ware slug */
+					__( 'Could not disable "%s".', 'bazaar' ),
+					$slug
+				)
+			);
 		}
 
-		WP_CLI::success( "Disabled \"{$slug}\"." );
+		WP_CLI::success(
+			sprintf(
+				/* translators: %s: ware slug */
+				__( 'Disabled "%s".', 'bazaar' ),
+				$slug
+			)
+		);
 	}
 
 	// -------------------------------------------------------------------------
@@ -318,16 +386,29 @@ final class BazaarCommand {
 	public function delete( array $args, array $assoc_args ): void {
 		$slug = sanitize_key( $args[0] ?? '' );
 		if ( '' === $slug ) {
-			WP_CLI::error( 'Please provide a ware slug.' );
+			WP_CLI::error( __( 'Please provide a ware slug.', 'bazaar' ) );
 		}
 
 		$ware = $this->registry->get( $slug );
 		if ( null === $ware ) {
-			WP_CLI::error( "Ware \"{$slug}\" not found." );
+			WP_CLI::error(
+				sprintf(
+					/* translators: %s: ware slug */
+					__( 'Ware "%s" not found.', 'bazaar' ),
+					$slug
+				)
+			);
 			return;
 		}
 
-		WP_CLI::confirm( "Delete \"{$ware['name']}\" and all its files?", $assoc_args );
+		WP_CLI::confirm(
+			sprintf(
+				/* translators: %s: ware display name */
+				__( 'Delete "%s" and all its files?', 'bazaar' ),
+				$ware['name']
+			),
+			$assoc_args
+		);
 
 		$deleted = $this->loader->delete( $slug );
 		if ( is_wp_error( $deleted ) ) {
@@ -335,7 +416,13 @@ final class BazaarCommand {
 		}
 
 		$this->registry->unregister( $slug );
-		WP_CLI::success( "Deleted \"{$slug}\"." );
+		WP_CLI::success(
+			sprintf(
+				/* translators: %s: ware slug */
+				__( 'Deleted "%s".', 'bazaar' ),
+				$slug
+			)
+		);
 	}
 
 	// -------------------------------------------------------------------------
@@ -373,12 +460,18 @@ final class BazaarCommand {
 	public function info( array $args, array $assoc_args ): void {
 		$slug = sanitize_key( $args[0] ?? '' );
 		if ( '' === $slug ) {
-			WP_CLI::error( 'Please provide a ware slug.' );
+			WP_CLI::error( __( 'Please provide a ware slug.', 'bazaar' ) );
 		}
 
 		$ware = $this->registry->get( $slug );
 		if ( null === $ware ) {
-			WP_CLI::error( "Ware \"{$slug}\" not found." );
+			WP_CLI::error(
+				sprintf(
+					/* translators: %s: ware slug */
+					__( 'Ware "%s" not found.', 'bazaar' ),
+					$slug
+				)
+			);
 			return;
 		}
 
@@ -386,43 +479,43 @@ final class BazaarCommand {
 
 		$rows = array(
 			array(
-				'Field' => 'slug',
+				'Field' => __( 'slug', 'bazaar' ),
 				'Value' => $ware['slug'],
 			),
 			array(
-				'Field' => 'name',
+				'Field' => __( 'name', 'bazaar' ),
 				'Value' => $ware['name'],
 			),
 			array(
-				'Field' => 'version',
+				'Field' => __( 'version', 'bazaar' ),
 				'Value' => $ware['version'],
 			),
 			array(
-				'Field' => 'author',
+				'Field' => __( 'author', 'bazaar' ),
 				'Value' => $ware['author'] ?? '',
 			),
 			array(
-				'Field' => 'description',
+				'Field' => __( 'description', 'bazaar' ),
 				'Value' => $ware['description'] ?? '',
 			),
 			array(
-				'Field' => 'status',
-				'Value' => ! empty( $ware['enabled'] ) ? 'enabled' : 'disabled',
+				'Field' => __( 'status', 'bazaar' ),
+				'Value' => ! empty( $ware['enabled'] ) ? __( 'enabled', 'bazaar' ) : __( 'disabled', 'bazaar' ),
 			),
 			array(
-				'Field' => 'entry',
+				'Field' => __( 'entry', 'bazaar' ),
 				'Value' => $ware['entry'] ?? 'index.html',
 			),
 			array(
-				'Field' => 'menu_title',
+				'Field' => __( 'menu_title', 'bazaar' ),
 				'Value' => $ware['menu']['title'] ?? '',
 			),
 			array(
-				'Field' => 'capability',
+				'Field' => __( 'capability', 'bazaar' ),
 				'Value' => $ware['menu']['capability'] ?? 'manage_options',
 			),
 			array(
-				'Field' => 'installed',
+				'Field' => __( 'installed', 'bazaar' ),
 				'Value' => $ware['installed'] ?? '',
 			),
 		);

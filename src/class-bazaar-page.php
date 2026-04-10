@@ -136,7 +136,12 @@ final class BazaarPage {
 		$manifest_path = BAZAAR_DIR . 'admin/dist/.vite/manifest.json';
 
 		if ( file_exists( $manifest_path ) ) {
-			$raw      = file_get_contents( $manifest_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			global $wp_filesystem;
+			if ( empty( $wp_filesystem ) ) {
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+				WP_Filesystem();
+			}
+			$raw      = ! empty( $wp_filesystem ) ? $wp_filesystem->get_contents( $manifest_path ) : false;
 			$manifest = is_string( $raw ) ? json_decode( $raw, true ) : null;
 
 			if ( is_array( $manifest ) ) {

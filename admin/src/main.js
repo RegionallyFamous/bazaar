@@ -281,10 +281,10 @@ function insertWareCard(ware) {
 					aria-label="${escAttr(__('Disable ware', 'bazaar'))}">
 				<span class="bazaar-toggle__slider" aria-hidden="true"></span>
 			</label>
-			<button type="button" class="button bazaar-card__delete"
-				data-slug="${escAttr(ware.slug)}" data-action="delete"
-				data-confirm="${escAttr(deleteConfirm)}"
-				aria-label="${escAttr(deleteLabel)}">
+		<button type="button" class="button bazaar-card__delete"
+			data-slug="${escAttr(ware.slug)}" data-action="delete"
+			data-confirm="${escAttr(deleteConfirm)}"
+			aria-label="${escAttr(deleteLabel)}">
 				<span class="dashicons dashicons-trash" aria-hidden="true"></span>
 			</button>
 		</div>

@@ -265,7 +265,12 @@ final class WareServer {
 		}
 
 		// Read file only after conditional checks pass.
-		$content = file_get_contents( $full_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			WP_Filesystem();
+		}
+		$content = ! empty( $wp_filesystem ) ? $wp_filesystem->get_contents( $full_path ) : false;
 		if ( false === $content ) {
 			return new WP_Error(
 				'file_read_error',

@@ -98,7 +98,7 @@ final class WareController {
 					),
 				),
 				array(
-					'methods'             => 'PATCH',
+					'methods'             => WP_REST_Server::EDITABLE,
 					'callback'            => array( $this, 'toggle' ),
 					'permission_callback' => static fn() => current_user_can( 'manage_options' ),
 					'args'                => array(
@@ -108,8 +108,9 @@ final class WareController {
 							'sanitize_callback' => 'sanitize_key',
 						),
 						'enabled' => array(
-							'type'     => 'boolean',
-							'required' => true,
+							'type'              => 'boolean',
+							'required'          => true,
+							'sanitize_callback' => 'rest_sanitize_boolean',
 						),
 					),
 				),

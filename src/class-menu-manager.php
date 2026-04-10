@@ -75,8 +75,11 @@ final class MenuManager {
 		};
 
 		if ( null !== $parent ) {
+			// sanitize_title() preserves dots and hyphens that are valid in
+			// core parent slugs (e.g. options-general.php, tools.php), unlike
+			// sanitize_key() which strips them.
 			add_submenu_page(
-				sanitize_key( $parent ),
+				sanitize_title( $parent ),
 				$page_title,
 				$menu_title,
 				$capability,
@@ -127,8 +130,13 @@ final class MenuManager {
 		$ext = strtolower( pathinfo( $full_path, PATHINFO_EXTENSION ) );
 
 		if ( 'svg' === $ext ) {
-			$svg = file_get_contents( $full_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-			if ( false !== $svg ) {
+			global $wp_filesystem;
+			if ( empty( $wp_filesystem ) ) {
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+				WP_Filesystem();
+			}
+			$svg = ! empty( $wp_filesystem ) ? $wp_filesystem->get_contents( $full_path ) : false;
+			if ( is_string( $svg ) && '' !== $svg ) {
 				$safe = $this->sanitize_svg( $svg );
 				return 'data:image/svg+xml;base64,' . base64_encode( $safe ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 			}

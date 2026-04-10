@@ -169,39 +169,38 @@ final class Plugin {
 			wp_mkdir_p( BAZAAR_WARES_DIR );
 		}
 
+		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			WP_Filesystem();
+		}
+
 		// Silence-PHP index as a defence-in-depth layer against directory listing.
 		$index = BAZAAR_WARES_DIR . 'index.php';
-		if ( ! file_exists( $index ) ) {
-			file_put_contents( $index, "<?php\n// Silence is golden.\n" ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		if ( ! file_exists( $index ) && ! empty( $wp_filesystem ) ) {
+			$wp_filesystem->put_contents( $index, "<?php\n// Silence is golden.\n", FS_CHMOD_FILE );
 		}
 
 		$htaccess = BAZAAR_WARES_DIR . '.htaccess';
-		if ( ! file_exists( $htaccess ) ) {
-			global $wp_filesystem;
-			if ( empty( $wp_filesystem ) ) {
-				require_once ABSPATH . 'wp-admin/includes/file.php';
-				WP_Filesystem();
-			}
-			if ( ! empty( $wp_filesystem ) ) {
-				$wp_filesystem->put_contents(
-					$htaccess,
-					"# Deny direct access — Bazaar serves all ware files through the REST API.\n" .
-					"<IfModule mod_authz_core.c>\n" .
-					"  Require all denied\n" .
-					"</IfModule>\n" .
-					"<IfModule !mod_authz_core.c>\n" .
-					"  Deny from all\n" .
-					"</IfModule>\n\n" .
-					"# Disable PHP execution as a second-layer defence.\n" .
-					"<IfModule mod_php.c>\n" .
-					"  php_flag engine off\n" .
-					"</IfModule>\n" .
-					"<IfModule mod_php8.c>\n" .
-					"  php_flag engine off\n" .
-					"</IfModule>\n",
-					FS_CHMOD_FILE
-				);
-			}
+		if ( ! file_exists( $htaccess ) && ! empty( $wp_filesystem ) ) {
+			$wp_filesystem->put_contents(
+				$htaccess,
+				"# Deny direct access — Bazaar serves all ware files through the REST API.\n" .
+				"<IfModule mod_authz_core.c>\n" .
+				"  Require all denied\n" .
+				"</IfModule>\n" .
+				"<IfModule !mod_authz_core.c>\n" .
+				"  Deny from all\n" .
+				"</IfModule>\n\n" .
+				"# Disable PHP execution as a second-layer defence.\n" .
+				"<IfModule mod_php.c>\n" .
+				"  php_flag engine off\n" .
+				"</IfModule>\n" .
+				"<IfModule mod_php8.c>\n" .
+				"  php_flag engine off\n" .
+				"</IfModule>\n",
+				FS_CHMOD_FILE
+			);
 		}
 	}
 
