@@ -12,6 +12,24 @@ No shortcodes. No page templates. No style conflicts. Just apps.
 
 ---
 
+## The Name
+
+In 1997, Eric S. Raymond wrote *[The Cathedral and the Bazaar](http://www.catb.org/~esr/writings/cathedral-bazaar/)* — one of the most influential essays in software history. He described two models of building software:
+
+> **The Cathedral** — code released on a controlled schedule by a small group, with source guarded closely between releases. Careful, coordinated, monolithic.
+>
+> **The Bazaar** — code released early and often, developed in the open where "a great babbling bazaar of differing agendas and approaches" produces something no single team could plan in advance.
+
+Raymond's insight was that the bazaar model, chaotic as it looks, produces *better* software — because *"given enough eyeballs, all bugs are shallow."*
+
+`wp-admin` is a cathedral. Adding real functionality to it means navigating a gauntlet: PHP templates, action hooks, capability checks, menu registration APIs, style isolation problems. The core team controls the architecture and everyone else works around it.
+
+This plugin is the bazaar. Build your app however you want, in whatever stack you prefer. Package it. Upload it. It appears in the sidebar. The WordPress admin becomes a platform that anyone can extend with a ZIP file — not just the teams who know every hook and filter by heart.
+
+WordPress itself was built bazaar-style. This plugin just brings that spirit back to the admin dashboard.
+
+---
+
 ## What is a Ware?
 
 A **ware** is a `.wp` file — a renamed ZIP archive containing a self-contained web app and a `manifest.json`. Think `.apk` for Android, but for WordPress.

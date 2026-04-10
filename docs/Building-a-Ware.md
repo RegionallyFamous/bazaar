@@ -8,6 +8,8 @@ This guide walks you through building one from scratch.
 
 ## The Mental Model
 
+The name comes from Eric S. Raymond's essay *[The Cathedral and the Bazaar](http://www.catb.org/~esr/writings/cathedral-bazaar/)*. The cathedral is `wp-admin` as it exists today — monolithic, controlled, extended only through its own architecture. Bazaar makes the admin a platform where anyone can contribute an app without understanding WordPress internals. You just build a website.
+
 Your ware is just a website. It runs in a sandboxed `<iframe>` inside `wp-admin`. You have full control over the HTML, CSS, and JS — there's nothing WordPress-specific about your app at all. The only WordPress knowledge you need is writing the `manifest.json`.
 
 ```
