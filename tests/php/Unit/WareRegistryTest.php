@@ -31,6 +31,7 @@ final class WareRegistryTest extends TestCase {
 		Functions\when( 'sanitize_key' )->returnArg();
 		Functions\when( 'sanitize_text_field' )->returnArg();
 		Functions\when( 'sanitize_textarea_field' )->returnArg();
+		Functions\when( 'esc_url_raw' )->returnArg();
 		Functions\when( 'absint' )->alias( 'intval' );
 		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
 		Functions\when( 'update_option' )->justReturn( true );
