@@ -16,11 +16,23 @@ defined( 'ABSPATH' ) || exit;
  *
  * Data is persisted as a JSON-encoded string in the `bazaar_registry` wp_option
  * with autoload disabled to avoid bloating the autoloaded options cache.
+ *
+ * An in-memory request cache avoids repeated JSON-decode round-trips when the
+ * registry is read multiple times in a single request (menu registration,
+ * permission checks, REST responses, etc.).
  */
 final class WareRegistry {
 
 	/** WordPress option key used to persist the registry. */
 	private const OPTION_KEY = 'bazaar_registry';
+
+	/**
+	 * Request-level in-memory cache. Null means the option has not been loaded
+	 * yet this request; an array (possibly empty) means it has been loaded.
+	 *
+	 * @var array<string, array<string, mixed>>|null
+	 */
+	private ?array $cache = null;
 
 	// -------------------------------------------------------------------------
 	// Write operations
@@ -128,21 +140,29 @@ final class WareRegistry {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Decode the raw option value into a registry array.
+	 * Decode the raw option value into a registry array, using the in-memory
+	 * cache to avoid repeated JSON-decode calls within the same request.
 	 *
 	 * @return array<string, array<string, mixed>>
 	 */
 	private function load(): array {
+		if ( null !== $this->cache ) {
+			return $this->cache;
+		}
+
 		$raw = get_option( self::OPTION_KEY, '[]' );
 		if ( ! is_string( $raw ) ) {
-			return array();
+			$this->cache = array();
+			return $this->cache;
 		}
-		$decoded = json_decode( $raw, true );
-		return is_array( $decoded ) ? $decoded : array();
+
+		$decoded     = json_decode( $raw, true );
+		$this->cache = is_array( $decoded ) ? $decoded : array();
+		return $this->cache;
 	}
 
 	/**
-	 * JSON-encode and persist the registry to wp_options.
+	 * JSON-encode and persist the registry to wp_options, then update the cache.
 	 *
 	 * @param array<string, array<string, mixed>> $registry Registry data to persist.
 	 */
@@ -151,7 +171,11 @@ final class WareRegistry {
 		if ( false === $encoded ) {
 			return false;
 		}
-		return (bool) update_option( self::OPTION_KEY, $encoded, false );
+		$saved = (bool) update_option( self::OPTION_KEY, $encoded, false );
+		if ( $saved ) {
+			$this->cache = $registry;
+		}
+		return $saved;
 	}
 
 	/**
@@ -180,7 +204,10 @@ final class WareRegistry {
 			'title'      => sanitize_text_field( $menu['title'] ?? '' ),
 			'position'   => isset( $menu['position'] ) ? absint( $menu['position'] ) : null,
 			'capability' => sanitize_text_field( $menu['capability'] ?? 'manage_options' ),
-			'parent'     => isset( $menu['parent'] ) ? sanitize_key( $menu['parent'] ) : null,
+			// sanitize_text_field preserves dots, so parent slugs like "tools.php"
+			// and query-string parents like "options-general.php" are kept intact.
+			// sanitize_key() would incorrectly strip the dots.
+			'parent'     => isset( $menu['parent'] ) ? sanitize_text_field( (string) $menu['parent'] ) : null,
 		);
 	}
 }

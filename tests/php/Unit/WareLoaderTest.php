@@ -99,7 +99,7 @@ final class WareLoaderTest extends TestCase {
 		$result = $loader->validate( $path, 'test.wp' );
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'php_not_allowed', $result->get_error_code() );
+		$this->assertSame( 'forbidden_file_type', $result->get_error_code() );
 	}
 
 	public function test_rejects_archive_without_manifest(): void {

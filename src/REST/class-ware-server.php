@@ -22,13 +22,43 @@ use WP_REST_Server;
  *
  * GET /wp-json/bazaar/v1/serve/{slug}/{file}
  *
- * Requires the user to be logged in and to have the capability declared in the
- * ware's manifest. Uses realpath() confinement to prevent path traversal.
+ * Security:
+ *   - Requires login + the capability declared in the ware's manifest.
+ *   - realpath() confinement prevents path traversal.
+ *   - ".." rejected at both the route validation and callback layers.
+ *   - PHP files can never be present (upload validator rejects them).
+ *   - A Content-Security-Policy is injected for HTML responses.
+ *
+ * Performance:
+ *   - ETag (file mtime + size hash) + Last-Modified for conditional requests.
+ *   - 304 Not Modified returned when the client's cached copy is still fresh.
+ *   - Cache-Control differentiated by file type (HTML short, assets long).
+ *   - File is read only after all header checks pass (avoids disk reads on 304).
+ *   - Files larger than MAX_SERVE_BYTES are rejected to protect PHP memory.
  */
 final class WareServer {
 
 	/** REST API namespace for all Bazaar routes. */
 	private const NAMESPACE = 'bazaar/v1';
+
+	/**
+	 * Upper bound on the size of a file that will be read into PHP memory and
+	 * served through this endpoint. 50 MB should cover any realistic ware asset;
+	 * raise via the bazaar_max_serve_bytes filter if needed.
+	 */
+	private const MAX_SERVE_BYTES = 50 * 1024 * 1024;
+
+	/**
+	 * Cache lifetime (in seconds) for non-HTML static assets.
+	 * Assets with content-hash filenames can safely be cached for a long time.
+	 */
+	private const ASSET_MAX_AGE = 31536000; // 1 year
+
+	/**
+	 * Cache lifetime (in seconds) for HTML entry files.
+	 * Short because HTML may embed a rotating nonce and should revalidate often.
+	 */
+	private const HTML_MAX_AGE = 300; // 5 minutes
 
 	/** MIME types served for common static asset extensions. */
 	private const MIME_MAP = array(
@@ -38,12 +68,14 @@ final class WareServer {
 		'js'    => 'application/javascript',
 		'mjs'   => 'application/javascript',
 		'json'  => 'application/json',
+		'map'   => 'application/json',
 		'svg'   => 'image/svg+xml',
 		'png'   => 'image/png',
 		'jpg'   => 'image/jpeg',
 		'jpeg'  => 'image/jpeg',
 		'gif'   => 'image/gif',
 		'webp'  => 'image/webp',
+		'avif'  => 'image/avif',
 		'ico'   => 'image/x-icon',
 		'woff'  => 'font/woff',
 		'woff2' => 'font/woff2',
@@ -134,8 +166,8 @@ final class WareServer {
 			);
 		}
 
-		$capability = $ware['menu']['capability'] ?? 'manage_options';
-		if ( ! current_user_can( sanitize_key( $capability ) ) ) {
+		$capability = sanitize_key( $ware['menu']['capability'] ?? 'manage_options' );
+		if ( ! current_user_can( $capability ) ) {
 			return new WP_Error(
 				'rest_forbidden',
 				esc_html__( 'You do not have permission to access this ware.', 'bazaar' ),
@@ -147,15 +179,20 @@ final class WareServer {
 	}
 
 	/**
-	 * Serve the requested file directly — bypasses the REST JSON response system.
+	 * Serve the requested static file directly, bypassing the REST JSON response system.
+	 *
+	 * Sends ETag and Last-Modified headers, honours If-None-Match / If-Modified-Since
+	 * for conditional requests, and returns 304 without reading the file body when
+	 * the client's cached copy is still valid.
 	 *
 	 * @param WP_REST_Request $request The incoming REST request.
+	 * @return WP_REST_Response|WP_Error Never returns normally — exits after output.
 	 */
-	public function serve_file( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+	public function serve_file( WP_REST_Request $request ): WP_Error {
 		$slug      = sanitize_key( $request->get_param( 'slug' ) );
 		$file_path = $request->get_param( 'file' );
 
-		// Reject any remaining path traversal attempts.
+		// Second-layer path traversal rejection (first is in validate_callback).
 		if ( str_contains( $file_path, '..' ) ) {
 			return new WP_Error(
 				'path_traversal',
@@ -167,7 +204,7 @@ final class WareServer {
 		$ware_dir  = realpath( BAZAAR_WARES_DIR . $slug );
 		$full_path = realpath( BAZAAR_WARES_DIR . $slug . '/' . $file_path );
 
-		// Confine to the ware's own directory.
+		// Confinement: both paths must resolve and the file must be inside its ware dir.
 		if ( false === $ware_dir || false === $full_path ) {
 			return new WP_Error(
 				'file_not_found',
@@ -192,10 +229,43 @@ final class WareServer {
 			);
 		}
 
+		// Safety cap: refuse to load oversized files into PHP memory.
+		$file_size = filesize( $full_path );
+		$max_bytes = (int) apply_filters( 'bazaar_max_serve_bytes', self::MAX_SERVE_BYTES );
+		if ( false === $file_size || $file_size > $max_bytes ) {
+			return new WP_Error(
+				'file_too_large',
+				esc_html__( 'File is too large to serve.', 'bazaar' ),
+				array( 'status' => 413 )
+			);
+		}
+
 		$ext       = strtolower( pathinfo( $full_path, PATHINFO_EXTENSION ) );
 		$mime_type = self::MIME_MAP[ $ext ] ?? 'application/octet-stream';
-		$content   = file_get_contents( $full_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$is_html   = in_array( $ext, array( 'html', 'htm' ), true );
+		$mtime     = (int) filemtime( $full_path );
 
+		// Build cache validators.
+		$etag          = '"' . md5( $full_path . $mtime . $file_size ) . '"';
+		$last_modified = gmdate( 'D, d M Y H:i:s', $mtime ) . ' GMT';
+
+		// Check conditional request headers — serve 304 without reading the file.
+		$if_none_match     = $request->get_header( 'If-None-Match' );
+		$if_modified_since = $request->get_header( 'If-Modified-Since' );
+
+		$etag_match  = $if_none_match && trim( $if_none_match ) === $etag;
+		$mtime_match = $if_modified_since && strtotime( $if_modified_since ) >= $mtime;
+
+		if ( $etag_match || ( ! $if_none_match && $mtime_match ) ) {
+			status_header( 304 );
+			header( 'ETag: ' . $etag );
+			header( 'Last-Modified: ' . $last_modified );
+			header( 'Cache-Control: ' . $this->cache_control( $is_html ) );
+			exit;
+		}
+
+		// Read file only after conditional checks pass.
+		$content = file_get_contents( $full_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		if ( false === $content ) {
 			return new WP_Error(
 				'file_read_error',
@@ -204,14 +274,40 @@ final class WareServer {
 			);
 		}
 
-		// Output the file directly and exit — the REST framework would re-encode it.
 		header( 'Content-Type: ' . $mime_type );
-		header( 'Content-Length: ' . strlen( $content ) );
-		header( 'Cache-Control: private, max-age=3600' );
+		header( 'Content-Length: ' . $file_size );
+		header( 'ETag: ' . $etag );
+		header( 'Last-Modified: ' . $last_modified );
+		header( 'Cache-Control: ' . $this->cache_control( $is_html ) );
 		header( 'X-Content-Type-Options: nosniff' );
+		header( 'X-Robots-Tag: noindex, nofollow' );
+		header( 'Referrer-Policy: same-origin' );
+
+		if ( $is_html ) {
+			// Restrict what the sandboxed ware frame can load, while still allowing
+			// it to make authenticated fetch() calls to the same WordPress origin.
+			header( "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self';" );
+		}
 
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		echo $content;
 		exit;
+	}
+
+	/**
+	 * Return an appropriate Cache-Control directive string.
+	 *
+	 * HTML files use a short max-age because they may embed a rotating nonce.
+	 * All other assets (JS, CSS, images, fonts) use a long max-age with
+	 * immutable, under the assumption that content-hashed filenames are used.
+	 *
+	 * @param bool $is_html True when serving an HTML document.
+	 * @return string Cache-Control header value (without the header name).
+	 */
+	private function cache_control( bool $is_html ): string {
+		if ( $is_html ) {
+			return 'private, max-age=' . self::HTML_MAX_AGE . ', must-revalidate';
+		}
+		return 'private, max-age=' . self::ASSET_MAX_AGE . ', immutable';
 	}
 }

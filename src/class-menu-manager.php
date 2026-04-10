@@ -100,6 +100,9 @@ final class MenuManager {
 	/**
 	 * Resolve the ware's icon to either a data URI (for SVG) or a dashicon string.
 	 *
+	 * Uses realpath() confinement so a crafted icon path (e.g. ../../wp-config.php)
+	 * cannot escape the ware's own directory.
+	 *
 	 * @param string $slug      Ware slug (used to build the file path).
 	 * @param string $icon_path Relative icon path from the ware manifest.
 	 */
@@ -108,9 +111,16 @@ final class MenuManager {
 			return 'dashicons-admin-plugins';
 		}
 
-		$full_path = BAZAAR_WARES_DIR . sanitize_key( $slug ) . '/' . ltrim( $icon_path, '/' );
+		$ware_dir  = realpath( BAZAAR_WARES_DIR . sanitize_key( $slug ) );
+		$full_path = realpath( BAZAAR_WARES_DIR . sanitize_key( $slug ) . '/' . ltrim( $icon_path, '/' ) );
 
-		if ( ! file_exists( $full_path ) ) {
+		// Confinement check: both paths must resolve and the file must stay inside the ware dir.
+		if (
+			false === $ware_dir ||
+			false === $full_path ||
+			! str_starts_with( $full_path, $ware_dir . DIRECTORY_SEPARATOR ) ||
+			! is_file( $full_path )
+		) {
 			return 'dashicons-admin-plugins';
 		}
 
@@ -119,7 +129,8 @@ final class MenuManager {
 		if ( 'svg' === $ext ) {
 			$svg = file_get_contents( $full_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 			if ( false !== $svg ) {
-				return 'data:image/svg+xml;base64,' . base64_encode( $svg ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+				$safe = $this->sanitize_svg( $svg );
+				return 'data:image/svg+xml;base64,' . base64_encode( $safe ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 			}
 		}
 
@@ -128,5 +139,26 @@ final class MenuManager {
 		}
 
 		return 'dashicons-admin-plugins';
+	}
+
+	/**
+	 * Strip script elements and event-handler attributes from an SVG string.
+	 *
+	 * This is a lightweight defence-in-depth pass for SVGs embedded as data
+	 * URIs in the wp-admin sidebar. Wares already require manage_options to
+	 * install, but we still sanitise to limit blast radius from a compromised
+	 * registry or a confused-deputy scenario.
+	 *
+	 * @param string $svg Raw SVG markup.
+	 * @return string Sanitized SVG markup.
+	 */
+	private function sanitize_svg( string $svg ): string {
+		// Remove <script> blocks (including CDATA-wrapped).
+		$svg = (string) preg_replace( '/<script\b[^>]*>.*?<\/script>/si', '', $svg );
+		// Remove inline event handlers (onload, onerror, onclick, …).
+		$svg = (string) preg_replace( '/\s+on[a-z]+\s*=\s*(?:"[^"]*"|\'[^\']*\')/i', '', $svg );
+		// Remove javascript: URIs in href / xlink:href.
+		$svg = (string) preg_replace( '/\b(href|xlink:href)\s*=\s*["\']javascript:[^"\']*["\']/i', '', $svg );
+		return $svg;
 	}
 }

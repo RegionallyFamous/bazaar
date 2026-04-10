@@ -1,6 +1,6 @@
 <?php
 /**
- * Ware controller — enable, disable, and delete wares via REST.
+ * Ware controller — list, enable, disable, and delete wares via REST.
  *
  * @package Bazaar
  */
@@ -19,10 +19,12 @@ use WP_REST_Response;
 use WP_REST_Server;
 
 /**
- * Manages installed wares (enable/disable/delete) via the REST API.
+ * Manages installed wares (list/get/enable/disable/delete) via the REST API.
  *
- * PATCH  /wp-json/bazaar/v1/wares/{slug}  — toggle enabled state
- * DELETE /wp-json/bazaar/v1/wares/{slug}  — unregister + delete files
+ * GET    /wp-json/bazaar/v1/wares            — list all installed wares
+ * GET    /wp-json/bazaar/v1/wares/{slug}     — get a single ware's metadata
+ * PATCH  /wp-json/bazaar/v1/wares/{slug}     — toggle enabled state
+ * DELETE /wp-json/bazaar/v1/wares/{slug}     — unregister + delete files
  */
 final class WareController {
 
@@ -54,13 +56,47 @@ final class WareController {
 	}
 
 	/**
-	 * Register the PATCH and DELETE ware REST routes.
+	 * Register all ware management REST routes.
 	 */
 	public function register_routes(): void {
+		// Collection: GET /wares
+		register_rest_route(
+			self::NAMESPACE,
+			'/wares',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'list_wares' ),
+					'permission_callback' => static fn() => current_user_can( 'manage_options' ),
+					'args'                => array(
+						'status' => array(
+							'type'              => 'string',
+							'default'           => 'all',
+							'enum'              => array( 'all', 'enabled', 'disabled' ),
+							'sanitize_callback' => 'sanitize_text_field',
+						),
+					),
+				),
+			)
+		);
+
+		// Item: GET / PATCH / DELETE /wares/{slug}
 		register_rest_route(
 			self::NAMESPACE,
 			'/wares/(?P<slug>[a-z0-9-]+)',
 			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_ware' ),
+					'permission_callback' => static fn() => current_user_can( 'manage_options' ),
+					'args'                => array(
+						'slug' => array(
+							'type'              => 'string',
+							'required'          => true,
+							'sanitize_callback' => 'sanitize_key',
+						),
+					),
+				),
 				array(
 					'methods'             => 'PATCH',
 					'callback'            => array( $this, 'toggle' ),
@@ -91,6 +127,44 @@ final class WareController {
 				),
 			)
 		);
+	}
+
+	/**
+	 * Return the full list of installed wares, optionally filtered by status.
+	 *
+	 * @param WP_REST_Request $request The incoming REST request.
+	 */
+	public function list_wares( WP_REST_Request $request ): WP_REST_Response {
+		$status = $request->get_param( 'status' ) ?? 'all';
+		$all    = $this->registry->get_all();
+
+		if ( 'enabled' === $status ) {
+			$all = array_filter( $all, static fn( array $w ) => (bool) ( $w['enabled'] ?? false ) );
+		} elseif ( 'disabled' === $status ) {
+			$all = array_filter( $all, static fn( array $w ) => ! ( $w['enabled'] ?? false ) );
+		}
+
+		return new WP_REST_Response( array_values( $all ), 200 );
+	}
+
+	/**
+	 * Return a single ware's metadata.
+	 *
+	 * @param WP_REST_Request $request The incoming REST request.
+	 */
+	public function get_ware( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$slug = sanitize_key( $request->get_param( 'slug' ) );
+		$ware = $this->registry->get( $slug );
+
+		if ( null === $ware ) {
+			return new WP_Error(
+				'ware_not_found',
+				esc_html__( 'Ware not found.', 'bazaar' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		return new WP_REST_Response( $ware, 200 );
 	}
 
 	/**

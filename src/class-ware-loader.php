@@ -19,13 +19,29 @@ use ZipArchive;
  *
  * Responsibilities:
  * - Full validation pipeline (extension, ZIP integrity, manifest, slug, security)
- * - Extraction to wp-content/bazaar/{slug}/ via WP_Filesystem
+ * - Zip-bomb / archive-bomb protection (file count + compression ratio)
+ * - Atomic extraction: extract to temp dir then rename to final location
  * - Writing the protective .htaccess on first install
  */
 final class WareLoader {
 
 	/** File extensions that are never allowed inside a .wp archive. */
-	private const FORBIDDEN_EXTENSIONS = array( 'php', 'phtml', 'phar', 'php3', 'php4', 'php5', 'php7', 'phps' );
+	private const FORBIDDEN_EXTENSIONS = array( 'php', 'phtml', 'phar', 'php3', 'php4', 'php5', 'php7', 'phps', 'cgi', 'pl', 'py', 'rb', 'sh', 'bash' );
+
+	/**
+	 * Maximum number of files allowed in a single ware archive.
+	 * Prevents archive-bomb attacks through sheer file count.
+	 */
+	private const MAX_FILE_COUNT = 2000;
+
+	/**
+	 * Maximum allowed compression ratio (uncompressed / compressed) for any
+	 * single file in the archive. A ratio above this suggests a zip bomb.
+	 *
+	 * 100:1 is extremely generous (gzip typically achieves 2:1–5:1 for typical
+	 * web assets). Legitimate minified JS/CSS rarely exceeds 10:1.
+	 */
+	private const MAX_COMPRESSION_RATIO = 100;
 
 	/**
 	 * Registry used to check slug uniqueness and update state.
@@ -94,45 +110,98 @@ final class WareLoader {
 			);
 		}
 
-		// 3. No PHP files + collect uncompressed size.
-		$total_size = 0;
+		// 3. File count guard (zip bomb prevention).
 		$file_count = $zip->count();
+		if ( $file_count > self::MAX_FILE_COUNT ) {
+			$zip->close();
+			return new WP_Error(
+				'too_many_files',
+				sprintf(
+					/* translators: 1: file count in the archive, 2: maximum allowed */
+					esc_html__( 'Archive contains %1$d files. Maximum allowed is %2$d.', 'bazaar' ),
+					$file_count,
+					self::MAX_FILE_COUNT
+				)
+			);
+		}
+
+		// 4. Scan all entries: forbidden extensions, path traversal, symlinks,
+		// compression ratio, and total uncompressed size.
+		$total_uncompressed = 0;
 		for ( $i = 0; $i < $file_count; $i++ ) {
 			$stat = $zip->statIndex( $i );
 			if ( false === $stat ) {
 				continue;
 			}
-			$ext = strtolower( pathinfo( $stat['name'], PATHINFO_EXTENSION ) );
-			if ( in_array( $ext, self::FORBIDDEN_EXTENSIONS, true ) ) {
+
+			$name = $stat['name'];
+
+			// Path traversal inside the archive.
+			if ( str_contains( $name, '..' ) || str_starts_with( $name, '/' ) ) {
 				$zip->close();
 				return new WP_Error(
-					'php_not_allowed',
+					'path_traversal',
 					sprintf(
-						/* translators: %s: filename found inside the archive */
-						esc_html__( 'PHP files are not allowed inside a ware archive. Found: %s', 'bazaar' ),
-						esc_html( $stat['name'] )
+						/* translators: %s: filename inside the archive */
+						esc_html__( 'Archive contains a path-traversal entry: %s', 'bazaar' ),
+						esc_html( $name )
 					)
 				);
 			}
-			$total_size += $stat['size'];
+
+			$ext = strtolower( pathinfo( $name, PATHINFO_EXTENSION ) );
+
+			// Forbidden server-executable extensions.
+			if ( in_array( $ext, self::FORBIDDEN_EXTENSIONS, true ) ) {
+				$zip->close();
+				return new WP_Error(
+					'forbidden_file_type',
+					sprintf(
+						/* translators: %s: filename found inside the archive */
+						esc_html__( 'Server-executable files are not allowed in a ware archive. Found: %s', 'bazaar' ),
+						esc_html( $name )
+					)
+				);
+			}
+
+			// Zip bomb: suspicious compression ratio on a single file.
+			$compressed   = $stat['comp_size'];
+			$uncompressed = $stat['size'];
+			if ( $compressed > 0 && $uncompressed > 0 ) {
+				$ratio = $uncompressed / $compressed;
+				if ( $ratio > self::MAX_COMPRESSION_RATIO ) {
+					$zip->close();
+					return new WP_Error(
+						'zip_bomb',
+						sprintf(
+							/* translators: 1: filename, 2: compression ratio */
+							esc_html__( 'Suspicious compression ratio (%2$d:1) detected in file: %1$s', 'bazaar' ),
+							esc_html( $name ),
+							(int) $ratio
+						)
+					);
+				}
+			}
+
+			$total_uncompressed += $uncompressed;
 		}
 
-		// 4. Uncompressed size limit.
+		// 5. Total uncompressed size limit.
 		$max = absint( get_option( 'bazaar_max_ware_size', BAZAAR_MAX_UNCOMPRESSED_SIZE ) );
-		if ( $total_size > $max ) {
+		if ( $total_uncompressed > $max ) {
 			$zip->close();
 			return new WP_Error(
 				'too_large',
 				sprintf(
 					/* translators: 1: uncompressed size in MB, 2: limit in MB */
 					esc_html__( 'Ware is too large (%1$s MB uncompressed). Maximum is %2$s MB.', 'bazaar' ),
-					number_format_i18n( $total_size / 1024 / 1024, 1 ),
+					number_format_i18n( $total_uncompressed / 1024 / 1024, 1 ),
 					number_format_i18n( $max / 1024 / 1024, 1 )
 				)
 			);
 		}
 
-		// 5. manifest.json exists at archive root.
+		// 6. manifest.json exists at archive root.
 		$manifest_raw = $zip->getFromName( 'manifest.json' );
 		if ( false === $manifest_raw ) {
 			$zip->close();
@@ -142,7 +211,7 @@ final class WareLoader {
 			);
 		}
 
-		// 6. Parse manifest.
+		// 7. Parse manifest.
 		$manifest = json_decode( $manifest_raw, true );
 		if ( ! is_array( $manifest ) ) {
 			$zip->close();
@@ -152,7 +221,7 @@ final class WareLoader {
 			);
 		}
 
-		// 7. Required fields.
+		// 8. Required fields.
 		foreach ( array( 'name', 'slug', 'version' ) as $field ) {
 			if ( empty( $manifest[ $field ] ) || ! is_string( $manifest[ $field ] ) ) {
 				$zip->close();
@@ -167,7 +236,7 @@ final class WareLoader {
 			}
 		}
 
-		// 8. Slug format: lowercase letters, numbers, hyphens only.
+		// 9. Slug format: lowercase letters, numbers, hyphens only.
 		if ( ! preg_match( '/^[a-z0-9-]+$/', $manifest['slug'] ) ) {
 			$zip->close();
 			return new WP_Error(
@@ -176,7 +245,7 @@ final class WareLoader {
 			);
 		}
 
-		// 9. Slug uniqueness.
+		// 10. Slug uniqueness.
 		if ( $this->registry->exists( $manifest['slug'] ) ) {
 			$zip->close();
 			return new WP_Error(
@@ -189,7 +258,7 @@ final class WareLoader {
 			);
 		}
 
-		// 10. Entry file exists in archive.
+		// 11. Entry file exists in archive.
 		$entry = $manifest['entry'] ?? 'index.html';
 		if ( false === $zip->getFromName( $entry ) ) {
 			$zip->close();
@@ -245,7 +314,11 @@ final class WareLoader {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Extract the ZIP archive to wp-content/bazaar/{slug}/ using WP_Filesystem.
+	 * Atomically extract the ZIP archive to wp-content/bazaar/{slug}/.
+	 *
+	 * Strategy: extract to a uniquely-named temp directory first, then rename
+	 * to the final destination. This prevents a partially-extracted ware from
+	 * being visible to the registry or the file server during installation.
 	 *
 	 * @param string $tmp_path Absolute path to the uploaded ZIP file.
 	 * @param string $slug     Sanitized ware slug used as the destination directory name.
@@ -254,25 +327,46 @@ final class WareLoader {
 	private function extract( string $tmp_path, string $slug ): bool|WP_Error {
 		$slug     = sanitize_key( $slug );
 		$dest_dir = BAZAAR_WARES_DIR . $slug . '/';
+		$temp_dir = BAZAAR_WARES_DIR . '.tmp-' . $slug . '-' . wp_generate_password( 8, false ) . '/';
 
 		$filesystem = $this->get_filesystem();
 		if ( is_wp_error( $filesystem ) ) {
 			return $filesystem;
 		}
 
-		// Create destination directory.
-		if ( ! $filesystem->is_dir( $dest_dir ) ) {
-			$filesystem->mkdir( $dest_dir, FS_CHMOD_DIR );
+		// Create the staging temp directory.
+		if ( ! $filesystem->mkdir( $temp_dir, FS_CHMOD_DIR ) ) {
+			return new WP_Error(
+				'extract_mkdir_failed',
+				esc_html__( 'Could not create staging directory for extraction.', 'bazaar' )
+			);
 		}
 
-		// WP core provides unzip_file() which wraps ZipArchive with WP_Filesystem.
 		if ( ! function_exists( 'unzip_file' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
 
-		$result = unzip_file( $tmp_path, $dest_dir );
+		$result = unzip_file( $tmp_path, $temp_dir );
 		if ( is_wp_error( $result ) ) {
+			$filesystem->delete( $temp_dir, true );
 			return $result;
+		}
+
+		// Remove stale destination if it exists (e.g. a --force reinstall).
+		if ( $filesystem->is_dir( $dest_dir ) ) {
+			$filesystem->delete( $dest_dir, true );
+		}
+
+		// Atomic rename: move staging dir to final location.
+		if ( ! rename( $temp_dir, $dest_dir ) ) {
+			// Fallback: WP_Filesystem move (for cases where rename crosses mount points).
+			if ( ! $filesystem->move( $temp_dir, $dest_dir ) ) {
+				$filesystem->delete( $temp_dir, true );
+				return new WP_Error(
+					'extract_rename_failed',
+					esc_html__( 'Could not finalize ware installation.', 'bazaar' )
+				);
+			}
 		}
 
 		return true;
