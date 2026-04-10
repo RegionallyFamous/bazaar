@@ -1,4 +1,9 @@
 <?php
+/**
+ * Ware registry — persists installed-ware metadata in wp_options.
+ *
+ * @package Bazaar
+ */
 
 declare( strict_types=1 );
 
@@ -14,6 +19,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class WareRegistry {
 
+	/** @var string WordPress option key used to persist the registry. */
 	private const OPTION_KEY = 'bazaar_registry';
 
 	// -------------------------------------------------------------------------
@@ -32,7 +38,7 @@ final class WareRegistry {
 		}
 
 		$registry          = $this->load();
-		$registry[ $slug ] = [
+		$registry[ $slug ] = array(
 			'name'        => sanitize_text_field( $manifest['name'] ),
 			'slug'        => $slug,
 			'version'     => sanitize_text_field( $manifest['version'] ),
@@ -40,16 +46,18 @@ final class WareRegistry {
 			'description' => sanitize_textarea_field( $manifest['description'] ?? '' ),
 			'icon'        => sanitize_text_field( $manifest['icon'] ?? 'icon.svg' ),
 			'entry'       => sanitize_text_field( $manifest['entry'] ?? 'index.html' ),
-			'menu'        => $this->sanitize_menu( $manifest['menu'] ?? [] ),
+			'menu'        => $this->sanitize_menu( $manifest['menu'] ?? array() ),
 			'enabled'     => true,
 			'installed'   => gmdate( 'Y-m-d\TH:i:s\Z' ),
-		];
+		);
 
 		return $this->save( $registry );
 	}
 
 	/**
 	 * Remove a ware from the registry entirely.
+	 *
+	 * @param string $slug Ware slug to remove.
 	 */
 	public function unregister( string $slug ): bool {
 		$slug     = sanitize_key( $slug );
@@ -65,6 +73,8 @@ final class WareRegistry {
 
 	/**
 	 * Enable a ware so its menu page is registered.
+	 *
+	 * @param string $slug Ware slug to enable.
 	 */
 	public function enable( string $slug ): bool {
 		return $this->set_enabled( sanitize_key( $slug ), true );
@@ -72,6 +82,8 @@ final class WareRegistry {
 
 	/**
 	 * Disable a ware — its menu page will no longer appear.
+	 *
+	 * @param string $slug Ware slug to disable.
 	 */
 	public function disable( string $slug ): bool {
 		return $this->set_enabled( sanitize_key( $slug ), false );
@@ -84,6 +96,7 @@ final class WareRegistry {
 	/**
 	 * Retrieve a single ware's metadata, or null if not found.
 	 *
+	 * @param string $slug Ware slug to look up.
 	 * @return array<string, mixed>|null
 	 */
 	public function get( string $slug ): ?array {
@@ -103,6 +116,8 @@ final class WareRegistry {
 
 	/**
 	 * Check whether a slug is already registered.
+	 *
+	 * @param string $slug Ware slug to check.
 	 */
 	public function exists( string $slug ): bool {
 		return null !== $this->get( $slug );
@@ -113,19 +128,23 @@ final class WareRegistry {
 	// -------------------------------------------------------------------------
 
 	/**
+	 * Decode the raw option value into a registry array.
+	 *
 	 * @return array<string, array<string, mixed>>
 	 */
 	private function load(): array {
 		$raw = get_option( self::OPTION_KEY, '[]' );
 		if ( ! is_string( $raw ) ) {
-			return [];
+			return array();
 		}
 		$decoded = json_decode( $raw, true );
-		return is_array( $decoded ) ? $decoded : [];
+		return is_array( $decoded ) ? $decoded : array();
 	}
 
 	/**
-	 * @param array<string, array<string, mixed>> $registry
+	 * JSON-encode and persist the registry to wp_options.
+	 *
+	 * @param array<string, array<string, mixed>> $registry Registry data to persist.
 	 */
 	private function save( array $registry ): bool {
 		$encoded = wp_json_encode( $registry );
@@ -135,6 +154,12 @@ final class WareRegistry {
 		return (bool) update_option( self::OPTION_KEY, $encoded, false );
 	}
 
+	/**
+	 * Toggle the enabled state of a registered ware.
+	 *
+	 * @param string $slug    Sanitized ware slug.
+	 * @param bool   $enabled Desired enabled state.
+	 */
 	private function set_enabled( string $slug, bool $enabled ): bool {
 		$registry = $this->load();
 		if ( ! isset( $registry[ $slug ] ) ) {
@@ -145,15 +170,17 @@ final class WareRegistry {
 	}
 
 	/**
-	 * @param array<string, mixed> $menu
+	 * Sanitize raw menu configuration from a manifest.
+	 *
+	 * @param array<string, mixed> $menu Raw menu array from manifest.
 	 * @return array<string, mixed>
 	 */
 	private function sanitize_menu( array $menu ): array {
-		return [
+		return array(
 			'title'      => sanitize_text_field( $menu['title'] ?? '' ),
 			'position'   => isset( $menu['position'] ) ? absint( $menu['position'] ) : null,
 			'capability' => sanitize_text_field( $menu['capability'] ?? 'manage_options' ),
 			'parent'     => isset( $menu['parent'] ) ? sanitize_key( $menu['parent'] ) : null,
-		];
+		);
 	}
 }

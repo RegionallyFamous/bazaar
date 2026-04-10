@@ -1,4 +1,9 @@
 <?php
+/**
+ * Menu manager — registers wp-admin pages for enabled wares.
+ *
+ * @package Bazaar
+ */
 
 declare( strict_types=1 );
 
@@ -14,8 +19,14 @@ defined( 'ABSPATH' ) || exit;
  */
 final class MenuManager {
 
+	/** @var WareRegistry Provides the list of installed wares. */
 	private WareRegistry $registry;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param WareRegistry $registry Registry instance.
+	 */
 	public function __construct( WareRegistry $registry ) {
 		$this->registry = $registry;
 	}
@@ -38,10 +49,13 @@ final class MenuManager {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * @param array<string, mixed> $ware
+	 * Add a single ware's wp-admin page (top-level or submenu).
+	 *
+	 * @param string               $slug Ware slug.
+	 * @param array<string, mixed> $ware Ware metadata from the registry.
 	 */
 	private function add_ware_page( string $slug, array $ware ): void {
-		$menu       = $ware['menu'] ?? [];
+		$menu       = $ware['menu'] ?? array();
 		$title      = ! empty( $menu['title'] ) ? $menu['title'] : $ware['name'];
 		$capability = ! empty( $menu['capability'] ) ? $menu['capability'] : 'manage_options';
 		$position   = isset( $menu['position'] ) ? absint( $menu['position'] ) : null;
@@ -81,6 +95,9 @@ final class MenuManager {
 
 	/**
 	 * Resolve the ware's icon to either a data URI (for SVG) or a dashicon string.
+	 *
+	 * @param string $slug      Ware slug (used to build the file path).
+	 * @param string $icon_path Relative icon path from the ware manifest.
 	 */
 	private function resolve_icon( string $slug, string $icon_path ): string {
 		if ( '' === $icon_path ) {
@@ -102,7 +119,7 @@ final class MenuManager {
 			}
 		}
 
-		if ( in_array( $ext, [ 'png', 'jpg', 'jpeg', 'gif', 'webp' ], true ) ) {
+		if ( in_array( $ext, array( 'png', 'jpg', 'jpeg', 'gif', 'webp' ), true ) ) {
 			return esc_url( rest_url( 'bazaar/v1/serve/' . rawurlencode( $slug ) . '/' . rawurlencode( $icon_path ) ) );
 		}
 

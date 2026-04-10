@@ -1,4 +1,9 @@
 <?php
+/**
+ * Ware renderer — outputs the iframe container for a ware page.
+ *
+ * @package Bazaar
+ */
 
 declare( strict_types=1 );
 
@@ -15,9 +20,18 @@ defined( 'ABSPATH' ) || exit;
  */
 final class WareRenderer {
 
+	/** @var string Sanitized slug of the ware to render. */
 	private string $slug;
+
+	/** @var WareRegistry Registry used to look up ware metadata. */
 	private WareRegistry $registry;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param string       $slug     Ware slug (will be sanitized).
+	 * @param WareRegistry $registry Registry instance for ware lookups.
+	 */
 	public function __construct( string $slug, WareRegistry $registry ) {
 		$this->slug     = sanitize_key( $slug );
 		$this->registry = $registry;
