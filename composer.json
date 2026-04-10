@@ -30,7 +30,7 @@
             "@phpstan"
         ],
         "phpcs": "phpcs --standard=phpcs.xml",
-        "phpstan": "phpstan analyse --memory-limit=256M",
+        "phpstan": "phpstan analyse --memory-limit=512M",
         "format": "phpcbf --standard=phpcs.xml",
         "test": "phpunit --configuration=phpunit.xml"
     },

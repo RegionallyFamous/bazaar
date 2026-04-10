@@ -32,7 +32,6 @@ Thumbs.db
 
 # npm
 npm-debug.log*
-package-lock.json
 
 # wp-env
 .wp-env/
