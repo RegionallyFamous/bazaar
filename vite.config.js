@@ -9,6 +9,7 @@ export default defineConfig( {
 		rollupOptions: {
 			input: {
 				bazaar: resolve( __dirname, 'admin/src/main.js' ),
+				shell:  resolve( __dirname, 'admin/src/shell.js' ),
 			},
 			external: [
 				'@wordpress/api-fetch',

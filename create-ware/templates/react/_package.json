@@ -1,0 +1,33 @@
+{
+  "name": "__WARE_SLUG__",
+  "version": "__WARE_VERSION__",
+  "description": "__WARE_DESC__",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev":           "vite",
+    "build":         "tsc -b && vite build",
+    "preview":       "vite preview",
+    "package":       "npm run build && cd dist && zip -r ../../__WARE_SLUG__.wp . && cd .. && echo 'Packaged: __WARE_SLUG__.wp'",
+    "storybook":     "storybook dev -p 6006",
+    "build-storybook":"storybook build"
+  },
+  "dependencies": {
+    "@bazaar/client": "^0.1.0",
+    "react":          "^19.0.0",
+    "react-dom":      "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react":                        "^19.0.0",
+    "@types/react-dom":                   "^19.0.0",
+    "@vitejs/plugin-react":               "^4.3.0",
+    "typescript":                         "^5.7.0",
+    "vite":                               "^6.0.0",
+    "@storybook/addon-a11y":              "^8.0.0",
+    "@storybook/addon-essentials":        "^8.0.0",
+    "@storybook/addon-interactions":      "^8.0.0",
+    "@storybook/react":                   "^8.0.0",
+    "@storybook/react-vite":              "^8.0.0",
+    "storybook":                          "^8.0.0"
+  }
+}

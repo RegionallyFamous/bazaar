@@ -1,0 +1,14 @@
+{
+  "name": "__WARE_NAME__",
+  "slug": "__WARE_SLUG__",
+  "version": "__WARE_VERSION__",
+  "author": "__WARE_AUTHOR__",
+  "description": "__WARE_DESC__",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "menu": {
+    "title": "__WARE_NAME__",
+    "position": 99,
+    "capability": "manage_options"
+  }
+}

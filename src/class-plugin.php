@@ -11,10 +11,26 @@ namespace Bazaar;
 
 defined( 'ABSPATH' ) || exit;
 
+use Bazaar\Blocks\WareBlock;
 use Bazaar\CLI\BazaarCommand;
+use Bazaar\REST\AnalyticsController;
+use Bazaar\REST\AuditController;
+use Bazaar\REST\BadgeController;
+use Bazaar\REST\ConfigController;
+use Bazaar\REST\CspController;
+use Bazaar\REST\ErrorsController;
+use Bazaar\REST\HealthController;
+use Bazaar\REST\JobsController;
+use Bazaar\REST\NonceController;
+use Bazaar\REST\StorageController;
+use Bazaar\REST\StreamController;
 use Bazaar\REST\UploadController;
 use Bazaar\REST\WareController;
 use Bazaar\REST\WareServer;
+use Bazaar\REST\WebhooksController;
+use Bazaar\RemoteRegistry;
+use Bazaar\WareLoader;
+use Bazaar\WareUpdater;
 
 /**
  * Registers all hooks and handles activation/deactivation.
@@ -40,14 +56,28 @@ final class Plugin {
 	private WareRegistry $registry;
 
 	/**
-	 * Registers wp-admin pages for enabled wares. Null on non-admin requests.
+	 * Handles cross-site (multisite) registration.
 	 *
-	 * @var MenuManager|null
+	 * @var Multisite
 	 */
-	private ?MenuManager $menu_manager = null;
+	private Multisite $multisite;
 
 	/**
-	 * Renders the Bazaar marketplace admin page. Null on non-admin requests.
+	 * Handles background auto-update cron jobs. Lazy-initialised.
+	 *
+	 * @var WareUpdater|null
+	 */
+	private ?WareUpdater $updater = null;
+
+	/**
+	 * Single-page shell that hosts all ware iframes. Null on non-admin requests.
+	 *
+	 * @var BazaarShell|null
+	 */
+	private ?BazaarShell $bazaar_shell = null;
+
+	/**
+	 * Hidden manage/marketplace page. Null on non-admin requests.
 	 *
 	 * @var BazaarPage|null
 	 */
@@ -58,7 +88,8 @@ final class Plugin {
 	 * Only WareRegistry is instantiated here; admin-only classes are deferred.
 	 */
 	private function __construct() {
-		$this->registry = new WareRegistry();
+		$this->registry  = new WareRegistry();
+		$this->multisite = new Multisite();
 	}
 
 	/**
@@ -79,16 +110,31 @@ final class Plugin {
 		self::check_environment();
 		self::ensure_wares_directory();
 
-		if ( false === get_option( 'bazaar_registry' ) ) {
-			add_option( 'bazaar_registry', wp_json_encode( array() ), '', false );
+		// Seed the index option on a fresh install.
+		// Migration from bazaar_registry happens lazily in WareRegistry::load_index().
+		if ( false === get_option( 'bazaar_index' ) && false === get_option( 'bazaar_registry' ) ) {
+			add_option( 'bazaar_index', wp_json_encode( array() ), '', false );
+		}
+
+		// Create all DB tables.
+		AnalyticsController::create_table();
+		ErrorsController::create_table();
+		AuditController::create_table();
+
+		// Schedule the auto-update + health-check cron jobs.
+		WareUpdater::schedule();
+		if ( ! wp_next_scheduled( 'bazaar_health_refresh' ) ) {
+			wp_schedule_event( time() + 300, 'bazaar_half_hour', 'bazaar_health_refresh' );
 		}
 	}
 
 	/**
-	 * Plugin deactivation: intentionally a no-op.
-	 * Wares and their data are preserved so re-activating the plugin restores everything.
+	 * Plugin deactivation: unschedule cron jobs but keep all data.
 	 */
-	public static function deactivate(): void {}
+	public static function deactivate(): void {
+		WareUpdater::unschedule();
+	}
+
 
 	// -------------------------------------------------------------------------
 	// Private helpers
@@ -104,6 +150,43 @@ final class Plugin {
 	private function register_hooks(): void {
 		add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
 		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
+		add_action( 'init', array( $this, 'register_block' ) );
+
+		// Custom cron intervals.
+		add_filter(
+			'cron_schedules',
+			static function ( array $schedules ): array {
+				$schedules['bazaar_half_hour'] = array(
+					'interval' => 1800,
+					'display'  => __( 'Every 30 minutes', 'bazaar' ),
+				);
+				return $schedules;
+			}
+		);
+
+		// Health-check cron action.
+		add_action( 'bazaar_health_refresh', array( HealthController::class, 'cron_refresh' ) );
+
+		// Webhook dispatch when bus event fires.
+		add_action( 'bazaar_bus_event', array( WebhooksController::class, 'dispatch' ), 10, 3 );
+
+		// Audit log lifecycle events.
+		add_action( 'bazaar_ware_installed', fn( $slug ) => AuditController::record( $slug, 'install' ) );
+		add_action( 'bazaar_ware_deleted', fn( $slug ) => AuditController::record( $slug, 'uninstall' ) );
+		add_action( 'bazaar_ware_toggled', fn( $slug, $enabled ) => AuditController::record( $slug, $enabled ? 'enable' : 'disable' ), 10, 2 );
+
+		// Multisite support.
+		$this->multisite->register_hooks();
+
+		// Auto-updater cron.
+		$this->updater = new WareUpdater( $this->registry, new RemoteRegistry(), new WareLoader( $this->registry ) );
+		$this->updater->register_hooks();
+
+		// Push SSE events for lifecycle actions (fired by UploadController / WareController).
+		add_action( 'bazaar_ware_installed', array( $this, 'on_ware_installed_sse' ), 10, 2 );
+		add_action( 'bazaar_ware_deleted', array( $this, 'on_ware_deleted_sse' ), 10, 1 );
+		add_action( 'bazaar_ware_toggled', array( $this, 'on_ware_toggled_sse' ), 10, 2 );
+		add_action( 'bazaar_ware_updated', array( $this, 'on_ware_updated_sse' ), 10, 2 );
 
 		if ( defined( 'WP_CLI' ) && \WP_CLI ) {
 			\WP_CLI::add_command( 'bazaar', BazaarCommand::class );
@@ -119,26 +202,93 @@ final class Plugin {
 	}
 
 	/**
-	 * Lazy-initialise admin-only classes and register all admin menu pages.
+	 * Register the bazaar/ware Gutenberg block.
+	 */
+	public function register_block(): void {
+		( new WareBlock() )->register_hooks();
+	}
+
+	// ─── SSE dispatch hooks ───────────────────────────────────────────────────
+
+	/**
+	 * Push an SSE event when a new ware is installed.
+	 *
+	 * @param string               $slug     Installed ware slug.
+	 * @param array<string, mixed> $manifest Installed ware manifest.
+	 */
+	public function on_ware_installed_sse( string $slug, array $manifest ): void {
+		bazaar_push_sse_event(
+			'ware-installed',
+			array(
+				'slug' => $slug,
+				'name' => $manifest['name'] ?? $slug,
+			)
+		);
+	}
+
+	/**
+	 * Push an SSE event when a ware is deleted.
+	 *
+	 * @param string $slug Deleted ware slug.
+	 */
+	public function on_ware_deleted_sse( string $slug ): void {
+		bazaar_push_sse_event( 'ware-deleted', array( 'slug' => $slug ) );
+	}
+
+	/**
+	 * Push an SSE event when a ware is enabled or disabled.
+	 *
+	 * @param string $slug    Ware slug.
+	 * @param bool   $enabled New enabled state.
+	 */
+	public function on_ware_toggled_sse( string $slug, bool $enabled ): void {
+		bazaar_push_sse_event(
+			'ware-toggled',
+			array(
+				'slug'    => $slug,
+				'enabled' => $enabled,
+			)
+		);
+	}
+
+	/**
+	 * Push an SSE event when a ware is updated.
+	 *
+	 * @param string               $slug     Updated ware slug.
+	 * @param array<string, mixed> $manifest Updated ware manifest.
+	 */
+	public function on_ware_updated_sse( string $slug, array $manifest ): void {
+		bazaar_push_sse_event(
+			'ware-updated',
+			array(
+				'slug'    => $slug,
+				'version' => $manifest['version'] ?? '',
+			)
+		);
+	}
+
+	/**
+	 * Register admin pages: the shell (one entry) + the hidden manage page.
+	 * Per-ware menu items are gone — the shell handles navigation client-side.
 	 * Bound to the admin_menu action.
 	 */
 	public function register_admin_menus(): void {
-		$this->menu_manager ??= new MenuManager( $this->registry );
+		$this->bazaar_shell ??= new BazaarShell( $this->registry );
 		$this->bazaar_page  ??= new BazaarPage( $this->registry );
 
-		$this->menu_manager->register();
+		$this->bazaar_shell->register_page();
 		$this->bazaar_page->register_page();
 	}
 
 	/**
-	 * Proxy for BazaarPage::enqueue_assets(), called on admin_enqueue_scripts.
+	 * Enqueue assets for whichever admin page is currently active.
+	 * Bound to admin_enqueue_scripts.
 	 *
 	 * @param string $hook_suffix Current admin page hook suffix.
 	 */
 	public function maybe_enqueue_assets( string $hook_suffix ): void {
-		if ( null !== $this->bazaar_page ) {
-			$this->bazaar_page->enqueue_assets( $hook_suffix );
-		}
+		$this->bazaar_shell?->enqueue_assets( $hook_suffix );
+		$this->bazaar_page?->enqueue_assets( $hook_suffix );
 	}
 
 	/**
@@ -159,6 +309,18 @@ final class Plugin {
 		( new WareServer( $this->registry ) )->register_routes();
 		( new UploadController( $this->registry ) )->register_routes();
 		( new WareController( $this->registry ) )->register_routes();
+		( new BadgeController() )->register_routes();
+		( new StreamController() )->register_routes();
+		( new AnalyticsController() )->register_routes();
+		( new NonceController() )->register_routes();
+		( new StorageController() )->register_routes();
+		( new ConfigController( $this->registry ) )->register_routes();
+		( new WebhooksController() )->register_routes();
+		( new HealthController( $this->registry ) )->register_routes();
+		( new ErrorsController() )->register_routes();
+		( new AuditController() )->register_routes();
+		( new JobsController( $this->registry ) )->register_routes();
+		( new CspController() )->register_routes();
 	}
 
 	/**
@@ -182,26 +344,59 @@ final class Plugin {
 		}
 
 		$htaccess = BAZAAR_WARES_DIR . '.htaccess';
-		if ( ! file_exists( $htaccess ) && ! empty( $wp_filesystem ) ) {
+		if ( ! empty( $wp_filesystem ) ) {
+			// Always write (or overwrite) so the rules stay current even when
+			// the plugin is updated with a changed policy.
 			$wp_filesystem->put_contents(
 				$htaccess,
-				"# Deny direct access — Bazaar serves all ware files through the REST API.\n" .
-				"<IfModule mod_authz_core.c>\n" .
-				"  Require all denied\n" .
-				"</IfModule>\n" .
-				"<IfModule !mod_authz_core.c>\n" .
-				"  Deny from all\n" .
-				"</IfModule>\n\n" .
-				"# Disable PHP execution as a second-layer defence.\n" .
-				"<IfModule mod_php.c>\n" .
-				"  php_flag engine off\n" .
-				"</IfModule>\n" .
-				"<IfModule mod_php8.c>\n" .
-				"  php_flag engine off\n" .
-				"</IfModule>\n",
+				self::htaccess_content(),
 				FS_CHMOD_FILE
 			);
 		}
+	}
+
+	/**
+	 * Build the .htaccess content for wp-content/bazaar/.
+	 *
+	 * Strategy
+	 * ────────
+	 * HTML entry files are served through the authenticated REST endpoint
+	 * (WareServer handles auth + context injection). Everything else
+	 * (JS, CSS, images, fonts, SW) is served directly by the web server —
+	 * there is no sensitive data in compiled assets, and direct serving is
+	 * 10-100× faster than PHP for high-frequency sub-resource requests.
+	 *
+	 * PHP execution is disabled regardless of file extension as a second
+	 * defence-in-depth layer (no .php files should ever be here).
+	 */
+	private static function htaccess_content(): string {
+		return <<<'HTACCESS'
+# -----------------------------------------------------------------------
+# Bazaar wares directory
+#
+# HTML entry points require authentication and are served through the
+# Bazaar REST API.  All other static assets (JS, CSS, images, fonts,
+# service workers) are served directly by Apache for maximum performance.
+# -----------------------------------------------------------------------
+
+# Never execute PHP here.
+<IfModule mod_php.c>
+  php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+  php_flag engine off
+</IfModule>
+
+# Block HTML and PHP files — they must go through the REST file server.
+<FilesMatch "\.(html?|php\d*)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Deny from all
+  </IfModule>
+</FilesMatch>
+HTACCESS;
 	}
 
 	/**

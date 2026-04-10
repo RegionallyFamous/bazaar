@@ -19,8 +19,8 @@ defined( 'ABSPATH' ) || exit;
  */
 final class BazaarPage {
 
-	/** WordPress screen slug for the Bazaar admin page. */
-	private const PAGE_SLUG = 'bazaar';
+	/** WordPress screen slug for the manage (marketplace) admin page. */
+	public const PAGE_SLUG = 'bazaar-manage';
 
 	/** Handle used when enqueuing the admin script. */
 	private const SCRIPT_HANDLE = 'bazaar-admin';
@@ -40,6 +40,15 @@ final class BazaarPage {
 	private string $screen_id = '';
 
 	/**
+	 * Cached result of WareRegistry::get_all(), populated lazily.
+	 * Both enqueue_assets() and render_page() fire on the same request, so
+	 * we only pay the registry-load cost once.
+	 *
+	 * @var array<string, array<string, mixed>>|null
+	 */
+	private ?array $wares = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param WareRegistry $registry Registry instance.
@@ -49,18 +58,18 @@ final class BazaarPage {
 	}
 
 	/**
-	 * Register the Bazaar top-level menu page.
+	 * Register the manage page as a hidden submenu (no sidebar entry).
+	 * Accessible via admin.php?page=bazaar-manage, linked from the shell.
 	 * Bound to the admin_menu action.
 	 */
 	public function register_page(): void {
-		$this->screen_id = (string) add_menu_page(
-			esc_html__( 'Bazaar', 'bazaar' ),
-			esc_html__( 'Bazaar', 'bazaar' ),
+		$this->screen_id = (string) add_submenu_page(
+			'',
+			esc_html__( 'Manage Wares', 'bazaar' ),
+			esc_html__( 'Manage Wares', 'bazaar' ),
 			'manage_options',
 			self::PAGE_SLUG,
-			array( $this, 'render_page' ),
-			'dashicons-store',
-			2
+			array( $this, 'render_page' )
 		);
 	}
 
@@ -92,8 +101,11 @@ final class BazaarPage {
 				array(
 					'restUrl'   => esc_url_raw( rest_url( 'bazaar/v1' ) ),
 					'nonce'     => wp_create_nonce( 'wp_rest' ),
-					'wares'     => $this->registry->get_all(),
+					'wares'     => $this->get_wares(),
 					'maxSizeMb' => absint( get_option( 'bazaar_max_ware_size', BAZAAR_MAX_UNCOMPRESSED_SIZE ) ) / 1024 / 1024,
+					// Tells main.js to emit postMessage events when wares change so
+					// the parent shell can update its nav rail without a page reload.
+					'inShell'   => true,
 				)
 			);
 
@@ -117,7 +129,7 @@ final class BazaarPage {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'bazaar' ) );
 		}
-		$wares    = $this->registry->get_all();
+		$wares    = $this->get_wares();
 		$rest_url = esc_url_raw( rest_url( 'bazaar/v1' ) );
 		require BAZAAR_DIR . 'templates/bazaar-page.php';
 	}
@@ -125,6 +137,18 @@ final class BazaarPage {
 	// -------------------------------------------------------------------------
 	// Private helpers
 	// -------------------------------------------------------------------------
+
+	/**
+	 * Return all installed wares, loading the registry at most once per request.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	private function get_wares(): array {
+		if ( null === $this->wares ) {
+			$this->wares = $this->registry->get_all();
+		}
+		return $this->wares;
+	}
 
 	/**
 	 * Resolve built asset filenames from Vite's manifest.json, falling back

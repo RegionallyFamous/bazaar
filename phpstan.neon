@@ -4,7 +4,9 @@ parameters:
         - bazaar.php
         - src/
     bootstrapFiles:
+        - vendor/szepeviktor/phpstan-wordpress/bootstrap.php
         - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
         - vendor/php-stubs/wp-cli-stubs/wp-cli-stubs.php
         - vendor/php-stubs/wp-cli-stubs/wp-cli-i18n-stubs.php
+        - bazaar.php
     treatPhpDocTypesAsCertain: false

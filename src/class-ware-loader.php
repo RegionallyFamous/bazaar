@@ -13,6 +13,8 @@ defined( 'ABSPATH' ) || exit;
 
 use WP_Error;
 use ZipArchive;
+use Bazaar\WareSigner;
+use Bazaar\WareLicense;
 
 /**
  * Validates and extracts .wp ware archives.
@@ -76,12 +78,50 @@ final class WareLoader {
 			return $manifest;
 		}
 
+		// Optional signature verification.
+		$signer = new WareSigner();
+		$sig_ok = $signer->verify( $tmp_path, $manifest );
+		if ( is_wp_error( $sig_ok ) ) {
+			return $sig_ok;
+		}
+
+		// License gate: if the ware is paid and no key is stored, fail early so
+		// the caller (REST or CLI) can prompt the user for a key.
+		$license_meta = $manifest['license'] ?? array();
+		$type         = $license_meta['type'] ?? 'free';
+		if ( 'key' === $type && ! empty( $license_meta['required'] ) && 'true' === $license_meta['required'] ) {
+			$lic    = new WareLicense();
+			$stored = $lic->get_key( sanitize_key( $manifest['slug'] ) );
+			if ( '' === $stored ) {
+				return new WP_Error(
+					'license_required',
+					sprintf(
+						/* translators: %s: ware name */
+						esc_html__( '"%s" is a paid ware. Provide a license key before installing.', 'bazaar' ),
+						esc_html( $manifest['name'] )
+					)
+				);
+			}
+		}
+
 		$result = $this->extract( $tmp_path, $manifest['slug'] );
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
 
 		return $manifest;
+	}
+
+	/**
+	 * Convenience wrapper: install a .wp archive when the filename equals basename($path).
+	 *
+	 * Used by the bundler, where files are already staged under their final name.
+	 *
+	 * @param string $path Absolute path to the .wp archive.
+	 * @return array<string, mixed>|WP_Error Manifest array on success, WP_Error on failure.
+	 */
+	public function install_from_path( string $path ): array|WP_Error {
+		return $this->install( $path, basename( $path ) );
 	}
 
 	/**

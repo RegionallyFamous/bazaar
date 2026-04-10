@@ -1,0 +1,274 @@
+<?php
+/**
+ * REST controller for ware analytics.
+ *
+ * Records time-in-ware and interaction events to a dedicated DB table.
+ * The shell fires-and-forgets a POST whenever a ware is de-activated.
+ *
+ * Table schema (created in class-plugin.php on activation)
+ * ─────────────────────────────────────────────────────────
+ *   id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY
+ *   slug         VARCHAR(191) NOT NULL
+ *   event_type   VARCHAR(64)  NOT NULL  — 'view' | 'interaction'
+ *   user_id      BIGINT UNSIGNED NOT NULL
+ *   duration_ms  BIGINT UNSIGNED NOT NULL DEFAULT 0
+ *   created_at   DATETIME NOT NULL
+ *
+ * Routes
+ * ──────
+ *   POST /bazaar/v1/analytics          Record an event.
+ *   GET  /bazaar/v1/analytics          Fetch aggregate stats (manage page).
+ *   GET  /bazaar/v1/analytics/{slug}   Fetch stats for a single ware.
+ *
+ * @package Bazaar
+ */
+
+declare( strict_types=1 );
+
+namespace Bazaar\REST;
+
+defined( 'ABSPATH' ) || exit;
+
+use WP_REST_Controller;
+use WP_REST_Server;
+use WP_REST_Request;
+use WP_REST_Response;
+use WP_Error;
+
+/**
+ * Ware analytics REST controller.
+ */
+final class AnalyticsController extends WP_REST_Controller {
+
+	/**
+	 * REST API namespace.
+	 *
+	 * @var string
+	 */
+	protected $namespace = 'bazaar/v1';
+	/**
+	 * Route base (the part after the namespace).
+	 *
+	 * @var string
+	 */
+	protected $rest_base = 'analytics';
+
+	/**
+	 * Register all REST routes for this controller.
+	 */
+	public function register_routes(): void {
+		register_rest_route(
+			$this->namespace,
+			"/{$this->rest_base}",
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'record' ),
+					'permission_callback' => array( $this, 'auth' ),
+					'args'                => array(
+						'slug'        => array(
+							'required'          => true,
+							'type'              => 'string',
+							'sanitize_callback' => 'sanitize_key',
+						),
+						'event'       => array(
+							'required' => false,
+							'type'     => 'string',
+							'default'  => 'view',
+							'enum'     => array( 'view', 'interaction' ),
+						),
+						'duration_ms' => array(
+							'required' => false,
+							'type'     => 'integer',
+							'default'  => 0,
+							'minimum'  => 0,
+						),
+					),
+				),
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_aggregate' ),
+					'permission_callback' => array( $this, 'auth' ),
+				),
+			)
+		);
+
+		register_rest_route(
+			$this->namespace,
+			"/{$this->rest_base}/(?P<slug>[a-z0-9-]+)",
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_ware_stats' ),
+					'permission_callback' => array( $this, 'auth' ),
+				),
+			)
+		);
+	}
+
+	/**
+	 * Permission callback — requires manage_options capability.
+	 *
+	 * @return bool
+	 */
+	public function auth(): bool {
+		return current_user_can( 'manage_options' );
+	}
+
+	/**
+	 * POST /bazaar/v1/analytics
+	 * Record a ware usage event.
+	 *
+	 * @param WP_REST_Request $request REST request.
+	 * @return WP_REST_Response
+	 */
+	public function record( WP_REST_Request $request ): WP_REST_Response {
+		global $wpdb;
+
+		$slug        = sanitize_key( $request->get_param( 'slug' ) );
+		$event_type  = sanitize_text_field( $request->get_param( 'event' ) );
+		$duration_ms = absint( $request->get_param( 'duration_ms' ) );
+
+		if ( '' === $slug ) {
+			return new WP_REST_Response( array( 'error' => 'Invalid slug' ), 400 );
+		}
+
+		$table = $wpdb->prefix . 'bazaar_analytics';
+
+		// Silently ignore if the table doesn't exist yet (e.g. fresh install where
+		// activation hook hasn't run yet in this request).
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$exists = $wpdb->get_var( "SHOW TABLES LIKE '{$table}'" );
+		if ( $table !== $exists ) {
+			return new WP_REST_Response(
+				array(
+					'ok'     => false,
+					'reason' => 'table_missing',
+				),
+				202
+			);
+		}
+
+		$wpdb->insert(
+			$table,
+			array(
+				'slug'        => $slug,
+				'event_type'  => $event_type,
+				'user_id'     => get_current_user_id(),
+				'duration_ms' => $duration_ms,
+				'created_at'  => current_time( 'mysql', true ),
+			),
+			array( '%s', '%s', '%d', '%d', '%s' )
+		);
+
+		return new WP_REST_Response( array( 'ok' => true ), 201 );
+	}
+
+	/**
+	 * GET /bazaar/v1/analytics
+	 * Aggregate stats for all wares: total views, total time, daily active users.
+	 *
+	 * @param WP_REST_Request $request REST request.
+	 * @return WP_REST_Response
+	 */
+	public function get_aggregate( WP_REST_Request $request ): WP_REST_Response {
+		global $wpdb;
+
+		$days  = absint( $request->get_param( 'days' ) ?? 30 );
+		$days  = max( 1, min( $days, 365 ) );
+		$since = gmdate( 'Y-m-d H:i:s', (int) strtotime( "-{$days} days" ) );
+		$table = $wpdb->prefix . 'bazaar_analytics';
+
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT slug,
+			        COUNT(*) AS views,
+			        COALESCE(SUM(duration_ms), 0) AS total_ms,
+			        COUNT(DISTINCT user_id) AS unique_users
+			 FROM {$table}
+			 WHERE event_type = 'view'
+			   AND created_at >= %s
+			 GROUP BY slug
+			 ORDER BY total_ms DESC",
+				$since
+			),
+			ARRAY_A
+		);
+		// phpcs:enable
+
+		return new WP_REST_Response( $rows ?? array(), 200 );
+	}
+
+	/**
+	 * GET /bazaar/v1/analytics/{slug}
+	 * Detailed stats for a single ware: views per day for the past N days.
+	 *
+	 * @param WP_REST_Request $request REST request.
+	 * @return WP_REST_Response
+	 */
+	public function get_ware_stats( WP_REST_Request $request ): WP_REST_Response {
+		global $wpdb;
+
+		$slug  = sanitize_key( $request->get_param( 'slug' ) );
+		$days  = absint( $request->get_param( 'days' ) ?? 30 );
+		$days  = max( 1, min( $days, 365 ) );
+		$since = gmdate( 'Y-m-d H:i:s', (int) strtotime( "-{$days} days" ) );
+		$table = $wpdb->prefix . 'bazaar_analytics';
+
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT DATE(created_at) AS day,
+			        COUNT(*)          AS views,
+			        COALESCE(SUM(duration_ms), 0) AS total_ms
+			 FROM {$table}
+			 WHERE slug = %s
+			   AND event_type = 'view'
+			   AND created_at >= %s
+			 GROUP BY DATE(created_at)
+			 ORDER BY day ASC",
+				$slug,
+				$since
+			),
+			ARRAY_A
+		);
+		// phpcs:enable
+
+		return new WP_REST_Response( $rows ?? array(), 200 );
+	}
+
+	/**
+	 * Create the analytics table. Called on plugin activation.
+	 */
+	public static function create_table(): void {
+		global $wpdb;
+
+		$table           = $wpdb->prefix . 'bazaar_analytics';
+		$charset_collate = $wpdb->get_charset_collate();
+
+		$sql = "CREATE TABLE IF NOT EXISTS {$table} (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			slug VARCHAR(191) NOT NULL,
+			event_type VARCHAR(64) NOT NULL DEFAULT 'view',
+			user_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+			duration_ms BIGINT UNSIGNED NOT NULL DEFAULT 0,
+			created_at DATETIME NOT NULL,
+			PRIMARY KEY (id),
+			KEY slug_created (slug, created_at),
+			KEY user_created (user_id, created_at)
+		) {$charset_collate};";
+
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		dbDelta( $sql );
+	}
+
+	/**
+	 * Drop the analytics table. Called from uninstall.php.
+	 */
+	public static function drop_table(): void {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}bazaar_analytics" );
+	}
+}

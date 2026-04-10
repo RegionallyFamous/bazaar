@@ -1,0 +1,26 @@
+{
+  "name": "create-ware",
+  "version": "0.1.0",
+  "description": "Scaffold a new Bazaar ware project in seconds",
+  "keywords": ["bazaar", "ware", "wordpress", "create", "scaffold"],
+  "license": "GPL-2.0-or-later",
+  "type": "module",
+  "bin": {
+    "create-ware": "./index.mjs"
+  },
+  "files": [
+    "index.mjs",
+    "templates"
+  ],
+  "dependencies": {
+    "@clack/prompts": "^0.9.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nickhblair/bazaar",
+    "directory": "create-ware"
+  }
+}

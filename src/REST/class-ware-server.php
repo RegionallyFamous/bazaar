@@ -264,23 +264,6 @@ final class WareServer {
 			exit;
 		}
 
-		// Read file only after conditional checks pass.
-		global $wp_filesystem;
-		if ( empty( $wp_filesystem ) ) {
-			require_once ABSPATH . 'wp-admin/includes/file.php';
-			WP_Filesystem();
-		}
-		$content = ! empty( $wp_filesystem ) ? $wp_filesystem->get_contents( $full_path ) : false;
-		if ( false === $content ) {
-			return new WP_Error(
-				'file_read_error',
-				esc_html__( 'Could not read file.', 'bazaar' ),
-				array( 'status' => 500 )
-			);
-		}
-
-		header( 'Content-Type: ' . $mime_type );
-		header( 'Content-Length: ' . $file_size );
 		header( 'ETag: ' . $etag );
 		header( 'Last-Modified: ' . $last_modified );
 		header( 'Cache-Control: ' . $this->cache_control( $is_html ) );
@@ -289,14 +272,89 @@ final class WareServer {
 		header( 'Referrer-Policy: same-origin' );
 
 		if ( $is_html ) {
-			// Restrict what the sandboxed ware frame can load, while still allowing
-			// it to make authenticated fetch() calls to the same WordPress origin.
-			header( "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self';" );
+			// CSP — uses per-ware builder config with a mandatory frame-ancestors fallback.
+			$csp = CspController::header_for( $slug );
+			header( "Content-Security-Policy: $csp" );
+
+			// Read HTML into memory — we need to inject the <base href> that
+			// makes Vite's relative asset paths resolve to directly-served static
+			// files at wp-content/bazaar/{slug}/, bypassing PHP for all assets.
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$content = file_get_contents( $full_path );
+			if ( false === $content ) {
+				return new WP_Error( 'file_read_error', esc_html__( 'Could not read file.', 'bazaar' ), array( 'status' => 500 ) );
+			}
+			$content = $this->inject_base_href( $content, $slug );
+			$content = $this->inject_error_reporter( $content );
+			// Inject Vite HMR client only in dev mode.
+			$ware = $this->registry->get( $slug );
+			if ( ! empty( $ware['dev_url'] ) ) {
+				$content = $this->inject_vite_client( $content, (string) $ware['dev_url'] );
+			}
+
+			header( 'Content-Type: ' . $mime_type );
+			// Content-Length changes after injection; omit to avoid truncation.
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			echo $content;
+			exit;
 		}
 
-		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		echo $content;
+		// Non-HTML assets: stream directly without loading into PHP memory.
+		// This avoids exhausting PHP's memory limit for large fonts/images/videos.
+		header( 'Content-Type: ' . $mime_type );
+		header( 'Content-Length: ' . $file_size );
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_readfile,WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- streaming a file directly to the REST response; WP_Filesystem has no equivalent
+		readfile( $full_path );
 		exit;
+	}
+
+	/**
+	 * Inject a tiny error-reporter script so unhandled JS errors in the ware
+	 * are forwarded to the shell via postMessage.
+	 *
+	 * @param string $html Description.
+	 * @return string
+	 */
+	private function inject_error_reporter( string $html ): string {
+		$script = '<script>(function(){' .
+			'window.addEventListener("error",function(e){window.parent.postMessage({type:"bazaar:error",message:e.message,stack:e.error&&e.error.stack||"",url:e.filename},"*")});' .
+			'window.addEventListener("unhandledrejection",function(e){window.parent.postMessage({type:"bazaar:error",message:String(e.reason),stack:"",url:location.href},"*")});' .
+			'})()</script>';
+		return (string) preg_replace( '/(<\/head>)/i', $script . '$1', $html, 1 );
+	}
+
+	/**
+	 * Inject Vite client script in dev mode for HMR.
+	 *
+	 * @param string $html Description.
+	 * @param string $dev_url Description.
+	 * @return string
+	 */
+	private function inject_vite_client( string $html, string $dev_url ): string {
+		$dev_url = esc_url( trailingslashit( $dev_url ) );
+		// phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- injecting a Vite HMR client script directly into a proxied HTML response, wp_enqueue_script() is not applicable here
+		$tag = '<script type="module" src="' . $dev_url . '@vite/client"></script>';
+		return (string) preg_replace( '/(<\/head>)/i', $tag . '$1', $html, 1 );
+	}
+
+	/**
+	 * Inject a <base href> into an HTML document so that Vite's relative asset
+	 * references (./assets/main.js) resolve to the directly-served static path
+	 * (wp-content/bazaar/{slug}/assets/main.js) rather than back through the
+	 * PHP REST router.
+	 *
+	 * Wares must be built with Vite's `base: './'` option for relative paths.
+	 *
+	 * @param string $html Raw HTML content.
+	 * @param string $slug Sanitized ware slug.
+	 * @return string Modified HTML.
+	 */
+	private function inject_base_href( string $html, string $slug ): string {
+		$base = trailingslashit( content_url( 'bazaar/' . $slug ) );
+		$tag  = '<base href="' . esc_attr( $base ) . '">';
+
+		// Insert immediately after the opening <head> tag.
+		return (string) preg_replace( '/(<head\b[^>]*>)/i', '$1' . $tag, $html, 1 );
 	}
 
 	/**

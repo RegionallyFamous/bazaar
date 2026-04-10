@@ -16,9 +16,59 @@
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
-// Remove options.
-delete_option( 'bazaar_registry' );
-delete_option( 'bazaar_max_ware_size' );
+global $wpdb;
+
+// Remove all scalar options.
+$_bazaar_options = array(
+	'bazaar_index',
+	'bazaar_registry',
+	'bazaar_max_ware_size',
+	'bazaar_secret',
+	'bazaar_registry_url',
+	'bazaar_signing_pubkey',
+	'bazaar_enforce_signatures',
+	'bazaar_last_update_check',
+	'bazaar_outdated_wares',
+	'bazaar_site_overrides',
+);
+foreach ( $_bazaar_options as $_opt ) {
+	delete_option( $_opt );
+}
+
+// Remove all per-ware options (bazaar_ware_{slug}).
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+$wpdb->query(
+	$wpdb->prepare(
+		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+		$wpdb->esc_like( 'bazaar_ware_' ) . '%'
+	)
+);
+
+// Remove all per-ware options (bazaar_ware_{slug}, bazaar_license_{slug}, bazaar_badges_{uid}).
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+$wpdb->query(
+	$wpdb->prepare(
+		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+		$wpdb->esc_like( 'bazaar_ware_' ) . '%',
+		$wpdb->esc_like( 'bazaar_license_' ) . '%'
+	)
+);
+// Remove per-user badge transients.
+$wpdb->query(
+	$wpdb->prepare(
+		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+		$wpdb->esc_like( '_transient_bazaar_badges_' ) . '%'
+	)
+);
+// Drop the analytics table.
+$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}bazaar_analytics" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+// phpcs:enable
+
+// Unschedule the update cron job.
+$_ts = wp_next_scheduled( 'bazaar_check_updates' );
+if ( $_ts ) {
+	wp_unschedule_event( $_ts, 'bazaar_check_updates' );
+}
 
 // Remove wp-content/bazaar/ and all installed wares.
 $wares_dir = WP_CONTENT_DIR . '/bazaar/';

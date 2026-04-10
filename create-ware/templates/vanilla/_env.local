@@ -1,0 +1,5 @@
+# Dev mode — fill these in to make @bazaar/client work against your local WordPress.
+# Get a fresh nonce with: wp eval 'echo wp_create_nonce("wp_rest");'
+VITE_WP_NONCE=
+VITE_WP_REST_URL=http://localhost/wp-json
+VITE_BAZAAR_SLUG=__WARE_SLUG__

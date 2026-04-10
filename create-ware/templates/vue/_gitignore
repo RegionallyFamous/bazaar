@@ -1,0 +1,4 @@
+node_modules
+dist
+*.wp
+.env.local

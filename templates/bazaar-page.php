@@ -65,19 +65,53 @@ defined( 'ABSPATH' ) || exit;
 
 	<!-- Installed wares gallery -->
 	<section class="bazaar-gallery-section" aria-labelledby="bazaar-gallery-heading">
-		<h2 id="bazaar-gallery-heading" class="bazaar-section-heading">
-			<?php esc_html_e( 'Installed Wares', 'bazaar' ); ?>
-			<span class="bazaar-ware-count" id="bazaar-ware-count">
-				(<?php echo esc_html( (string) count( $wares ) ); ?>)
-			</span>
-		</h2>
 
-		<?php if ( empty( $wares ) ) : ?>
-			<div class="bazaar-empty" id="bazaar-empty-state">
-				<span class="dashicons dashicons-admin-plugins bazaar-empty__icon" aria-hidden="true"></span>
-				<p><?php esc_html_e( 'No wares installed yet. Upload your first .wp file above.', 'bazaar' ); ?></p>
+		<div class="bazaar-gallery-header">
+			<h2 id="bazaar-gallery-heading" class="bazaar-section-heading">
+				<?php esc_html_e( 'Installed Wares', 'bazaar' ); ?>
+				<span
+					class="bazaar-ware-count"
+					id="bazaar-ware-count"
+					role="status"
+					aria-live="polite"
+					data-count="<?php echo esc_attr( (string) count( $wares ) ); ?>"
+				>(<?php echo esc_html( (string) count( $wares ) ); ?>)</span>
+			</h2>
+
+			<!-- Filter bar — always rendered; hidden until the first ware is installed -->
+			<div class="bazaar-filters" id="bazaar-filters"<?php echo empty( $wares ) ? ' hidden' : ''; ?>>
+				<div
+					class="bazaar-filter-tabs"
+					id="bazaar-filter-tabs"
+					role="tablist"
+					aria-label="<?php esc_attr_e( 'Filter by status', 'bazaar' ); ?>"
+				>
+					<button type="button" role="tab" class="bazaar-filter-tab bazaar-filter-tab--active" data-filter="all" aria-selected="true"><?php esc_html_e( 'All', 'bazaar' ); ?></button>
+					<button type="button" role="tab" class="bazaar-filter-tab" data-filter="enabled" aria-selected="false"><?php esc_html_e( 'Enabled', 'bazaar' ); ?></button>
+					<button type="button" role="tab" class="bazaar-filter-tab" data-filter="disabled" aria-selected="false"><?php esc_html_e( 'Disabled', 'bazaar' ); ?></button>
+				</div>
+				<label for="bazaar-search" class="screen-reader-text"><?php esc_html_e( 'Search wares', 'bazaar' ); ?></label>
+				<input
+					type="search"
+					id="bazaar-search"
+					class="bazaar-search"
+					placeholder="<?php esc_attr_e( 'Search wares…', 'bazaar' ); ?>"
+					aria-controls="bazaar-gallery"
+				>
 			</div>
-		<?php endif; ?>
+		</div>
+
+		<!-- True empty state — no wares installed at all -->
+		<div class="bazaar-empty" id="bazaar-empty-state"<?php echo ! empty( $wares ) ? ' hidden' : ''; ?>>
+			<span class="dashicons dashicons-admin-plugins bazaar-empty__icon" aria-hidden="true"></span>
+			<p><?php esc_html_e( 'No wares installed yet. Upload your first .wp file above.', 'bazaar' ); ?></p>
+		</div>
+
+		<!-- No-results state — wares exist but search/filter returns nothing -->
+		<div class="bazaar-no-results" id="bazaar-no-results" hidden>
+			<span class="dashicons dashicons-search bazaar-empty__icon" aria-hidden="true"></span>
+			<p><?php esc_html_e( 'No wares match your search.', 'bazaar' ); ?></p>
+		</div>
 
 		<div
 			class="bazaar-gallery"
@@ -87,88 +121,89 @@ defined( 'ABSPATH' ) || exit;
 		>
 			<?php foreach ( $wares as $slug => $ware ) : ?>
 				<?php
-				$enabled    = ! empty( $ware['enabled'] );
-				$icon_url   = esc_url(
+				$enabled        = ! empty( $ware['enabled'] );
+				$card_class     = 'bazaar-card' . ( $enabled ? '' : ' bazaar-card--disabled' );
+				$icon_url       = esc_url(
 					rest_url(
 						'bazaar/v1/serve/' . rawurlencode( $slug ) . '/' . rawurlencode( $ware['icon'] ?? 'icon.svg' )
 					)
 				);
-				$card_class = 'bazaar-card' . ( $enabled ? '' : ' bazaar-card--disabled' );
+				$toggle_label   = $enabled
+					? __( 'Disable ware', 'bazaar' )
+					: __( 'Enable ware', 'bazaar' );
+				$delete_confirm = sprintf(
+					/* translators: %s: ware name */
+					__( 'Delete "%s"? This cannot be undone.', 'bazaar' ),
+					$ware['name']
+				);
+				$delete_label = sprintf(
+					/* translators: %s: ware name */
+					__( 'Delete %s', 'bazaar' ),
+					$ware['name']
+				);
 				?>
 				<article
 					class="<?php echo esc_attr( $card_class ); ?>"
 					id="bazaar-card-<?php echo esc_attr( $slug ); ?>"
 					data-slug="<?php echo esc_attr( $slug ); ?>"
+					data-name="<?php echo esc_attr( $ware['name'] ); ?>"
+					data-status="<?php echo $enabled ? 'enabled' : 'disabled'; ?>"
 					role="listitem"
 				>
-					<div class="bazaar-card__icon-wrap">
-						<img
-							src="<?php echo $icon_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already esc_url'd ?>"
-							alt=""
-							class="bazaar-card__icon"
-							width="48"
-							height="48"
-							onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22><rect width=%2220%22 height=%2220%22 rx=%222%22 fill=%22%23ddd%22/></svg>'"
-						>
-					</div>
-					<div class="bazaar-card__body">
-						<h3 class="bazaar-card__name"><?php echo esc_html( $ware['name'] ); ?></h3>
-						<p class="bazaar-card__meta">
-							<span class="bazaar-card__version">v<?php echo esc_html( $ware['version'] ); ?></span>
-							<?php if ( ! empty( $ware['author'] ) ) : ?>
-								<span class="bazaar-card__author">
-									<?php
-									printf(
-										/* translators: %s: author name */
-										esc_html__( 'by %s', 'bazaar' ),
-										esc_html( $ware['author'] )
-									);
-									?>
-								</span>
-							<?php endif; ?>
-						</p>
-						<?php if ( ! empty( $ware['description'] ) ) : ?>
-							<p class="bazaar-card__description"><?php echo esc_html( $ware['description'] ); ?></p>
-						<?php endif; ?>
-					</div>
-					<div class="bazaar-card__actions">
-						<label class="bazaar-toggle" title="<?php echo $enabled ? esc_attr__( 'Disable ware', 'bazaar' ) : esc_attr__( 'Enable ware', 'bazaar' ); ?>">
-							<input
-								type="checkbox"
-								class="bazaar-toggle__input"
-								data-slug="<?php echo esc_attr( $slug ); ?>"
-								data-action="toggle"
-								<?php checked( $enabled ); ?>
-								aria-label="<?php echo $enabled ? esc_attr__( 'Disable ware', 'bazaar' ) : esc_attr__( 'Enable ware', 'bazaar' ); ?>"
+					<div class="bazaar-card__content">
+						<div class="bazaar-card__icon-wrap">
+							<img
+								src="<?php echo $icon_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already esc_url'd ?>"
+								alt=""
+								class="bazaar-card__icon"
+								width="48"
+								height="48"
+								onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22><rect width=%2220%22 height=%2220%22 rx=%222%22 fill=%22%23ddd%22/></svg>'"
 							>
-							<span class="bazaar-toggle__slider" aria-hidden="true"></span>
-						</label>
-						<button
-							type="button"
-							class="button bazaar-card__delete"
-							data-slug="<?php echo esc_attr( $slug ); ?>"
-							data-action="delete"
-							data-confirm="
-							<?php
-								printf(
-									/* translators: %s: ware name */
-									esc_attr__( 'Delete "%s"? This cannot be undone.', 'bazaar' ),
-									esc_attr( $ware['name'] )
-								);
-							?>
-							"
-							aria-label="
-							<?php
-								printf(
-									/* translators: %s: ware name */
-									esc_attr__( 'Delete %s', 'bazaar' ),
-									esc_attr( $ware['name'] )
-								);
-							?>
-							"
-						>
-							<span class="dashicons dashicons-trash" aria-hidden="true"></span>
-						</button>
+						</div>
+						<div class="bazaar-card__body">
+							<h3 class="bazaar-card__name"><?php echo esc_html( $ware['name'] ); ?></h3>
+							<p class="bazaar-card__meta">
+								<span class="bazaar-card__version">v<?php echo esc_html( $ware['version'] ); ?></span>
+								<?php if ( ! empty( $ware['author'] ) ) : ?>
+									<span class="bazaar-card__author">
+										<?php
+										printf(
+											/* translators: %s: author name */
+											esc_html__( 'by %s', 'bazaar' ),
+											esc_html( $ware['author'] )
+										);
+										?>
+									</span>
+								<?php endif; ?>
+							</p>
+							<?php if ( ! empty( $ware['description'] ) ) : ?>
+								<p class="bazaar-card__description"><?php echo esc_html( $ware['description'] ); ?></p>
+							<?php endif; ?>
+						</div>
+						<div class="bazaar-card__actions">
+							<label class="bazaar-toggle" title="<?php echo esc_attr( $toggle_label ); ?>">
+								<input
+									type="checkbox"
+									class="bazaar-toggle__input"
+									data-slug="<?php echo esc_attr( $slug ); ?>"
+									data-action="toggle"
+									<?php checked( $enabled ); ?>
+									aria-label="<?php echo esc_attr( $toggle_label ); ?>"
+								>
+								<span class="bazaar-toggle__slider" aria-hidden="true"></span>
+							</label>
+							<button
+								type="button"
+								class="button bazaar-card__delete"
+								data-slug="<?php echo esc_attr( $slug ); ?>"
+								data-action="delete"
+								data-confirm="<?php echo esc_attr( $delete_confirm ); ?>"
+								aria-label="<?php echo esc_attr( $delete_label ); ?>"
+							>
+								<span class="dashicons dashicons-trash" aria-hidden="true"></span>
+							</button>
+						</div>
 					</div>
 				</article>
 			<?php endforeach; ?>

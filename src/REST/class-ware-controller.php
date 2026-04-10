@@ -59,6 +59,19 @@ final class WareController {
 	 * Register all ware management REST routes.
 	 */
 	public function register_routes(): void {
+		// Index: GET /index — lightweight list for the shell nav rail.
+		register_rest_route(
+			self::NAMESPACE,
+			'/index',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_index' ),
+					'permission_callback' => static fn() => current_user_can( 'manage_options' ),
+				),
+			)
+		);
+
 		// Collection: GET /wares.
 		register_rest_route(
 			self::NAMESPACE,
@@ -131,6 +144,14 @@ final class WareController {
 	}
 
 	/**
+	 * Return the lightweight index — everything the shell nav rail needs,
+	 * without loading full per-ware manifests.
+	 */
+	public function get_index(): WP_REST_Response {
+		return new WP_REST_Response( array_values( $this->registry->get_index() ), 200 );
+	}
+
+	/**
 	 * Return the full list of installed wares, optionally filtered by status.
 	 *
 	 * @param WP_REST_Request $request The incoming REST request.
@@ -154,7 +175,7 @@ final class WareController {
 	 * @param WP_REST_Request $request The incoming REST request.
 	 */
 	public function get_ware( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$slug = sanitize_key( $request->get_param( 'slug' ) );
+		$slug = (string) $request->get_param( 'slug' );
 		$ware = $this->registry->get( $slug );
 
 		if ( null === $ware ) {
@@ -174,7 +195,7 @@ final class WareController {
 	 * @param WP_REST_Request $request The incoming REST request.
 	 */
 	public function toggle( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$slug    = sanitize_key( $request->get_param( 'slug' ) );
+		$slug    = (string) $request->get_param( 'slug' );
 		$enabled = (bool) $request->get_param( 'enabled' );
 
 		if ( null === $this->registry->get( $slug ) ) {
@@ -218,7 +239,7 @@ final class WareController {
 	 * @param WP_REST_Request $request The incoming REST request.
 	 */
 	public function delete( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$slug = sanitize_key( $request->get_param( 'slug' ) );
+		$slug = (string) $request->get_param( 'slug' );
 
 		if ( null === $this->registry->get( $slug ) ) {
 			return new WP_Error(

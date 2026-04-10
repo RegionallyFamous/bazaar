@@ -109,7 +109,7 @@
 	width: 1px;
 	height: 1px;
 	overflow: hidden;
-	clip: rect(0, 0, 0, 0);
+	clip: rect( 0, 0, 0, 0 );
 	white-space: nowrap;
 }
 
@@ -125,6 +125,30 @@
 	border-radius: 3px;
 	width: 0%;
 	transition: width 0.3s ease;
+}
+
+/*
+ * Shimmer variant — used while the server unpacks and installs the archive.
+ * The width is forced to 100 % and a gradient animates left-to-right.
+ */
+.bazaar-upload-progress__bar--indeterminate {
+	width: 100% !important;
+	background: linear-gradient(
+		90deg,
+		#2271b1 0%,
+		#72aee6 50%,
+		#2271b1 100%
+	);
+	background-size: 200% 100%;
+	animation: bazaar-shimmer 1.5s linear infinite;
+	transition: none;
+}
+
+@keyframes bazaar-shimmer {
+
+	0%   { background-position: 200% center; }
+
+	100% { background-position: -200% center; }
 }
 
 .bazaar-upload-progress__label {
@@ -157,8 +181,12 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Gallery section heading
+ * Gallery section header
  * --------------------------------------------------------------------------*/
+
+.bazaar-gallery-header {
+	margin-bottom: 20px;
+}
 
 .bazaar-section-heading {
 	display: flex;
@@ -167,7 +195,7 @@
 	font-size: 18px;
 	font-weight: 600;
 	color: #1d2327;
-	margin: 0 0 20px;
+	margin: 0 0 16px;
 	padding-bottom: 10px;
 	border-bottom: 1px solid #e2e4e7;
 }
@@ -178,9 +206,77 @@
 	color: #8c8f94;
 }
 
-/* Empty state */
+/* ---------------------------------------------------------------------------
+ * Filter bar
+ * --------------------------------------------------------------------------*/
 
-.bazaar-empty {
+.bazaar-filters {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.bazaar-filter-tabs {
+	display: flex;
+	border: 1px solid #e2e4e7;
+	border-radius: 6px;
+	overflow: hidden;
+	flex-shrink: 0;
+}
+
+.bazaar-filter-tab {
+	padding: 5px 14px;
+	font-size: 13px;
+	font-weight: 500;
+	background: #fff;
+	border: none;
+	border-right: 1px solid #e2e4e7;
+	cursor: pointer;
+	color: #50575e;
+	line-height: 1.6;
+	transition: background 0.1s, color 0.1s;
+}
+
+.bazaar-filter-tab:last-child {
+	border-right: none;
+}
+
+.bazaar-filter-tab--active {
+	background: #2271b1;
+	color: #fff;
+}
+
+.bazaar-filter-tab:not( .bazaar-filter-tab--active ):hover {
+	background: #f6f7f7;
+	color: #1d2327;
+}
+
+.bazaar-search {
+	flex: 1;
+	min-width: 140px;
+	max-width: 260px;
+	padding: 4px 10px;
+	font-size: 13px;
+	border: 1px solid #c3c4c7;
+	border-radius: 6px;
+	height: 32px;
+	line-height: 1.4;
+	color: #3c434a;
+}
+
+.bazaar-search:focus {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+	outline: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Empty states
+ * --------------------------------------------------------------------------*/
+
+.bazaar-empty,
+.bazaar-no-results {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -196,9 +292,14 @@
 	height: 48px;
 }
 
-.bazaar-empty p {
+.bazaar-empty p,
+.bazaar-no-results p {
 	margin: 0;
 	font-size: 15px;
+}
+
+.bazaar-no-results {
+	padding: 40px 24px;
 }
 
 /* ---------------------------------------------------------------------------
@@ -211,17 +312,19 @@
 	gap: 20px;
 }
 
+/*
+ * Card uses flex-column so the inline confirm strip can sit below the
+ * main content row without disrupting the icon/body/actions layout.
+ */
 .bazaar-card {
 	display: flex;
-	flex-direction: row;
-	align-items: flex-start;
-	gap: 16px;
-	padding: 20px;
+	flex-direction: column;
 	background: #fff;
 	border: 1px solid #e2e4e7;
 	border-radius: 8px;
 	box-shadow: 0 1px 3px rgba( 0, 0, 0, 0.06 );
 	transition: box-shadow 0.15s, border-color 0.15s;
+	overflow: hidden;
 }
 
 .bazaar-card:hover {
@@ -229,9 +332,92 @@
 	border-color: #c3c4c7;
 }
 
-.bazaar-card--disabled {
+/* Content row: icon + body + actions */
+.bazaar-card__content {
+	display: flex;
+	flex-direction: row;
+	align-items: flex-start;
+	gap: 16px;
+	padding: 20px;
+}
+
+/* Disabled cards dim only the content, not the confirm strip. */
+.bazaar-card--disabled > .bazaar-card__content {
 	opacity: 0.55;
 }
+
+/* Loading state: block further interaction and dim the content */
+.bazaar-card--loading {
+	pointer-events: none;
+}
+
+.bazaar-card--loading > .bazaar-card__content {
+	opacity: 0.5;
+}
+
+/* Card removal animation */
+@keyframes bazaar-card-out {
+
+	to {
+		opacity: 0;
+		transform: scale( 0.97 );
+	}
+}
+
+.bazaar-card--removing {
+	animation: bazaar-card-out 0.2s ease forwards;
+	pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Inline delete confirmation strip
+ * --------------------------------------------------------------------------*/
+
+.bazaar-card__confirm {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 20px;
+	background: #fcf0f1;
+	border-top: 1px solid #f5c6c7;
+	font-size: 13px;
+	animation: bazaar-confirm-in 0.15s ease;
+}
+
+@keyframes bazaar-confirm-in {
+
+	from { opacity: 0; transform: translateY( -4px ); }
+
+	to   { opacity: 1; transform: translateY( 0 ); }
+}
+
+.bazaar-card__confirm-text {
+	flex: 1;
+	font-weight: 500;
+	color: #3c434a;
+}
+
+.bazaar-card__confirm-countdown {
+	font-size: 11px;
+	color: #8c8f94;
+	min-width: 20px;
+	text-align: right;
+}
+
+.bazaar-card__confirm-delete {
+	color: #d63638 !important;
+	border-color: #d63638 !important;
+}
+
+.bazaar-card__confirm-delete:hover,
+.bazaar-card__confirm-delete:focus-visible {
+	background: #d63638 !important;
+	color: #fff !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * Card sub-elements
+ * --------------------------------------------------------------------------*/
 
 .bazaar-card__icon-wrap {
 	flex-shrink: 0;
@@ -341,6 +527,30 @@
 	outline-offset: 2px;
 }
 
+/* Spinner overlay on the toggle knob while a PATCH is in-flight */
+.bazaar-toggle--loading {
+	cursor: wait;
+}
+
+.bazaar-toggle--loading .bazaar-toggle__slider::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 10px;
+	height: 10px;
+	margin: -5px 0 0 -5px;
+	border: 2px solid rgba( 255, 255, 255, 0.4 );
+	border-top-color: #fff;
+	border-radius: 50%;
+	animation: bazaar-spin 0.6s linear infinite;
+}
+
+@keyframes bazaar-spin {
+
+	to { transform: rotate( 360deg ); }
+}
+
 /* Delete button */
 
 .bazaar-card__delete {
@@ -383,7 +593,17 @@
 		grid-template-columns: 1fr;
 	}
 
-	.bazaar-card {
+	.bazaar-card__content {
 		flex-wrap: wrap;
+	}
+
+	.bazaar-filters {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.bazaar-search {
+		max-width: 100%;
+		width: 100%;
 	}
 }
