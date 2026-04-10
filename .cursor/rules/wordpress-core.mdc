@@ -6,7 +6,7 @@ alwaysApply: true
 
 # WordPress Core Standards
 
-Target: PHP 8.1+, WordPress 6.6+, Node 20+, @wordpress/scripts latest, block.json apiVersion 3.
+Target: PHP 8.1+, WordPress 6.6+, Node 24+, @wordpress/scripts latest, block.json apiVersion 3.
 Code must pass PHPCS WordPress-VIP-Go, PHPStan level 6+, and @wordpress/eslint-plugin.
 
 ## SECURITY — sanitize early, escape late
@@ -189,7 +189,7 @@ function my_plugin_get_data( string $key ): array {
 ## STRUCTURE
 
 - Top of every PHP file: `defined( 'ABSPATH' ) || exit;`
-- Namespace everything: `Acme\MyPlugin\…` with PSR-4 autoload via Composer
+- Namespace everything: `Acme\MyPlugin\…`. Use classmap autoload (not PSR-4) — WordPress requires `class-*.php` file naming which is incompatible with PSR-4's directory-mirrors-namespace convention
 - Hooks register in `Plugin::register_hooks()` or per-feature `register()` methods — no scattered `add_action`
 - One responsibility per file
 - Never modify core, parent themes, or third-party plugins — extend via hooks
