@@ -19,7 +19,11 @@ defined( 'ABSPATH' ) || exit;
  */
 final class MenuManager {
 
-	/** @var WareRegistry Provides the list of installed wares. */
+	/**
+	 * Provides the list of installed wares.
+	 *
+	 * @var WareRegistry
+	 */
 	private WareRegistry $registry;
 
 	/**

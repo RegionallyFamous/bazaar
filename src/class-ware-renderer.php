@@ -20,10 +20,18 @@ defined( 'ABSPATH' ) || exit;
  */
 final class WareRenderer {
 
-	/** @var string Sanitized slug of the ware to render. */
+	/**
+	 * Sanitized slug of the ware to render.
+	 *
+	 * @var string
+	 */
 	private string $slug;
 
-	/** @var WareRegistry Registry used to look up ware metadata. */
+	/**
+	 * Registry used to look up ware metadata.
+	 *
+	 * @var WareRegistry
+	 */
 	private WareRegistry $registry;
 
 	/**

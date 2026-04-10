@@ -5,6 +5,8 @@
  * Available variables (set by BazaarPage::render_page()):
  *   array<string, array<string, mixed>> $wares     All installed wares from the registry.
  *   string                              $rest_url  Base REST URL for bazaar/v1.
+ *
+ * @package Bazaar
  */
 
 defined( 'ABSPATH' ) || exit;

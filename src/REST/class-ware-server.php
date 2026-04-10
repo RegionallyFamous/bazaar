@@ -1,4 +1,9 @@
 <?php
+/**
+ * Ware server — serves ware static files through an authenticated REST endpoint.
+ *
+ * @package Bazaar
+ */
 
 declare( strict_types=1 );
 
@@ -22,10 +27,11 @@ use WP_REST_Server;
  */
 final class WareServer {
 
+	/** REST API namespace for all Bazaar routes. */
 	private const NAMESPACE = 'bazaar/v1';
 
 	/** MIME types served for common static asset extensions. */
-	private const MIME_MAP = [
+	private const MIME_MAP = array(
 		'html'  => 'text/html; charset=UTF-8',
 		'htm'   => 'text/html; charset=UTF-8',
 		'css'   => 'text/css',
@@ -49,48 +55,63 @@ final class WareServer {
 		'xml'   => 'application/xml',
 		'pdf'   => 'application/pdf',
 		'zip'   => 'application/zip',
-	];
+	);
 
+	/**
+	 * Registry used to verify ware existence and permissions.
+	 *
+	 * @var WareRegistry
+	 */
 	private WareRegistry $registry;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param WareRegistry $registry Registry instance.
+	 */
 	public function __construct( WareRegistry $registry ) {
 		$this->registry = $registry;
 	}
 
+	/**
+	 * Register the file-serve REST route.
+	 */
 	public function register_routes(): void {
 		register_rest_route(
 			self::NAMESPACE,
 			'/serve/(?P<slug>[a-z0-9-]+)/(?P<file>.+)',
-			[
+			array(
 				'methods'             => WP_REST_Server::READABLE,
-				'callback'            => [ $this, 'serve_file' ],
-				'permission_callback' => [ $this, 'check_permission' ],
-				'args'                => [
-					'slug' => [
+				'callback'            => array( $this, 'serve_file' ),
+				'permission_callback' => array( $this, 'check_permission' ),
+				'args'                => array(
+					'slug' => array(
 						'type'              => 'string',
 						'required'          => true,
 						'sanitize_callback' => 'sanitize_key',
-					],
-					'file' => [
+					),
+					'file' => array(
 						'type'              => 'string',
 						'required'          => true,
 						'sanitize_callback' => static fn( string $v ) => ltrim( $v, '/' ),
 						'validate_callback' => static fn( string $v ) => ! str_contains( $v, '..' ),
-					],
-				],
-			]
+					),
+				),
+			)
 		);
 	}
 
 	/**
 	 * Permission callback: user must be logged in and have the ware's required capability.
+	 *
+	 * @param WP_REST_Request $request The incoming REST request.
 	 */
 	public function check_permission( WP_REST_Request $request ): bool|WP_Error {
 		if ( ! is_user_logged_in() ) {
 			return new WP_Error(
 				'rest_forbidden',
 				esc_html__( 'You must be logged in to access ware files.', 'bazaar' ),
-				[ 'status' => 401 ]
+				array( 'status' => 401 )
 			);
 		}
 
@@ -101,7 +122,7 @@ final class WareServer {
 			return new WP_Error(
 				'ware_not_found',
 				esc_html__( 'Ware not found.', 'bazaar' ),
-				[ 'status' => 404 ]
+				array( 'status' => 404 )
 			);
 		}
 
@@ -109,7 +130,7 @@ final class WareServer {
 			return new WP_Error(
 				'ware_disabled',
 				esc_html__( 'This ware is currently disabled.', 'bazaar' ),
-				[ 'status' => 403 ]
+				array( 'status' => 403 )
 			);
 		}
 
@@ -118,7 +139,7 @@ final class WareServer {
 			return new WP_Error(
 				'rest_forbidden',
 				esc_html__( 'You do not have permission to access this ware.', 'bazaar' ),
-				[ 'status' => 403 ]
+				array( 'status' => 403 )
 			);
 		}
 
@@ -127,6 +148,8 @@ final class WareServer {
 
 	/**
 	 * Serve the requested file directly — bypasses the REST JSON response system.
+	 *
+	 * @param WP_REST_Request $request The incoming REST request.
 	 */
 	public function serve_file( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$slug      = sanitize_key( $request->get_param( 'slug' ) );
@@ -137,7 +160,7 @@ final class WareServer {
 			return new WP_Error(
 				'path_traversal',
 				esc_html__( 'Invalid file path.', 'bazaar' ),
-				[ 'status' => 400 ]
+				array( 'status' => 400 )
 			);
 		}
 
@@ -149,7 +172,7 @@ final class WareServer {
 			return new WP_Error(
 				'file_not_found',
 				esc_html__( 'File not found.', 'bazaar' ),
-				[ 'status' => 404 ]
+				array( 'status' => 404 )
 			);
 		}
 
@@ -157,7 +180,7 @@ final class WareServer {
 			return new WP_Error(
 				'path_traversal',
 				esc_html__( 'Invalid file path.', 'bazaar' ),
-				[ 'status' => 400 ]
+				array( 'status' => 400 )
 			);
 		}
 
@@ -165,7 +188,7 @@ final class WareServer {
 			return new WP_Error(
 				'file_not_found',
 				esc_html__( 'File not found.', 'bazaar' ),
-				[ 'status' => 404 ]
+				array( 'status' => 404 )
 			);
 		}
 
@@ -177,7 +200,7 @@ final class WareServer {
 			return new WP_Error(
 				'file_read_error',
 				esc_html__( 'Could not read file.', 'bazaar' ),
-				[ 'status' => 500 ]
+				array( 'status' => 500 )
 			);
 		}
 

@@ -1,4 +1,9 @@
 <?php
+/**
+ * Bazaar admin page — registers and renders the marketplace UI.
+ *
+ * @package Bazaar
+ */
 
 declare( strict_types=1 );
 
@@ -14,17 +19,31 @@ defined( 'ABSPATH' ) || exit;
  */
 final class BazaarPage {
 
-	/** WordPress screen ID for the Bazaar admin page. */
+	/** WordPress screen slug for the Bazaar admin page. */
 	private const PAGE_SLUG = 'bazaar';
 
 	/** Handle used when enqueuing the admin script. */
 	private const SCRIPT_HANDLE = 'bazaar-admin';
 
+	/**
+	 * Provides installed-ware data for the page.
+	 *
+	 * @var WareRegistry
+	 */
 	private WareRegistry $registry;
 
-	/** Screen ID returned by add_menu_page(), populated after admin_menu fires. */
+	/**
+	 * Screen ID returned by add_menu_page(), populated after admin_menu fires.
+	 *
+	 * @var string
+	 */
 	private string $screen_id = '';
 
+	/**
+	 * Constructor.
+	 *
+	 * @param WareRegistry $registry Registry instance.
+	 */
 	public function __construct( WareRegistry $registry ) {
 		$this->registry = $registry;
 	}
@@ -39,7 +58,7 @@ final class BazaarPage {
 			esc_html__( 'Bazaar', 'bazaar' ),
 			'manage_options',
 			self::PAGE_SLUG,
-			[ $this, 'render_page' ],
+			array( $this, 'render_page' ),
 			'dashicons-store',
 			2
 		);
@@ -56,13 +75,13 @@ final class BazaarPage {
 			return;
 		}
 
-		[ $js_file, $css_file, $version ] = $this->resolve_assets();
+		list( $js_file, $css_file, $version ) = $this->resolve_assets();
 
 		if ( '' !== $js_file ) {
 			wp_enqueue_script(
 				self::SCRIPT_HANDLE,
 				BAZAAR_URL . 'admin/dist/' . $js_file,
-				[ 'wp-api-fetch' ],
+				array( 'wp-api-fetch' ),
 				$version,
 				true
 			);
@@ -70,12 +89,12 @@ final class BazaarPage {
 			wp_localize_script(
 				self::SCRIPT_HANDLE,
 				'bazaarData',
-				[
+				array(
 					'restUrl'   => esc_url_raw( rest_url( 'bazaar/v1' ) ),
 					'nonce'     => wp_create_nonce( 'wp_rest' ),
 					'wares'     => $this->registry->get_all(),
 					'maxSizeMb' => absint( get_option( 'bazaar_max_ware_size', BAZAAR_MAX_UNCOMPRESSED_SIZE ) ) / 1024 / 1024,
-				]
+				)
 			);
 
 			wp_set_script_translations( self::SCRIPT_HANDLE, 'bazaar', BAZAAR_DIR . 'languages' );
@@ -85,7 +104,7 @@ final class BazaarPage {
 			wp_enqueue_style(
 				self::SCRIPT_HANDLE,
 				BAZAAR_URL . 'admin/dist/' . $css_file,
-				[],
+				array(),
 				$version
 			);
 		}
@@ -121,19 +140,19 @@ final class BazaarPage {
 			$manifest = is_string( $raw ) ? json_decode( $raw, true ) : null;
 
 			if ( is_array( $manifest ) ) {
-				$entry    = $manifest['admin/src/main.js'] ?? [];
+				$entry    = $manifest['admin/src/main.js'] ?? array();
 				$js_file  = $entry['file'] ?? '';
 				$css_file = $entry['css'][0] ?? '';
 				$version  = BAZAAR_VERSION;
-				return [ $js_file, $css_file, $version ];
+				return array( $js_file, $css_file, $version );
 			}
 		}
 
 		// Dev fallback — Vite outputs plain names when building without hashing.
 		if ( file_exists( BAZAAR_DIR . 'admin/dist/bazaar.js' ) ) {
-			return [ 'bazaar.js', 'bazaar.css', BAZAAR_VERSION ];
+			return array( 'bazaar.js', 'bazaar.css', BAZAAR_VERSION );
 		}
 
-		return [ '', '', '' ];
+		return array( '', '', '' );
 	}
 }

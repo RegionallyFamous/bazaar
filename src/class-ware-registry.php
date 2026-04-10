@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class WareRegistry {
 
-	/** @var string WordPress option key used to persist the registry. */
+	/** WordPress option key used to persist the registry. */
 	private const OPTION_KEY = 'bazaar_registry';
 
 	// -------------------------------------------------------------------------

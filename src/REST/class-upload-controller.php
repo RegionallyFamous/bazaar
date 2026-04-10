@@ -1,4 +1,9 @@
 <?php
+/**
+ * Upload controller — handles .wp ware file uploads via REST.
+ *
+ * @package Bazaar
+ */
 
 declare( strict_types=1 );
 
@@ -22,30 +27,52 @@ use WP_REST_Server;
  */
 final class UploadController {
 
+	/** REST API namespace for all Bazaar routes. */
 	private const NAMESPACE = 'bazaar/v1';
 
+	/**
+	 * Registry used to store the installed ware.
+	 *
+	 * @var WareRegistry
+	 */
 	private WareRegistry $registry;
+
+	/**
+	 * Loader used to validate and extract the archive.
+	 *
+	 * @var WareLoader
+	 */
 	private WareLoader $loader;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param WareRegistry $registry Registry instance.
+	 */
 	public function __construct( WareRegistry $registry ) {
 		$this->registry = $registry;
 		$this->loader   = new WareLoader( $registry );
 	}
 
+	/**
+	 * Register the upload REST route.
+	 */
 	public function register_routes(): void {
 		register_rest_route(
 			self::NAMESPACE,
 			'/wares',
-			[
+			array(
 				'methods'             => WP_REST_Server::CREATABLE,
-				'callback'            => [ $this, 'handle_upload' ],
+				'callback'            => array( $this, 'handle_upload' ),
 				'permission_callback' => static fn() => current_user_can( 'manage_options' ),
-			]
+			)
 		);
 	}
 
 	/**
 	 * Process an uploaded .wp file.
+	 *
+	 * @param WP_REST_Request $request The incoming REST request.
 	 */
 	public function handle_upload( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$files = $request->get_file_params();
@@ -54,7 +81,7 @@ final class UploadController {
 			return new WP_Error(
 				'no_file',
 				esc_html__( 'No file was uploaded. Send the .wp file as a multipart field named "file".', 'bazaar' ),
-				[ 'status' => 400 ]
+				array( 'status' => 400 )
 			);
 		}
 
@@ -63,12 +90,12 @@ final class UploadController {
 		if ( UPLOAD_ERR_OK !== $file['error'] ) {
 			return new WP_Error(
 				'upload_error',
-				/* translators: %d: PHP upload error code */
 				sprintf(
+					/* translators: %d: PHP upload error code */
 					esc_html__( 'Upload failed with error code %d.', 'bazaar' ),
 					absint( $file['error'] )
 				),
-				[ 'status' => 400 ]
+				array( 'status' => 400 )
 			);
 		}
 
@@ -78,7 +105,7 @@ final class UploadController {
 		);
 
 		if ( is_wp_error( $manifest ) ) {
-			$manifest->add_data( [ 'status' => 422 ] );
+			$manifest->add_data( array( 'status' => 422 ) );
 			return $manifest;
 		}
 
@@ -87,14 +114,14 @@ final class UploadController {
 			return new WP_Error(
 				'registry_failed',
 				esc_html__( 'Ware was installed but could not be added to the registry.', 'bazaar' ),
-				[ 'status' => 500 ]
+				array( 'status' => 500 )
 			);
 		}
 
 		$ware = $this->registry->get( $manifest['slug'] );
 
 		return new WP_REST_Response(
-			[
+			array(
 				'success' => true,
 				'message' => sprintf(
 					/* translators: %s: ware display name */
@@ -102,7 +129,7 @@ final class UploadController {
 					esc_html( $manifest['name'] )
 				),
 				'ware'    => $ware,
-			],
+			),
 			201
 		);
 	}

@@ -15,22 +15,39 @@ use Bazaar\CLI\BazaarCommand;
 use Bazaar\REST\UploadController;
 use Bazaar\REST\WareController;
 use Bazaar\REST\WareServer;
+use WP_CLI;
 
 /**
  * Registers all hooks and handles activation/deactivation.
  */
 final class Plugin {
 
-	/** @var self|null Singleton instance, null before first boot(). */
+	/**
+	 * Singleton instance, null before first boot().
+	 *
+	 * @var self|null
+	 */
 	private static ?self $instance = null;
 
-	/** @var WareRegistry Holds installed-ware metadata. */
+	/**
+	 * Holds installed-ware metadata.
+	 *
+	 * @var WareRegistry
+	 */
 	private WareRegistry $registry;
 
-	/** @var MenuManager Registers wp-admin pages for enabled wares. */
+	/**
+	 * Registers wp-admin pages for enabled wares.
+	 *
+	 * @var MenuManager
+	 */
 	private MenuManager $menu_manager;
 
-	/** @var BazaarPage Renders the Bazaar marketplace admin page. */
+	/**
+	 * Renders the Bazaar marketplace admin page.
+	 *
+	 * @var BazaarPage
+	 */
 	private BazaarPage $bazaar_page;
 
 	/**

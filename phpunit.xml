@@ -2,7 +2,6 @@
 <phpunit
     bootstrap="tests/php/bootstrap.php"
     colors="true"
-    verbose="true"
 >
     <testsuites>
         <testsuite name="unit">

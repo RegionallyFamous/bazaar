@@ -1,4 +1,9 @@
 <?php
+/**
+ * Bazaar WP-CLI command — manage wares from the command line.
+ *
+ * @package Bazaar
+ */
 
 declare( strict_types=1 );
 
@@ -29,9 +34,23 @@ use WP_CLI\Utils;
  */
 final class BazaarCommand {
 
+	/**
+	 * Registry used for all ware lookups and state changes.
+	 *
+	 * @var WareRegistry
+	 */
 	private WareRegistry $registry;
+
+	/**
+	 * Loader used for install, validate, and delete operations.
+	 *
+	 * @var WareLoader
+	 */
 	private WareLoader $loader;
 
+	/**
+	 * Constructor — wires up registry and loader.
+	 */
 	public function __construct() {
 		$this->registry = new WareRegistry();
 		$this->loader   = new WareLoader( $this->registry );
@@ -79,8 +98,8 @@ final class BazaarCommand {
 	 * @subcommand list
 	 * @when after_wp_load
 	 *
-	 * @param list<string>         $args
-	 * @param array<string, mixed> $assoc_args
+	 * @param string[]             $args       Positional arguments (unused).
+	 * @param array<string, mixed> $assoc_args Named flags passed by WP-CLI.
 	 */
 	public function list_wares( array $args, array $assoc_args ): void {
 		$status = Utils\get_flag_value( $assoc_args, 'status', 'all' );
@@ -98,18 +117,18 @@ final class BazaarCommand {
 		}
 
 		$rows = array_map(
-			static fn( $w ) => [
+			static fn( $w ) => array(
 				'slug'      => $w['slug'],
 				'name'      => $w['name'],
 				'version'   => $w['version'],
 				'author'    => $w['author'] ?? '',
 				'status'    => ! empty( $w['enabled'] ) ? 'enabled' : 'disabled',
 				'installed' => $w['installed'] ?? '',
-			],
+			),
 			$wares
 		);
 
-		$default_fields = [ 'slug', 'name', 'version', 'author', 'status' ];
+		$default_fields = array( 'slug', 'name', 'version', 'author', 'status' );
 		$fields         = Utils\get_flag_value( $assoc_args, 'fields', implode( ',', $default_fields ) );
 
 		Utils\format_items(
@@ -142,8 +161,8 @@ final class BazaarCommand {
 	 *
 	 * @when after_wp_load
 	 *
-	 * @param list<string>         $args
-	 * @param array<string, mixed> $assoc_args
+	 * @param string[]             $args       Positional arguments: $args[0] is the .wp file path.
+	 * @param array<string, mixed> $assoc_args Named flags passed by WP-CLI (--force).
 	 */
 	public function install( array $args, array $assoc_args ): void {
 		if ( empty( $args[0] ) ) {
@@ -212,10 +231,9 @@ final class BazaarCommand {
 	 *
 	 * @when after_wp_load
 	 *
-	 * @param list<string>         $args
-	 * @param array<string, mixed> $assoc_args
+	 * @param string[] $args Positional arguments: $args[0] is the ware slug.
 	 */
-	public function enable( array $args, array $assoc_args ): void {
+	public function enable( array $args ): void {
 		$slug = sanitize_key( $args[0] ?? '' );
 		if ( '' === $slug ) {
 			WP_CLI::error( 'Please provide a ware slug.' );
@@ -250,10 +268,9 @@ final class BazaarCommand {
 	 *
 	 * @when after_wp_load
 	 *
-	 * @param list<string>         $args
-	 * @param array<string, mixed> $assoc_args
+	 * @param string[] $args Positional arguments: $args[0] is the ware slug.
 	 */
-	public function disable( array $args, array $assoc_args ): void {
+	public function disable( array $args ): void {
 		$slug = sanitize_key( $args[0] ?? '' );
 		if ( '' === $slug ) {
 			WP_CLI::error( 'Please provide a ware slug.' );
@@ -292,8 +309,8 @@ final class BazaarCommand {
 	 *
 	 * @when after_wp_load
 	 *
-	 * @param list<string>         $args
-	 * @param array<string, mixed> $assoc_args
+	 * @param string[]             $args       Positional arguments: $args[0] is the ware slug.
+	 * @param array<string, mixed> $assoc_args Named flags passed by WP-CLI (--yes).
 	 */
 	public function delete( array $args, array $assoc_args ): void {
 		$slug = sanitize_key( $args[0] ?? '' );
@@ -346,8 +363,8 @@ final class BazaarCommand {
 	 *
 	 * @when after_wp_load
 	 *
-	 * @param list<string>         $args
-	 * @param array<string, mixed> $assoc_args
+	 * @param string[]             $args       Positional arguments: $args[0] is the ware slug.
+	 * @param array<string, mixed> $assoc_args Named flags passed by WP-CLI (--format).
 	 */
 	public function info( array $args, array $assoc_args ): void {
 		$slug = sanitize_key( $args[0] ?? '' );
@@ -362,49 +379,49 @@ final class BazaarCommand {
 
 		$format = Utils\get_flag_value( $assoc_args, 'format', 'table' );
 
-		$rows = [
-			[
+		$rows = array(
+			array(
 				'Field' => 'slug',
 				'Value' => $ware['slug'],
-			],
-			[
+			),
+			array(
 				'Field' => 'name',
 				'Value' => $ware['name'],
-			],
-			[
+			),
+			array(
 				'Field' => 'version',
 				'Value' => $ware['version'],
-			],
-			[
+			),
+			array(
 				'Field' => 'author',
 				'Value' => $ware['author'] ?? '',
-			],
-			[
+			),
+			array(
 				'Field' => 'description',
 				'Value' => $ware['description'] ?? '',
-			],
-			[
+			),
+			array(
 				'Field' => 'status',
 				'Value' => ! empty( $ware['enabled'] ) ? 'enabled' : 'disabled',
-			],
-			[
+			),
+			array(
 				'Field' => 'entry',
 				'Value' => $ware['entry'] ?? 'index.html',
-			],
-			[
+			),
+			array(
 				'Field' => 'menu_title',
 				'Value' => $ware['menu']['title'] ?? '',
-			],
-			[
+			),
+			array(
 				'Field' => 'capability',
 				'Value' => $ware['menu']['capability'] ?? 'manage_options',
-			],
-			[
+			),
+			array(
 				'Field' => 'installed',
 				'Value' => $ware['installed'] ?? '',
-			],
-		];
+			),
+		);
 
-		Utils\format_items( $format, $rows, [ 'Field', 'Value' ] );
+		Utils\format_items( $format, $rows, array( 'Field', 'Value' ) );
 	}
 }

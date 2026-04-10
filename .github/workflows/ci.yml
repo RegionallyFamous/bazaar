@@ -52,19 +52,19 @@ jobs:
         run: composer test
 
   # ---------------------------------------------------------------------------
-  # JS — lint + build + test (Node 20)
+  # JS — lint + build + test (Node 24)
   # ---------------------------------------------------------------------------
   js:
-    name: JS / Node 20
+    name: JS / Node 24
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node 20
+      - name: Set up Node 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install npm dependencies

@@ -5,6 +5,8 @@
  * Available variables (set by WareRenderer::render()):
  *   string $ware_url  Authenticated REST URL to the ware's entry file.
  *   string $name      Human-readable ware name.
+ *
+ * @package Bazaar
  */
 
 defined( 'ABSPATH' ) || exit;

@@ -1,4 +1,9 @@
 <?php
+/**
+ * Ware loader — validates and installs .wp archive files.
+ *
+ * @package Bazaar
+ */
 
 declare( strict_types=1 );
 
@@ -20,10 +25,20 @@ use ZipArchive;
 final class WareLoader {
 
 	/** File extensions that are never allowed inside a .wp archive. */
-	private const FORBIDDEN_EXTENSIONS = [ 'php', 'phtml', 'phar', 'php3', 'php4', 'php5', 'php7', 'phps' ];
+	private const FORBIDDEN_EXTENSIONS = array( 'php', 'phtml', 'phar', 'php3', 'php4', 'php5', 'php7', 'phps' );
 
+	/**
+	 * Registry used to check slug uniqueness and update state.
+	 *
+	 * @var WareRegistry
+	 */
 	private WareRegistry $registry;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param WareRegistry $registry Registry instance.
+	 */
 	public function __construct( WareRegistry $registry ) {
 		$this->registry = $registry;
 	}
@@ -81,7 +96,8 @@ final class WareLoader {
 
 		// 3. No PHP files + collect uncompressed size.
 		$total_size = 0;
-		for ( $i = 0; $i < $zip->numFiles; $i++ ) {
+		$file_count = $zip->count();
+		for ( $i = 0; $i < $file_count; $i++ ) {
 			$stat = $zip->statIndex( $i );
 			if ( false === $stat ) {
 				continue;
@@ -91,8 +107,8 @@ final class WareLoader {
 				$zip->close();
 				return new WP_Error(
 					'php_not_allowed',
-					/* translators: %s: filename found inside the archive */
 					sprintf(
+						/* translators: %s: filename found inside the archive */
 						esc_html__( 'PHP files are not allowed inside a ware archive. Found: %s', 'bazaar' ),
 						esc_html( $stat['name'] )
 					)
@@ -137,13 +153,13 @@ final class WareLoader {
 		}
 
 		// 7. Required fields.
-		foreach ( [ 'name', 'slug', 'version' ] as $field ) {
+		foreach ( array( 'name', 'slug', 'version' ) as $field ) {
 			if ( empty( $manifest[ $field ] ) || ! is_string( $manifest[ $field ] ) ) {
 				$zip->close();
 				return new WP_Error(
 					'missing_manifest_field',
-					/* translators: %s: field name */
 					sprintf(
+						/* translators: %s: field name */
 						esc_html__( 'manifest.json is missing required field: %s', 'bazaar' ),
 						esc_html( $field )
 					)
@@ -165,8 +181,8 @@ final class WareLoader {
 			$zip->close();
 			return new WP_Error(
 				'slug_exists',
-				/* translators: %s: ware slug */
 				sprintf(
+					/* translators: %s: ware slug */
 					esc_html__( 'A ware with slug "%s" is already installed. Delete it before re-uploading.', 'bazaar' ),
 					esc_html( $manifest['slug'] )
 				)
@@ -179,8 +195,8 @@ final class WareLoader {
 			$zip->close();
 			return new WP_Error(
 				'missing_entry',
-				/* translators: %s: entry filename from manifest.json */
 				sprintf(
+					/* translators: %s: entry filename from manifest.json */
 					esc_html__( 'Entry file "%s" not found in archive.', 'bazaar' ),
 					esc_html( $entry )
 				)
@@ -194,6 +210,7 @@ final class WareLoader {
 	/**
 	 * Remove an installed ware's files from disk.
 	 *
+	 * @param string $slug Ware slug whose files should be deleted.
 	 * @return true|WP_Error
 	 */
 	public function delete( string $slug ): bool|WP_Error {
@@ -212,8 +229,8 @@ final class WareLoader {
 		if ( ! $filesystem->delete( $ware_dir, true ) ) {
 			return new WP_Error(
 				'delete_failed',
-				/* translators: %s: ware slug */
 				sprintf(
+					/* translators: %s: ware slug */
 					esc_html__( 'Could not delete ware files for "%s".', 'bazaar' ),
 					esc_html( $slug )
 				)
@@ -230,6 +247,8 @@ final class WareLoader {
 	/**
 	 * Extract the ZIP archive to wp-content/bazaar/{slug}/ using WP_Filesystem.
 	 *
+	 * @param string $tmp_path Absolute path to the uploaded ZIP file.
+	 * @param string $slug     Sanitized ware slug used as the destination directory name.
 	 * @return true|WP_Error
 	 */
 	private function extract( string $tmp_path, string $slug ): bool|WP_Error {

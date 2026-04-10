@@ -378,6 +378,7 @@
  * --------------------------------------------------------------------------*/
 
 @media ( max-width: 600px ) {
+
 	.bazaar-gallery {
 		grid-template-columns: 1fr;
 	}

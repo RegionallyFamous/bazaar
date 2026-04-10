@@ -11,6 +11,8 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       bazaar
  * Domain Path:       /languages
+ *
+ * @package Bazaar
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -33,7 +35,7 @@ if ( file_exists( BAZAAR_DIR . 'vendor/autoload.php' ) ) {
 
 use Bazaar\Plugin;
 
-register_activation_hook( BAZAAR_FILE, [ Plugin::class, 'activate' ] );
-register_deactivation_hook( BAZAAR_FILE, [ Plugin::class, 'deactivate' ] );
+register_activation_hook( BAZAAR_FILE, array( Plugin::class, 'activate' ) );
+register_deactivation_hook( BAZAAR_FILE, array( Plugin::class, 'deactivate' ) );
 
-add_action( 'plugins_loaded', [ Plugin::class, 'boot' ] );
+add_action( 'plugins_loaded', array( Plugin::class, 'boot' ) );

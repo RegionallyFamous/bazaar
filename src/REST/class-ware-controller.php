@@ -1,4 +1,9 @@
 <?php
+/**
+ * Ware controller — enable, disable, and delete wares via REST.
+ *
+ * @package Bazaar
+ */
 
 declare( strict_types=1 );
 
@@ -21,55 +26,77 @@ use WP_REST_Server;
  */
 final class WareController {
 
+	/** REST API namespace for all Bazaar routes. */
 	private const NAMESPACE = 'bazaar/v1';
 
+	/**
+	 * Registry used to read and update ware state.
+	 *
+	 * @var WareRegistry
+	 */
 	private WareRegistry $registry;
+
+	/**
+	 * Loader used when deleting ware files from disk.
+	 *
+	 * @var WareLoader
+	 */
 	private WareLoader $loader;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param WareRegistry $registry Registry instance.
+	 */
 	public function __construct( WareRegistry $registry ) {
 		$this->registry = $registry;
 		$this->loader   = new WareLoader( $registry );
 	}
 
+	/**
+	 * Register the PATCH and DELETE ware REST routes.
+	 */
 	public function register_routes(): void {
 		register_rest_route(
 			self::NAMESPACE,
 			'/wares/(?P<slug>[a-z0-9-]+)',
-			[
-				[
+			array(
+				array(
 					'methods'             => 'PATCH',
-					'callback'            => [ $this, 'toggle' ],
+					'callback'            => array( $this, 'toggle' ),
 					'permission_callback' => static fn() => current_user_can( 'manage_options' ),
-					'args'                => [
-						'slug'    => [
+					'args'                => array(
+						'slug'    => array(
 							'type'              => 'string',
 							'required'          => true,
 							'sanitize_callback' => 'sanitize_key',
-						],
-						'enabled' => [
+						),
+						'enabled' => array(
 							'type'     => 'boolean',
 							'required' => true,
-						],
-					],
-				],
-				[
+						),
+					),
+				),
+				array(
 					'methods'             => WP_REST_Server::DELETABLE,
-					'callback'            => [ $this, 'delete' ],
+					'callback'            => array( $this, 'delete' ),
 					'permission_callback' => static fn() => current_user_can( 'manage_options' ),
-					'args'                => [
-						'slug' => [
+					'args'                => array(
+						'slug' => array(
 							'type'              => 'string',
 							'required'          => true,
 							'sanitize_callback' => 'sanitize_key',
-						],
-					],
-				],
-			]
+						),
+					),
+				),
+			)
 		);
 	}
 
 	/**
 	 * Enable or disable a ware.
+	 *
+	 * @param WP_REST_Request $request The incoming REST request.
 	 */
 	public function toggle( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$slug    = sanitize_key( $request->get_param( 'slug' ) );
@@ -79,7 +106,7 @@ final class WareController {
 			return new WP_Error(
 				'ware_not_found',
 				esc_html__( 'Ware not found.', 'bazaar' ),
-				[ 'status' => 404 ]
+				array( 'status' => 404 )
 			);
 		}
 
@@ -91,12 +118,12 @@ final class WareController {
 			return new WP_Error(
 				'toggle_failed',
 				esc_html__( 'Could not update ware status.', 'bazaar' ),
-				[ 'status' => 500 ]
+				array( 'status' => 500 )
 			);
 		}
 
 		return new WP_REST_Response(
-			[
+			array(
 				'success' => true,
 				'slug'    => $slug,
 				'enabled' => $enabled,
@@ -105,13 +132,15 @@ final class WareController {
 					? sprintf( esc_html__( '"%s" enabled.', 'bazaar' ), esc_html( $slug ) )
 					/* translators: %s: ware slug */
 					: sprintf( esc_html__( '"%s" disabled.', 'bazaar' ), esc_html( $slug ) ),
-			],
+			),
 			200
 		);
 	}
 
 	/**
 	 * Delete a ware — removes files from disk and unregisters it.
+	 *
+	 * @param WP_REST_Request $request The incoming REST request.
 	 */
 	public function delete( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$slug = sanitize_key( $request->get_param( 'slug' ) );
@@ -120,25 +149,25 @@ final class WareController {
 			return new WP_Error(
 				'ware_not_found',
 				esc_html__( 'Ware not found.', 'bazaar' ),
-				[ 'status' => 404 ]
+				array( 'status' => 404 )
 			);
 		}
 
 		$deleted = $this->loader->delete( $slug );
 		if ( is_wp_error( $deleted ) ) {
-			$deleted->add_data( [ 'status' => 500 ] );
+			$deleted->add_data( array( 'status' => 500 ) );
 			return $deleted;
 		}
 
 		$this->registry->unregister( $slug );
 
 		return new WP_REST_Response(
-			[
+			array(
 				'success' => true,
 				'slug'    => $slug,
 				/* translators: %s: ware slug */
 				'message' => sprintf( esc_html__( '"%s" deleted successfully.', 'bazaar' ), esc_html( $slug ) ),
-			],
+			),
 			200
 		);
 	}

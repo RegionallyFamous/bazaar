@@ -8,6 +8,40 @@ declare( strict_types=1 );
 
 require_once dirname( __DIR__, 2 ) . '/vendor/autoload.php';
 
+if ( ! class_exists( 'WP_Error' ) ) {
+	/**
+	 * Minimal WP_Error stub for unit tests.
+	 */
+	class WP_Error { // phpcs:ignore
+		/** @var string */
+		private string $code;
+		/** @var string */
+		private string $message;
+		/** @var mixed */
+		private mixed $data = null;
+
+		/**
+		 * @param string $code    Error code.
+		 * @param string $message Error message.
+		 * @param mixed  $data    Optional extra data.
+		 */
+		public function __construct( string $code = '', string $message = '', mixed $data = '' ) {
+			$this->code    = $code;
+			$this->message = $message;
+			$this->data    = $data;
+		}
+
+		/** @return string */
+		public function get_error_code(): string { return $this->code; }
+
+		/** @return string */
+		public function get_error_message(): string { return $this->message; }
+
+		/** @param mixed $data Extra data to attach. */
+		public function add_data( mixed $data ): void { $this->data = $data; }
+	}
+}
+
 // Define constants that the plugin expects to be in place.
 if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', sys_get_temp_dir() . '/' );
