@@ -1,0 +1,35 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Build output
+/admin/dist/
+
+# Composer lock (committed in libraries, not plugins)
+composer.lock
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+.vscode/
+
+# PHP tools
+.phpunit.result.cache
+/coverage/
+
+# npm
+npm-debug.log*
+package-lock.json
+
+# wp-env
+.wp-env/

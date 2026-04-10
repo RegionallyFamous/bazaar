@@ -1,0 +1,92 @@
+---
+description: WordPress internationalization (i18n) — text domains, translation functions, translator comments, and JS translation pipeline
+globs: "**/*.php, **/*.js, **/*.jsx, **/*.ts, **/*.tsx, **/languages/**"
+alwaysApply: false
+---
+
+# WordPress i18n Standards
+
+## Core rules
+
+- One text domain per plugin, matching the slug. LITERAL string, never a variable.
+- Every user-facing string: `__()`, `_e()`, `esc_html__()`, `esc_attr__()`, `_x()`, `_n()`
+- Never concatenate translations: `__('Hello') . ' ' . __('world')` — use `sprintf` with one string.
+
+## PHP translation functions
+
+| Function | Use case |
+|---|---|
+| `__( 'text', 'domain' )` | Return translated string |
+| `_e( 'text', 'domain' )` | Echo translated string |
+| `esc_html__( 'text', 'domain' )` | Return + escape for HTML |
+| `esc_attr__( 'text', 'domain' )` | Return + escape for attribute |
+| `_x( 'text', 'context', 'domain' )` | Disambiguate identical strings |
+| `_n( 'singular', 'plural', $count, 'domain' )` | Pluralization |
+| `_nx( 'singular', 'plural', $count, 'context', 'domain' )` | Plural + context |
+| `sprintf()` + above | Interpolate variables into translated strings |
+
+## Translator comments — required for placeholders
+
+Always add a translator comment immediately before any string containing `%s`, `%d`, or `%1$s`:
+
+```php
+/* translators: %s: user display name */
+$msg = sprintf( esc_html__( 'Welcome, %s!', 'my-plugin' ), esc_html( $name ) );
+
+/* translators: 1: start date, 2: end date */
+$range = sprintf(
+    __( 'From %1$s to %2$s', 'my-plugin' ),
+    esc_html( $start ),
+    esc_html( $end )
+);
+```
+
+## JS translations
+
+```js
+import { __, sprintf, _n } from '@wordpress/i18n';
+
+const label = __( 'Save changes', 'my-plugin' );
+
+const msg = sprintf(
+    /* translators: %s: item title */
+    __( 'Editing "%s"', 'my-plugin' ),
+    title
+);
+
+const countMsg = sprintf(
+    _n( '%d item', '%d items', count, 'my-plugin' ),
+    count
+);
+```
+
+Same text domain as PHP. `block.json` strings (`title`, `description`, `keywords`) are auto-extracted when `textdomain` is set.
+
+## Loading translations
+
+```php
+// PHP translations:
+load_plugin_textdomain( 'my-plugin', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+
+// JS translations (call after wp_enqueue_script):
+wp_set_script_translations( 'my-plugin-editor-script', 'my-plugin', plugin_dir_path( __FILE__ ) . 'languages' );
+```
+
+## Generating translation files
+
+```bash
+# Generate .pot template:
+wp i18n make-pot . languages/my-plugin.pot
+
+# Generate JS .json files from .po:
+wp i18n make-json languages/ --no-purge
+```
+
+## Common mistakes
+
+1. **Variable text domain** — `__( 'text', $domain )` breaks static extraction
+2. **Concatenated translations** — build one `sprintf` string instead
+3. **Missing translator comment** — translators can't know what `%s` represents
+4. **Wrong domain** — must match plugin slug exactly, everywhere
+5. **Forgetting `wp_set_script_translations`** — JS strings stay untranslated
+6. **Using `_e()` inside attributes** — use `esc_attr__()` or `esc_html__()` instead

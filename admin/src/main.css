@@ -1,0 +1,388 @@
+/*
+ * Bazaar admin page styles.
+ *
+ * Scoped under .bazaar-page to avoid collisions with wp-admin base styles.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Page layout
+ * --------------------------------------------------------------------------*/
+
+.bazaar-page {
+	max-width: 1200px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Header
+ * --------------------------------------------------------------------------*/
+
+.bazaar-header {
+	margin-bottom: 32px;
+}
+
+.bazaar-title {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 24px;
+	font-weight: 600;
+	color: #1d2327;
+	margin: 0 0 8px;
+}
+
+.bazaar-title .dashicons {
+	font-size: 28px;
+	width: 28px;
+	height: 28px;
+	color: #2271b1;
+}
+
+.bazaar-tagline {
+	color: #646970;
+	margin: 0;
+	font-size: 14px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Upload / drop zone
+ * --------------------------------------------------------------------------*/
+
+.bazaar-upload-section {
+	margin-bottom: 40px;
+}
+
+.bazaar-dropzone {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 40px 24px;
+	border: 2px dashed #c3c4c7;
+	border-radius: 8px;
+	background: #f6f7f7;
+	cursor: pointer;
+	transition: border-color 0.15s, background 0.15s;
+	text-align: center;
+	outline: none;
+}
+
+.bazaar-dropzone:hover,
+.bazaar-dropzone:focus-visible,
+.bazaar-dropzone--hover {
+	border-color: #2271b1;
+	background: #f0f6fc;
+}
+
+.bazaar-dropzone--uploading {
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+.bazaar-dropzone__icon {
+	font-size: 40px;
+	width: 40px;
+	height: 40px;
+	color: #2271b1;
+}
+
+.bazaar-dropzone__text {
+	margin: 0;
+	font-size: 15px;
+	color: #3c434a;
+}
+
+.bazaar-dropzone__browse {
+	color: #2271b1;
+	cursor: pointer;
+	text-decoration: underline;
+}
+
+.bazaar-dropzone__hint {
+	margin: 0;
+	font-size: 12px;
+	color: #8c8f94;
+}
+
+.bazaar-dropzone__input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+}
+
+/* Upload progress bar */
+
+.bazaar-upload-progress {
+	margin-top: 12px;
+}
+
+.bazaar-upload-progress__bar {
+	height: 6px;
+	background: #2271b1;
+	border-radius: 3px;
+	width: 0%;
+	transition: width 0.3s ease;
+}
+
+.bazaar-upload-progress__label {
+	margin: 6px 0 0;
+	font-size: 13px;
+	color: #646970;
+}
+
+/* ---------------------------------------------------------------------------
+ * Notices
+ * --------------------------------------------------------------------------*/
+
+.bazaar-notice {
+	margin-top: 12px;
+	padding: 10px 14px;
+	border-radius: 4px;
+	font-size: 13px;
+}
+
+.bazaar-notice--error {
+	background: #fcf0f1;
+	border-left: 4px solid #d63638;
+	color: #d63638;
+}
+
+.bazaar-notice--success {
+	background: #edfaef;
+	border-left: 4px solid #00a32a;
+	color: #1a6934;
+}
+
+/* ---------------------------------------------------------------------------
+ * Gallery section heading
+ * --------------------------------------------------------------------------*/
+
+.bazaar-section-heading {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	font-size: 18px;
+	font-weight: 600;
+	color: #1d2327;
+	margin: 0 0 20px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #e2e4e7;
+}
+
+.bazaar-ware-count {
+	font-size: 14px;
+	font-weight: 400;
+	color: #8c8f94;
+}
+
+/* Empty state */
+
+.bazaar-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	padding: 60px 24px;
+	text-align: center;
+	color: #8c8f94;
+}
+
+.bazaar-empty__icon {
+	font-size: 48px;
+	width: 48px;
+	height: 48px;
+}
+
+.bazaar-empty p {
+	margin: 0;
+	font-size: 15px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Ware cards
+ * --------------------------------------------------------------------------*/
+
+.bazaar-gallery {
+	display: grid;
+	grid-template-columns: repeat( auto-fill, minmax( 300px, 1fr ) );
+	gap: 20px;
+}
+
+.bazaar-card {
+	display: flex;
+	flex-direction: row;
+	align-items: flex-start;
+	gap: 16px;
+	padding: 20px;
+	background: #fff;
+	border: 1px solid #e2e4e7;
+	border-radius: 8px;
+	box-shadow: 0 1px 3px rgba( 0, 0, 0, 0.06 );
+	transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.bazaar-card:hover {
+	box-shadow: 0 3px 8px rgba( 0, 0, 0, 0.1 );
+	border-color: #c3c4c7;
+}
+
+.bazaar-card--disabled {
+	opacity: 0.55;
+}
+
+.bazaar-card__icon-wrap {
+	flex-shrink: 0;
+}
+
+.bazaar-card__icon {
+	display: block;
+	width: 48px;
+	height: 48px;
+	border-radius: 8px;
+	object-fit: contain;
+	background: #f6f7f7;
+}
+
+.bazaar-card__body {
+	flex: 1;
+	min-width: 0;
+}
+
+.bazaar-card__name {
+	margin: 0 0 4px;
+	font-size: 15px;
+	font-weight: 600;
+	color: #1d2327;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.bazaar-card__meta {
+	margin: 0 0 6px;
+	font-size: 12px;
+	color: #8c8f94;
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.bazaar-card__description {
+	margin: 0;
+	font-size: 13px;
+	color: #646970;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.bazaar-card__actions {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Toggle switch
+ * --------------------------------------------------------------------------*/
+
+.bazaar-toggle {
+	position: relative;
+	display: inline-block;
+	width: 40px;
+	height: 22px;
+	cursor: pointer;
+}
+
+.bazaar-toggle__input {
+	position: absolute;
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+.bazaar-toggle__slider {
+	position: absolute;
+	inset: 0;
+	background: #c3c4c7;
+	border-radius: 22px;
+	transition: background 0.2s;
+}
+
+.bazaar-toggle__slider::before {
+	content: "";
+	position: absolute;
+	height: 16px;
+	width: 16px;
+	left: 3px;
+	bottom: 3px;
+	background: #fff;
+	border-radius: 50%;
+	transition: transform 0.2s;
+	box-shadow: 0 1px 3px rgba( 0, 0, 0, 0.2 );
+}
+
+.bazaar-toggle__input:checked + .bazaar-toggle__slider {
+	background: #2271b1;
+}
+
+.bazaar-toggle__input:checked + .bazaar-toggle__slider::before {
+	transform: translateX( 18px );
+}
+
+.bazaar-toggle__input:focus-visible + .bazaar-toggle__slider {
+	outline: 2px solid #2271b1;
+	outline-offset: 2px;
+}
+
+/* Delete button */
+
+.bazaar-card__delete {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 4px;
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	color: #8c8f94;
+	cursor: pointer;
+	transition: color 0.15s, background 0.15s, border-color 0.15s;
+	min-width: 0;
+	width: 28px;
+	height: 28px;
+}
+
+.bazaar-card__delete:hover,
+.bazaar-card__delete:focus-visible {
+	color: #d63638;
+	background: #fcf0f1;
+	border-color: #d63638;
+	outline: none;
+}
+
+.bazaar-card__delete .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Responsive
+ * --------------------------------------------------------------------------*/
+
+@media ( max-width: 600px ) {
+	.bazaar-gallery {
+		grid-template-columns: 1fr;
+	}
+
+	.bazaar-card {
+		flex-wrap: wrap;
+	}
+}

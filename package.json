@@ -1,0 +1,52 @@
+{
+  "name": "bazaar",
+  "version": "1.0.0",
+  "description": "Bazaar WordPress Plugin admin UI",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "lint": "npm run lint:js && npm run lint:css",
+    "lint:js": "wp-scripts lint-js admin/src/",
+    "lint:css": "wp-scripts lint-style admin/src/",
+    "format": "wp-scripts format admin/src/",
+    "test": "wp-scripts test-unit-js --config jest.config.js",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@wordpress/api-fetch": "^7.0.0"
+  },
+  "devDependencies": {
+    "@wordpress/eslint-plugin": "^22.0.0",
+    "@wordpress/scripts": "^30.0.0",
+    "@wordpress/stylelint-config": "^23.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "vite": "^5.0.0"
+  },
+  "lint-staged": {
+    "admin/src/**/*.js": [
+      "wp-scripts lint-js"
+    ],
+    "admin/src/**/*.css": [
+      "wp-scripts lint-style"
+    ],
+    "**/*.php": [
+      "composer phpcs"
+    ]
+  },
+  "eslintConfig": {
+    "extends": [
+      "plugin:@wordpress/eslint-plugin/recommended"
+    ],
+    "env": {
+      "browser": true,
+      "es2022": true
+    }
+  },
+  "stylelint": {
+    "extends": [
+      "@wordpress/stylelint-config"
+    ]
+  }
+}

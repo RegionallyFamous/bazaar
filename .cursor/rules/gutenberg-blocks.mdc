@@ -1,0 +1,141 @@
+---
+description: Gutenberg block development patterns — block.json, edit.js, dynamic vs static, registration, and common pitfalls
+globs: "**/blocks/**/*.{js,jsx,ts,tsx,json,php}, **/block.json, **/edit.{js,jsx,ts,tsx}, **/save.{js,jsx,ts,tsx}, **/render.php, **/view.{js,jsx,ts,tsx}"
+alwaysApply: false
+---
+
+# Gutenberg Block Standards
+
+## Scaffolding and layout
+
+Scaffold with: `npx @wordpress/create-block@latest --no-plugin --variant=dynamic my-block`
+
+Inside an existing plugin:
+```
+my-plugin/
+├── src/blocks/<block-name>/
+│   ├── block.json       # apiVersion: 3
+│   ├── index.js         # registerBlockType entry
+│   ├── edit.js          # editor UI
+│   ├── save.js          # static save (or omit for dynamic)
+│   ├── render.php       # dynamic render (if dynamic)
+│   ├── view.js          # frontend-only JS
+│   ├── editor.scss      # editor-only styles
+│   └── style.scss       # shared styles
+└── build/               # generated, gitignored
+```
+
+Register from `build/`, never from `src/`.
+
+## block.json — canonical example
+
+```json
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "my-plugin/featured-product",
+  "version": "1.0.0",
+  "title": "Featured Product",
+  "category": "widgets",
+  "textdomain": "my-plugin",
+  "supports": {
+    "html": false,
+    "align": ["wide", "full"],
+    "spacing": { "padding": true, "margin": true },
+    "color": { "background": true, "text": true }
+  },
+  "attributes": {
+    "productId": { "type": "integer", "default": 0 },
+    "showPrice": { "type": "boolean", "default": true },
+    "headline":  { "type": "string", "source": "html", "selector": "h2" }
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle":  "file:./editor.css",
+  "style":        "file:./style.css",
+  "viewScriptModule": "file:./view.js",
+  "render":       "file:./render.php"
+}
+```
+
+Rules:
+- `apiVersion: 3` always (WP 6.9+ enforces it; older breaks iframed editor style isolation)
+- `textdomain` must match PHP plugin slug exactly
+- Every attribute declared with `type`. Sourced attrs also get `source` + `selector`
+- Don't store transient UI state as block attributes — use React state
+- `viewScriptModule` (preferred over `viewScript`) for modern ES module frontend JS
+- Anything not in block.json won't load inside the iframed editor
+
+## PHP registration
+
+```php
+add_action( 'init', static function () {
+    register_block_type( __DIR__ . '/build/blocks/featured-product' );
+} );
+// For many blocks:
+foreach ( glob( __DIR__ . '/build/blocks/*/block.json' ) as $json ) {
+    register_block_type( dirname( $json ) );
+}
+```
+
+Do NOT also call `wp_enqueue_script` for the same handles — it's redundant.
+
+## edit.js pattern
+
+```jsx
+import { __ } from '@wordpress/i18n';
+import { useBlockProps, InspectorControls, RichText } from '@wordpress/block-editor';
+import { PanelBody, ToggleControl } from '@wordpress/components';
+
+export default function Edit( { attributes, setAttributes } ) {
+    const { headline, showPrice } = attributes;
+    return (
+        <>
+            <InspectorControls>
+                <PanelBody title={ __( 'Display', 'my-plugin' ) }>
+                    <ToggleControl
+                        label={ __( 'Show price', 'my-plugin' ) }
+                        checked={ showPrice }
+                        onChange={ ( v ) => setAttributes( { showPrice: v } ) }
+                    />
+                </PanelBody>
+            </InspectorControls>
+            <div { ...useBlockProps() }>
+                <RichText tagName="h2" value={ headline }
+                    onChange={ ( v ) => setAttributes( { headline: v } ) }
+                    placeholder={ __( 'Add a headline…', 'my-plugin' ) } />
+            </div>
+        </>
+    );
+}
+```
+
+Hard rules:
+- Always spread `useBlockProps()` on the wrapper — alignment, color, spacing styles depend on it
+- `InspectorControls` for sidebar settings, never custom sidebar
+- `RichText` for editable text, never raw `contenteditable`
+- `MediaUpload` / `MediaUploadCheck` from `@wordpress/block-editor` for media
+
+## Dynamic vs static
+
+**Dynamic (server-rendered):**
+- `save()` returns `null`
+- `render.php` uses `$attributes`, `$content`, `$block`; echoes `get_block_wrapper_attributes()` on wrapper
+- Escape everything in render.php: `esc_html()`, `esc_attr()`, `wp_kses_post()`
+- Prefer dynamic blocks — no migration tax when markup changes
+
+**Static (HTML stored in post):**
+- `save()` returns real JSX markup
+- No `render` in block.json
+- Changing markup later requires a `deprecated` migration or users see "Invalid block"
+- Only use when server rendering isn't needed
+
+## Common block pitfalls
+
+| Symptom | Cause |
+|---|---|
+| Editor styles not loading | File not listed in block.json (`editorStyle`/`style`) |
+| "Invalid block" after save | `save()` markup changed; write a `deprecated` entry |
+| Attribute resets on reload | Reading React state but never calling `setAttributes` |
+| Block works in editor not FE | Dynamic blocks need `render`, not just `save` |
+| `useBlockProps` missing | No alignment/classes/styles applied |
+| `script` vs `viewScript` | `script` loads BOTH editor + FE; `viewScriptModule` is FE-only |

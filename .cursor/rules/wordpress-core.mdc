@@ -1,0 +1,226 @@
+---
+description: WordPress plugin development — security, performance, structure, and tooling non-negotiables (VIP / enterprise tier)
+globs:
+alwaysApply: true
+---
+
+# WordPress Core Standards
+
+Target: PHP 8.1+, WordPress 6.6+, Node 20+, @wordpress/scripts latest, block.json apiVersion 3.
+Code must pass PHPCS WordPress-VIP-Go, PHPStan level 6+, and @wordpress/eslint-plugin.
+
+## SECURITY — sanitize early, escape late
+
+Treat the database as untrusted. `get_option()`, `get_post_meta()`, filter return values — all potentially tainted. Sanitize at the moment data enters a function. Escape only at the point of output.
+
+### Escaping — use the right function for the context
+
+| Context | Function |
+|---|---|
+| HTML body text | `esc_html( $val )` or `esc_html__( 'text', 'domain' )` |
+| HTML attribute | `esc_attr( $val )` or `esc_attr__( 'text', 'domain' )` |
+| URL in href/src | `esc_url( $val )` |
+| URL stored to DB | `esc_url_raw( $val )` |
+| Inside `<script>` / JSON | `wp_json_encode( $val )` |
+| Textarea content | `esc_textarea( $val )` |
+| HTML with allowed tags | `wp_kses_post( $val )` or `wp_kses( $val, $allowed )` |
+
+For translation + escape combos, prefer `esc_html__()`, `esc_attr__()`, `esc_html_x()` over wrapping `__()` in `esc_html()`.
+
+### Sanitization — match input type to function
+
+| Input type | Function |
+|---|---|
+| Single-line text | `sanitize_text_field()` |
+| Multi-line text | `sanitize_textarea_field()` |
+| Email | `sanitize_email()` |
+| URL | `esc_url_raw()` |
+| File name | `sanitize_file_name()` |
+| Slug / key | `sanitize_key()` |
+| Title slug | `sanitize_title()` |
+| Integer | `absint()` or `(int)` |
+| Float | `(float)` |
+| Hex color | `sanitize_hex_color()` |
+| Array of strings | `array_map( 'sanitize_text_field', (array) $input )` |
+
+Never use `strip_tags()` as a sanitizer. Always `wp_unslash()` before sanitizing superglobals — WordPress slashes `$_POST`/`$_GET`.
+
+### Nonces — on every state-changing request
+
+Form pattern:
+```php
+// Template:
+wp_nonce_field( 'my_plugin_save', 'my_plugin_nonce' );
+
+// Handler:
+check_admin_referer( 'my_plugin_save', 'my_plugin_nonce' );
+$val = isset( $_POST['field'] ) ? sanitize_text_field( wp_unslash( $_POST['field'] ) ) : '';
+```
+
+AJAX pattern:
+```php
+// JS sends: nonce: myPluginData.nonce (from wp_create_nonce())
+check_ajax_referer( 'my_plugin_action', 'nonce' );
+```
+
+REST: use a real `permission_callback`. Cookie auth is verified automatically via `X-WP-Nonce` header.
+
+### Capability checks — every privileged action
+
+- Edit one post → `current_user_can( 'edit_post', $post_id )`
+- Delete one post → `current_user_can( 'delete_post', $post_id )`
+- Plugin settings → `current_user_can( 'manage_options' )`
+- Custom area → register custom cap + `map_meta_cap`
+
+Check on the server even if the UI already hid the button.
+
+### SQL — $wpdb->prepare() always
+
+```php
+// Single value:
+$wpdb->prepare( "SELECT * FROM {$wpdb->prefix}table WHERE id = %d AND status = %s", $id, $status );
+
+// IN clause:
+$ids = array_map( 'absint', $ids );
+$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+$wpdb->prepare( "SELECT * FROM {$wpdb->prefix}table WHERE id IN ($placeholders)", $ids );
+```
+
+Never concatenate. Never `sprintf` into a query.
+
+### Banned patterns — never write these
+
+- `eval()` / `create_function()`
+- `extract( $_POST )` / `extract( $_GET )`
+- `unserialize()` on untrusted data (use `json_decode`)
+- `md5()` for passwords (use `wp_hash_password`)
+- `$_SERVER['HTTP_HOST']` without validation
+- `move_uploaded_file` without `wp_handle_upload`
+- `file_get_contents( $url )` for HTTP (use `wp_remote_get`)
+- Direct file I/O outside `wp_upload_dir()` (use `WP_Filesystem`)
+- `error_log()` with user data / tokens / PII
+
+---
+
+## PERFORMANCE — the VIP rules that catch the most fires
+
+### WP_Query flags
+
+```php
+$q = new WP_Query( [
+    'post_type'              => 'product',
+    'posts_per_page'         => 20,           // NEVER -1 on user-facing queries
+    'no_found_rows'          => true,         // skip SQL_CALC_FOUND_ROWS unless paginating
+    'update_post_meta_cache' => false,        // skip if you don't read meta in the loop
+    'update_post_term_cache' => false,        // skip if you don't read terms in the loop
+    'fields'                 => 'ids',        // only need IDs? get only IDs
+] );
+```
+
+- Never `query_posts()`. Use `WP_Query` or `pre_get_posts`.
+- Never `posts_per_page => -1` on unbounded queries. Cap at 100-500.
+
+### meta_query — the trap
+
+`meta_query` is unindexed. On 1M+ posts it can take 30 seconds. Alternatives in order of preference:
+
+1. **Custom taxonomy** — indexed, fast, ideal for finite value sets (status, type, level)
+2. **Custom table** — right indexes, query with `$wpdb->prepare()`
+3. **Denormalized post field** — store in an indexed column (`post_date`, `post_author`, etc.)
+4. **meta_query with single EXISTS** — only acceptable on small datasets
+
+If you must use `meta_query`, always cache the result.
+
+### Caching patterns
+
+Object Cache (preferred):
+```php
+$cached = wp_cache_get( 'key_v1', 'my_plugin' );
+if ( false !== $cached ) return $cached;
+// ... run query ...
+wp_cache_set( 'key_v1', $ids, 'my_plugin', 5 * MINUTE_IN_SECONDS );
+```
+
+Cache IDs, not `WP_Post` objects. Hydrate with `get_post()` (which is itself cached).
+
+Transient (for persistence without object cache):
+```php
+$data = get_transient( 'my_plugin_remote' );
+if ( false === $data ) {
+    $data = my_fetch();
+    set_transient( 'my_plugin_remote', $data, HOUR_IN_SECONDS );
+}
+```
+
+Invalidation:
+```php
+add_action( 'save_post_product', fn() => wp_cache_delete( 'key_v1', 'my_plugin' ) );
+```
+
+### Remote HTTP — always cached
+
+```php
+function my_plugin_get_data( string $key ): array {
+    $cache_key = 'remote_' . md5( $key );
+    $cached    = get_transient( $cache_key );
+    if ( false !== $cached ) return $cached;
+
+    $response = wp_remote_get( $url, [ 'timeout' => 5 ] );
+    if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+        set_transient( $cache_key, [], MINUTE_IN_SECONDS ); // cache failure briefly
+        return [];
+    }
+    $data = json_decode( wp_remote_retrieve_body( $response ), true ) ?? [];
+    set_transient( $cache_key, $data, 15 * MINUTE_IN_SECONDS );
+    return $data;
+}
+```
+
+### Performance killers to watch for
+
+- Querying inside a loop — bulk-prime with `update_meta_cache` or a single joined query
+- `get_users()` without `'fields' => 'ID'` — loads every user object
+- Autoloaded options with large blobs — pass `false` as 3rd arg to `update_option`, or use a custom table
+- Expensive work on `init` — move to `wp_loaded` or behind a cap check
+- `wp_options` bloat — don't store >100KB in options
+
+---
+
+## STRUCTURE
+
+- Top of every PHP file: `defined( 'ABSPATH' ) || exit;`
+- Namespace everything: `Acme\MyPlugin\…` with PSR-4 autoload via Composer
+- Hooks register in `Plugin::register_hooks()` or per-feature `register()` methods — no scattered `add_action`
+- One responsibility per file
+- Never modify core, parent themes, or third-party plugins — extend via hooks
+- Every user-facing string uses `__()` / `esc_html__()` / `_x()` with a LITERAL text-domain matching the plugin slug
+- No dead code, no commented-out blocks, no `console.log` / `error_log` left in shipped code
+- Comments explain WHY, not WHAT
+
+---
+
+## TOOLING
+
+- PHP: PHPCS with WordPress-VIP-Go + WordPress-Extra + WordPress-Docs. PHPStan with `szepeviktor/phpstan-wordpress` at level 6+.
+- JS: `@wordpress/scripts` (lint-js, lint-style, build, test-unit-js), `@wordpress/eslint-plugin`.
+- Pre-commit: Husky + lint-staged.
+
+## VERIFICATION LOOP — run before declaring any task done
+
+After ANY code change, run in order and fix until green:
+
+1. `composer lint` (phpcs + phpstan)
+2. `npm run lint`
+3. `npm run build`
+4. `composer test` (if tests exist)
+5. `npm test` (if tests exist)
+
+"Done" means ALL of the above are green. Do not report success otherwise.
+
+## WORKING STYLE
+
+- Match existing code style. Run `composer format` / `npm run format`.
+- Small, focused changes. If touching >6 files, propose a plan first.
+- Comments explain WHY, not WHAT.
+- No dead code, no commented-out blocks, no `console.log` / `error_log` in shipped code.
+- If something in this file seems wrong for the current project, say so and suggest an update.

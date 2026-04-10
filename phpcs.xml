@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<ruleset name="Bazaar">
+    <description>Bazaar WordPress plugin coding standards.</description>
+
+    <file>bazaar.php</file>
+    <file>src/</file>
+    <file>templates/</file>
+
+    <arg name="basepath" value="."/>
+    <arg name="extensions" value="php"/>
+    <arg name="parallel" value="8"/>
+    <arg value="sp"/>
+
+    <!-- Target PHP 8.1+ -->
+    <config name="testVersion" value="8.1-"/>
+
+    <!-- WordPress text domain -->
+    <config name="text_domain" value="bazaar"/>
+
+    <!-- Minimum WP version -->
+    <config name="minimum_wp_version" value="6.6"/>
+
+    <rule ref="WordPress-Extra"/>
+    <rule ref="WordPress-Docs"/>
+
+    <!-- Allow PSR-4 file naming -->
+    <rule ref="WordPress.Files.FileName">
+        <properties>
+            <property name="strict_class_file_names" value="false"/>
+        </properties>
+    </rule>
+
+    <!-- Allow short ternary / null coalescing (PHP 8.1+) -->
+    <rule ref="WordPress.PHP.DisallowShortTernary">
+        <severity>0</severity>
+    </rule>
+</ruleset>

@@ -1,0 +1,91 @@
+---
+description: WordPress REST API patterns — route registration, permission callbacks, schemas, api-fetch, and error handling
+globs: "**/rest-api/**/*.php, **/api/**/*.php, **/endpoints/**/*.php, **/routes/**/*.php"
+alwaysApply: false
+---
+
+# WordPress REST API Standards
+
+Use REST, not `admin-ajax.php`. Register routes on `rest_api_init`.
+
+## Route registration pattern
+
+```php
+register_rest_route( 'my-plugin/v1', '/items/(?P<id>\d+)', [
+    [
+        'methods'             => WP_REST_Server::READABLE,
+        'callback'            => 'my_plugin_get_item',
+        'permission_callback' => static function ( $req ) {
+            $post = get_post( (int) $req['id'] );
+            return $post && ( 'publish' === $post->post_status || current_user_can( 'read_post', $post->ID ) );
+        },
+        'args' => [
+            'id' => [ 'type' => 'integer', 'required' => true, 'sanitize_callback' => 'absint' ],
+        ],
+    ],
+    [
+        'methods'             => WP_REST_Server::CREATABLE,
+        'callback'            => 'my_plugin_update_item',
+        'permission_callback' => static fn() => current_user_can( 'edit_posts' ),
+        'args' => [
+            'title' => [
+                'type' => 'string', 'required' => true,
+                'sanitize_callback' => 'sanitize_text_field',
+                'validate_callback' => static fn( $v ) => is_string( $v ) && strlen( $v ) <= 200,
+            ],
+        ],
+    ],
+] );
+```
+
+## Rules
+
+- Namespace routes (`my-plugin/v1`). Bump version for breaking changes.
+- Use `WP_REST_Server` constants (`READABLE`, `CREATABLE`, `EDITABLE`, `DELETABLE`), not string literals.
+- Provide `args` with `type`, `required`, `sanitize_callback`, `validate_callback`.
+- `permission_callback` is required. `__return_true` only for public read-only endpoints — document why.
+- Return `WP_REST_Response` or `WP_Error` with proper HTTP status.
+- Shape data via `prepare_item_for_response` — don't leak internal structure.
+- Never mutate state on GET.
+- Never return 200 with `{"error": "..."}` — use the right status code + `WP_Error`.
+
+## JS side — @wordpress/api-fetch
+
+```js
+import apiFetch from '@wordpress/api-fetch';
+
+// GET
+const items = await apiFetch( { path: '/my-plugin/v1/items' } );
+
+// POST
+await apiFetch( {
+    path: '/my-plugin/v1/items/42',
+    method: 'POST',
+    data: { title: 'New' },
+} );
+```
+
+`api-fetch` auto-attaches `X-WP-Nonce` for cookie auth. For external clients use Application Passwords.
+
+## Schema definition
+
+```php
+'schema' => [
+    '$schema'    => 'http://json-schema.org/draft-04/schema#',
+    'title'      => 'my-plugin-item',
+    'type'       => 'object',
+    'properties' => [
+        'id'    => [ 'type' => 'integer', 'readonly' => true ],
+        'title' => [ 'type' => 'string' ],
+        'status'=> [ 'type' => 'string', 'enum' => [ 'active', 'archived' ] ],
+    ],
+],
+```
+
+## Things to avoid
+
+1. **No permission callback** — WordPress will reject the route entirely (5.5+)
+2. **Returning raw DB rows** — always shape and sanitize the response
+3. **Ignoring WP_Error** — check `is_wp_error()` on internal calls before returning
+4. **String method names** — use `WP_REST_Server::READABLE` not `'GET'`
+5. **Missing arg validation** — every arg should have `type` + `sanitize_callback` at minimum

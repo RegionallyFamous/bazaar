@@ -1,0 +1,149 @@
+---
+description: WordPress testing patterns — WP-Browser integration, Brain Monkey unit tests, Jest, Playwright E2E, CI pipeline
+globs: "**/tests/**/*.php, **/tests/**/*.js, **/tests/**/*.ts, **/*.test.{js,jsx,ts,tsx}, **/*.spec.{js,jsx,ts,tsx}, **/phpunit.xml*, **/jest.config.*, **/playwright.config.*, **/.wp-env.json"
+alwaysApply: false
+---
+
+# WordPress Testing Standards
+
+## PHP — WP-Browser for integration, Brain Monkey for unit
+
+### WP-Browser (integration — needs WP)
+
+```php
+use lucatume\WPBrowser\TestCase\WPTestCase;
+
+final class MyBlockTest extends WPTestCase {
+    public function test_renders(): void {
+        $id = self::factory()->post->create( [
+            'post_content' => '<!-- wp:my-plugin/block /-->',
+        ] );
+        $html = apply_filters( 'the_content', get_post( $id )->post_content );
+        $this->assertStringContainsString( 'wp-block-my-plugin', $html );
+    }
+}
+```
+
+### Brain Monkey (pure unit — no WP)
+
+```php
+use Brain\Monkey;
+use Brain\Monkey\Functions;
+
+final class FormatterTest extends TestCase {
+    protected function setUp(): void {
+        parent::setUp();
+        Monkey\setUp();
+    }
+
+    protected function tearDown(): void {
+        Monkey\tearDown();
+        parent::tearDown();
+    }
+
+    public function test_formats_price(): void {
+        Functions\when( 'get_option' )->justReturn( '$' );
+        $this->assertSame( '$9.50', ( new Formatter() )->format( 9.5 ) );
+    }
+}
+```
+
+Mock external HTTP in tests with `pre_http_request` filter.
+
+## JS — Jest via @wordpress/scripts
+
+```js
+import { render, screen } from '@testing-library/react';
+import Edit from './edit';
+
+it( 'renders placeholder', () => {
+    render(
+        <Edit
+            attributes={{ headline: '' }}
+            setAttributes={ jest.fn() }
+        />
+    );
+    expect( screen.getByText( /Add a headline/i ) ).toBeInTheDocument();
+} );
+```
+
+Run with: `npx wp-scripts test-unit-js`
+
+## E2E — Playwright via @wordpress/e2e-test-utils-playwright
+
+```js
+import { test, expect } from '@wordpress/e2e-test-utils-playwright';
+
+test( 'inserts block', async ( { admin, editor, page } ) => {
+    await admin.createNewPost();
+    await editor.insertBlock( { name: 'my-plugin/featured-product' } );
+    await expect(
+        page.locator( '.wp-block-my-plugin-featured-product' )
+    ).toBeVisible();
+    await editor.publishPost();
+} );
+```
+
+Run against wp-env: `npx wp-env start && npx playwright test`
+
+### .wp-env.json
+
+```json
+{
+  "core": null,
+  "plugins": ["."],
+  "phpVersion": "8.1",
+  "env": {
+    "tests": {
+      "config": {
+        "WP_DEBUG": true,
+        "SCRIPT_DEBUG": true
+      }
+    }
+  }
+}
+```
+
+## What to test (in priority order)
+
+1. **Security-critical paths** — anything handling `$_POST`, `current_user_can`, DB writes
+2. **Pure logic** — formatters, parsers, validators
+3. **Block render output** — dynamic render callback, static save snapshot
+4. **REST endpoints** — status code, schema, one error case per route
+5. **Critical UI flows** — one Playwright test per money-making path
+
+## What NOT to test
+
+- WordPress core functions
+- Third-party plugins
+- Trivial getters/setters
+- Framework plumbing
+
+## CI — GitHub Actions matrix
+
+```yaml
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.1', '8.2', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '${{ matrix.php }}' }
+      - run: composer install --no-progress
+      - run: composer lint
+      - run: composer test
+
+  js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+```
