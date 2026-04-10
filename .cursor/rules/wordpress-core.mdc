@@ -6,7 +6,7 @@ alwaysApply: true
 
 # WordPress Core Standards
 
-Target: PHP 8.1+, WordPress 6.6+, Node 24+, @wordpress/scripts latest, block.json apiVersion 3.
+Target: PHP 8.2+, WordPress 6.6+, Node 24+, @wordpress/scripts latest, block.json apiVersion 3.
 Code must pass PHPCS WordPress-VIP-Go, PHPStan level 6+, and @wordpress/eslint-plugin.
 
 ## SECURITY — sanitize early, escape late
