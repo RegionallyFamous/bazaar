@@ -42,9 +42,13 @@ if ( ! class_exists( 'WP_Error' ) ) {
 		public function get_error_message(): string {
 			return $this->message; }
 
+		/** @return mixed */
+		public function get_error_data(): mixed { return $this->data; }
+
 		/** @param mixed $data Extra data to attach. */
 		public function add_data( mixed $data ): void {
-			$this->data = $data; }
+			$this->data = $data;
+		}
 	}
 }
 
