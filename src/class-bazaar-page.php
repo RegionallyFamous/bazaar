@@ -79,10 +79,18 @@ final class BazaarPage {
 	}
 
 	/**
-	 * Hook the admin_title filter on the Bazaar screen so the <title> tag is
-	 * populated without overriding the protected WordPress $title global.
+	 * Set the $title global and hook admin_title so both the strip_tags() call
+	 * in admin-header.php and the HTML <title> tag are correctly populated.
+	 *
+	 * Hidden submenu pages (parent_slug = '') are not indexed by
+	 * get_admin_page_title(), so we must set the global ourselves.
 	 */
 	public function set_page_title(): void {
+		global $title;
+		if ( empty( $title ) ) {
+			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+			$title = esc_html__( 'Manage Wares', 'bazaar' );
+		}
 		add_filter( 'admin_title', array( $this, 'filter_page_title' ) );
 	}
 

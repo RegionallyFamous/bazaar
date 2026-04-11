@@ -64,6 +64,21 @@ final class BazaarShell {
 			'dashicons-store',
 			2
 		);
+
+		// WordPress's get_admin_page_title() can fail to populate the $title
+		// global for top-level plugin pages in some configurations, causing
+		// strip_tags(null) deprecation notices in admin-header.php. Set it
+		// explicitly on the load hook, which fires before admin-header.php runs.
+		add_action(
+			"load-{$this->screen_id}",
+			static function (): void {
+				global $title;
+				if ( empty( $title ) ) {
+					// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+					$title = esc_html__( 'Bazaar', 'bazaar' );
+				}
+			}
+		);
 	}
 
 	/**
