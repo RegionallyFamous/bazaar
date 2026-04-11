@@ -10,6 +10,9 @@ composer.phar
 # Build output
 /admin/dist/
 /dist/
+/packages/client/dist/
+/wares/*/dist/
+*.wp
 
 # Composer lock (committed in libraries, not plugins)
 composer.lock
