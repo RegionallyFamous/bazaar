@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Bazaar\WareLoader;
 use Bazaar\WareRegistry;
+use Bazaar\REST\JobsController;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -132,6 +133,11 @@ final class UploadController extends BazaarController {
 		}
 
 		$ware = $this->registry->get( $manifest['slug'] );
+
+		// Schedule any manifest-declared background jobs.
+		if ( is_array( $ware ) ) {
+			JobsController::register_ware_jobs( $ware );
+		}
 
 		return new WP_REST_Response(
 			array(

@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Bazaar\WareLoader;
 use Bazaar\WareRegistryInterface;
+use Bazaar\REST\JobsController;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -244,6 +245,12 @@ final class WareController extends BazaarController {
 				esc_html__( 'Ware not found.', 'bazaar' ),
 				array( 'status' => 404 )
 			);
+		}
+
+		// Unschedule any manifest-declared background jobs before files are removed.
+		$ware = $this->registry->get( $slug );
+		if ( is_array( $ware ) ) {
+			JobsController::deregister_ware_jobs( $slug, (array) ( $ware['jobs'] ?? array() ) );
 		}
 
 		$deleted = $this->loader->delete( $slug );

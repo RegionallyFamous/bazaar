@@ -40,6 +40,7 @@ const {
 	wares: initialWares,
 	branding = {},
 	devMode: globalDevMode = false,
+	outdatedCount = 0,
 } = D;
 
 const LRU_CAP = Math.max(
@@ -517,7 +518,10 @@ function renderNav() {
 	if (!enabled.length) {
 		const li = document.createElement('li');
 		li.className = 'bsh-nav__empty';
-		li.textContent = __('No wares enabled. Manage → enable one.', 'bazaar');
+		li.textContent =
+			wareMap.size === 0
+				? __('No wares installed yet.', 'bazaar')
+				: __('All wares disabled. Enable one in Manage.', 'bazaar');
 		navList.appendChild(li);
 		attachDragHandlers(navList);
 		return;
@@ -1126,6 +1130,11 @@ navList.addEventListener('click', (e) => {
 // ===========================================================================
 // Boot
 // ===========================================================================
+
+// Seed the manage-nav badge from the server-side outdated count.
+if (outdatedCount > 0) {
+	badgeMap.set('manage', outdatedCount);
+}
 
 renderNav();
 pollBadges();

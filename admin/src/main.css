@@ -530,6 +530,63 @@
 	overflow: hidden;
 }
 
+.bazaar-card__perms {
+	margin-top: 8px;
+}
+
+.bazaar-card__perms-summary {
+	font-size: 11px;
+	color: var(--bz-text-dim);
+	cursor: pointer;
+	user-select: none;
+	list-style: none;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.bazaar-card__perms-summary::-webkit-details-marker {
+	display: none;
+}
+
+.bazaar-card__perms-summary::before {
+	content: '▸';
+	font-size: 9px;
+	transition: transform 0.15s ease;
+	display: inline-block;
+}
+
+.bazaar-card__perms[open] .bazaar-card__perms-summary::before {
+	transform: rotate(90deg);
+}
+
+.bazaar-card__perms-list {
+	margin: 6px 0 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.bazaar-card__perm-item {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	font-size: 11px;
+	background: var(--bz-bg-muted, #f0f0f1);
+	color: var(--bz-text-muted);
+	border-radius: 3px;
+	padding: 2px 6px;
+	white-space: nowrap;
+}
+
+.bazaar-card__perm-icon {
+	font-size: 12px !important;
+	color: var(--bz-ok, #46b450);
+	vertical-align: middle;
+}
+
 .bazaar-card__actions {
 	display: flex;
 	flex-direction: column;

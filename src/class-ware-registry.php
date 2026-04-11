@@ -75,19 +75,25 @@ final class WareRegistry implements WareRegistryInterface {
 		}
 
 		$ware = array(
-			'name'        => sanitize_text_field( $manifest['name'] ),
-			'slug'        => $slug,
-			'version'     => sanitize_text_field( $manifest['version'] ),
-			'author'      => sanitize_text_field( $manifest['author'] ?? '' ),
-			'description' => sanitize_textarea_field( $manifest['description'] ?? '' ),
-			'icon'        => sanitize_text_field( $manifest['icon'] ?? 'icon.svg' ),
-			'entry'       => sanitize_text_field( $manifest['entry'] ?? 'index.html' ),
-			'menu'        => $this->sanitize_menu( $manifest['menu'] ?? array() ),
-			'permissions' => $this->sanitize_permissions( $manifest['permissions'] ?? array() ),
-			'license'     => $this->sanitize_license( $manifest['license'] ?? array() ),
-			'registry'    => $this->sanitize_registry_meta( $manifest ),
-			'enabled'     => true,
-			'installed'   => gmdate( 'Y-m-d\TH:i:s\Z' ),
+			'name'            => sanitize_text_field( $manifest['name'] ),
+			'slug'            => $slug,
+			'version'         => sanitize_text_field( $manifest['version'] ),
+			'author'          => sanitize_text_field( $manifest['author'] ?? '' ),
+			'description'     => sanitize_textarea_field( $manifest['description'] ?? '' ),
+			'icon'            => sanitize_text_field( $manifest['icon'] ?? 'icon.svg' ),
+			'entry'           => sanitize_text_field( $manifest['entry'] ?? 'index.html' ),
+			'menu'            => $this->sanitize_menu( $manifest['menu'] ?? array() ),
+			'permissions'     => $this->sanitize_permissions( $manifest['permissions'] ?? array() ),
+			'license'         => $this->sanitize_license( $manifest['license'] ?? array() ),
+			'registry'        => $this->sanitize_registry_meta( $manifest ),
+			'trust'           => $this->sanitize_trust( $manifest['trust'] ?? 'standard' ),
+			'zero_trust'      => ! empty( $manifest['zero_trust'] ),
+			'health_check'    => isset( $manifest['health_check'] ) ? esc_url_raw( (string) $manifest['health_check'] ) : '',
+			'jobs'            => $this->sanitize_jobs( $manifest['jobs'] ?? array() ),
+			'settings'        => is_array( $manifest['settings'] ?? null ) ? $manifest['settings'] : array(),
+			'search_endpoint' => isset( $manifest['search_endpoint'] ) ? sanitize_text_field( (string) $manifest['search_endpoint'] ) : '',
+			'enabled'         => true,
+			'installed'       => gmdate( 'Y-m-d\TH:i:s\Z' ),
 		);
 
 		if ( ! $this->save_ware( $slug, $ware ) ) {
@@ -290,6 +296,8 @@ final class WareRegistry implements WareRegistryInterface {
 			'group'       => $menu['group'] ?? null,
 			'dev_url'     => $ware['dev_url'] ?? null,
 			'permissions' => $ware['permissions'] ?? array(),
+			'trust'       => $ware['trust'] ?? 'standard',
+			'zero_trust'  => (bool) ( $ware['zero_trust'] ?? false ),
 		);
 	}
 
@@ -459,6 +467,43 @@ final class WareRegistry implements WareRegistryInterface {
 			'url'      => esc_url_raw( $raw['url'] ?? '' ),
 			'required' => ( isset( $raw['required'] ) && $raw['required'] ) ? 'true' : 'false',
 		);
+	}
+
+	/**
+	 * Validate the trust level against the allowed set.
+	 *
+	 * @param mixed $raw Raw value from the manifest.
+	 * @return string One of 'standard', 'trusted', 'verified'.
+	 */
+	private function sanitize_trust( mixed $raw ): string {
+		$allowed = array( 'standard', 'trusted', 'verified' );
+		$value   = sanitize_text_field( (string) $raw );
+		return in_array( $value, $allowed, true ) ? $value : 'standard';
+	}
+
+	/**
+	 * Sanitize a jobs array from the manifest.
+	 *
+	 * @param mixed $raw Raw value from the manifest.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function sanitize_jobs( mixed $raw ): array {
+		if ( ! is_array( $raw ) ) {
+			return array();
+		}
+		$jobs = array();
+		foreach ( $raw as $job ) {
+			if ( ! is_array( $job ) || empty( $job['id'] ) ) {
+				continue;
+			}
+			$jobs[] = array(
+				'id'       => sanitize_key( (string) $job['id'] ),
+				'label'    => sanitize_text_field( $job['label'] ?? $job['id'] ),
+				'interval' => sanitize_text_field( $job['interval'] ?? 'hourly' ),
+				'endpoint' => isset( $job['endpoint'] ) ? esc_url_raw( (string) $job['endpoint'] ) : '',
+			);
+		}
+		return $jobs;
 	}
 
 	/**

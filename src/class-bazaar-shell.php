@@ -109,17 +109,21 @@ final class BazaarShell {
 				$branding = array();
 			}
 
+			$outdated_wares = get_option( 'bazaar_outdated_wares', array() );
+			$outdated_count = is_array( $outdated_wares ) ? count( $outdated_wares ) : 0;
+
 			wp_localize_script(
 				self::HANDLE,
 				'bazaarShell',
 				array(
-					'restUrl'    => esc_url_raw( rest_url( 'bazaar/v1' ) ),
-					'nonce'      => wp_create_nonce( 'wp_rest' ),
-					'adminColor' => $admin_color,
-					'manageUrl'  => esc_url_raw( admin_url( 'admin.php?page=' . BazaarPage::PAGE_SLUG ) ),
-					'wares'      => $index,
-					'branding'   => $branding,
-					'devMode'    => defined( 'WP_DEBUG' ) && WP_DEBUG,
+					'restUrl'       => esc_url_raw( rest_url( 'bazaar/v1' ) ),
+					'nonce'         => wp_create_nonce( 'wp_rest' ),
+					'adminColor'    => $admin_color,
+					'manageUrl'     => esc_url_raw( admin_url( 'admin.php?page=' . BazaarPage::PAGE_SLUG ) ),
+					'wares'         => $index,
+					'branding'      => $branding,
+					'devMode'       => defined( 'WP_DEBUG' ) && WP_DEBUG,
+					'outdatedCount' => $outdated_count,
 				)
 			);
 		}
@@ -148,12 +152,8 @@ final class BazaarShell {
 		$manifest_path = BAZAAR_DIR . 'admin/dist/.vite/manifest.json';
 
 		if ( file_exists( $manifest_path ) ) {
-			global $wp_filesystem;
-			if ( empty( $wp_filesystem ) ) {
-				require_once ABSPATH . 'wp-admin/includes/file.php';
-				WP_Filesystem();
-			}
-			$raw      = ! empty( $wp_filesystem ) ? $wp_filesystem->get_contents( $manifest_path ) : false;
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$raw      = file_get_contents( $manifest_path );
 			$manifest = is_string( $raw ) ? json_decode( $raw, true ) : null;
 
 			if ( is_array( $manifest ) ) {

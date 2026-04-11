@@ -123,6 +123,25 @@ defined( 'ABSPATH' ) || exit;
 			role="list"
 			aria-label="<?php esc_attr_e( 'Installed wares', 'bazaar' ); ?>"
 		>
+			<?php
+			$perm_labels = array(
+				'read:posts'        => __( 'Read posts', 'bazaar' ),
+				'write:posts'       => __( 'Write posts', 'bazaar' ),
+				'delete:posts'      => __( 'Delete posts', 'bazaar' ),
+				'read:users'        => __( 'Read users', 'bazaar' ),
+				'write:users'       => __( 'Write users', 'bazaar' ),
+				'read:options'      => __( 'Read options', 'bazaar' ),
+				'write:options'     => __( 'Write options', 'bazaar' ),
+				'read:media'        => __( 'Read media', 'bazaar' ),
+				'write:media'       => __( 'Write media', 'bazaar' ),
+				'read:comments'     => __( 'Read comments', 'bazaar' ),
+				'write:comments'    => __( 'Write comments', 'bazaar' ),
+				'moderate:comments' => __( 'Moderate comments', 'bazaar' ),
+				'manage:plugins'    => __( 'Manage plugins', 'bazaar' ),
+				'manage:themes'     => __( 'Manage themes', 'bazaar' ),
+				'read:analytics'    => __( 'Read analytics', 'bazaar' ),
+			);
+			?>
 			<?php foreach ( $wares as $slug => $ware ) : ?>
 				<?php
 				$enabled        = ! empty( $ware['enabled'] );
@@ -145,6 +164,7 @@ defined( 'ABSPATH' ) || exit;
 					__( 'Delete %s', 'bazaar' ),
 					$ware['name']
 				);
+				$permissions  = array_filter( (array) ( $ware['permissions'] ?? array() ) );
 				?>
 				<article
 					class="<?php echo esc_attr( $card_class ); ?>"
@@ -181,10 +201,31 @@ defined( 'ABSPATH' ) || exit;
 									</span>
 								<?php endif; ?>
 							</p>
-							<?php if ( ! empty( $ware['description'] ) ) : ?>
-								<p class="bazaar-card__description"><?php echo esc_html( $ware['description'] ); ?></p>
-							<?php endif; ?>
-						</div>
+						<?php if ( ! empty( $ware['description'] ) ) : ?>
+							<p class="bazaar-card__description"><?php echo esc_html( $ware['description'] ); ?></p>
+						<?php endif; ?>
+						<?php if ( ! empty( $permissions ) ) : ?>
+							<details class="bazaar-card__perms">
+								<summary class="bazaar-card__perms-summary">
+									<?php
+									printf(
+										/* translators: %d: number of permissions requested */
+										esc_html( _n( '%d permission', '%d permissions', count( $permissions ), 'bazaar' ) ),
+										count( $permissions )
+									);
+									?>
+								</summary>
+								<ul class="bazaar-card__perms-list">
+									<?php foreach ( $permissions as $perm ) : ?>
+										<li class="bazaar-card__perm-item">
+											<span class="bazaar-card__perm-icon dashicons dashicons-yes-alt" aria-hidden="true"></span>
+											<?php echo esc_html( $perm_labels[ $perm ] ?? $perm ); ?>
+										</li>
+									<?php endforeach; ?>
+								</ul>
+							</details>
+						<?php endif; ?>
+					</div>
 						<div class="bazaar-card__actions">
 							<label class="bazaar-toggle" title="<?php echo esc_attr( $toggle_label ); ?>">
 								<input

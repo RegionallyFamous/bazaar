@@ -84,6 +84,16 @@ final class BazaarPage {
 			return;
 		}
 
+		// Detect iframe context immediately in <head> — before the admin bar
+		// and sidebar are painted — so the bazaar-in-shell CSS rules hide them
+		// without any flash of the WordPress chrome.
+		add_action(
+			'admin_head',
+			static function (): void {
+				echo '<script>if(window!==window.top){document.documentElement.classList.add("bazaar-in-shell");}</script>' . "\n";
+			}
+		);
+
 		list( $js_file, $css_file, $version ) = $this->resolve_assets();
 
 		if ( '' !== $js_file ) {
@@ -160,12 +170,8 @@ final class BazaarPage {
 		$manifest_path = BAZAAR_DIR . 'admin/dist/.vite/manifest.json';
 
 		if ( file_exists( $manifest_path ) ) {
-			global $wp_filesystem;
-			if ( empty( $wp_filesystem ) ) {
-				require_once ABSPATH . 'wp-admin/includes/file.php';
-				WP_Filesystem();
-			}
-			$raw      = ! empty( $wp_filesystem ) ? $wp_filesystem->get_contents( $manifest_path ) : false;
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$raw      = file_get_contents( $manifest_path );
 			$manifest = is_string( $raw ) ? json_decode( $raw, true ) : null;
 
 			if ( is_array( $manifest ) ) {

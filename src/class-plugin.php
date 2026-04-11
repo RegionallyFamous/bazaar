@@ -278,6 +278,12 @@ final class Plugin {
 	 * Add type="module" to Bazaar script tags so the browser accepts the
 	 * ES-module import statements emitted by Vite's build.
 	 *
+	 * WordPress adds type='text/javascript' when the active theme does not
+	 * declare add_theme_support('html5','script'). If we only prepend
+	 * type="module" without removing the existing attribute the browser
+	 * honours the first type (text/javascript) and the import statement
+	 * throws a SyntaxError. Strip any existing type attribute first.
+	 *
 	 * @param string $tag    The full <script> HTML tag.
 	 * @param string $handle The script handle passed to wp_enqueue_script().
 	 * @return string Modified tag, or original tag for unrelated handles.
@@ -287,7 +293,10 @@ final class Plugin {
 		if ( ! in_array( $handle, $bazaar_handles, true ) ) {
 			return $tag;
 		}
-		return str_replace( ' src=', ' type="module" src=', $tag );
+		// Remove any existing type="…" or type='…' attribute WordPress may have added.
+		$tag = preg_replace( '/\s+type=["\'][^"\']*["\']/', '', $tag ) ?? $tag;
+		// Inject type="module" immediately after the opening <script token.
+		return str_replace( '<script ', '<script type="module" ', $tag );
 	}
 
 	/**
