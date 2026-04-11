@@ -324,8 +324,9 @@ final class WareServer {
 	 */
 	private function inject_error_reporter( string $html ): string {
 		$script = '<script>(function(){' .
-			'window.addEventListener("error",function(e){window.parent.postMessage({type:"bazaar:error",message:e.message,stack:e.error&&e.error.stack||"",url:e.filename},"*")});' .
-			'window.addEventListener("unhandledrejection",function(e){window.parent.postMessage({type:"bazaar:error",message:String(e.reason),stack:"",url:location.href},"*")});' .
+			'var o=document.location.origin;' .
+			'window.addEventListener("error",function(e){window.parent.postMessage({type:"bazaar:error",message:e.message,stack:e.error&&e.error.stack||"",url:e.filename},o)});' .
+			'window.addEventListener("unhandledrejection",function(e){window.parent.postMessage({type:"bazaar:error",message:String(e.reason),stack:"",url:location.href},o)});' .
 			'})()</script>';
 		return (string) preg_replace( '/(<\/head>)/i', $script . '$1', $html, 1 );
 	}

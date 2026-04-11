@@ -164,7 +164,7 @@ final class StreamController extends BazaarController {
 			array(
 				'capability' => 'manage_options',
 				'fields'     => 'ID',
-				'number'     => 50,
+				'number'     => -1,
 			)
 		);
 

@@ -71,6 +71,20 @@ final class BazaarPage {
 			self::PAGE_SLUG,
 			array( $this, 'render_page' )
 		);
+
+		// WordPress's get_admin_page_title() cannot locate titles for hidden
+		// submenu pages (parent = ''), leaving $title null and causing a
+		// PHP 8.1+ deprecation in admin-header.php:strip_tags($title).
+		// Set the global before admin-header.php runs.
+		add_action( "load-{$this->screen_id}", array( $this, 'set_page_title' ) );
+	}
+
+	/**
+	 * Pre-populate the global $title so admin-header.php doesn't receive null.
+	 */
+	public function set_page_title(): void {
+		global $title;
+		$title = esc_html__( 'Manage Wares', 'bazaar' );
 	}
 
 	/**
@@ -113,9 +127,11 @@ final class BazaarPage {
 					'nonce'     => wp_create_nonce( 'wp_rest' ),
 					'wares'     => $this->get_wares(),
 					'maxSizeMb' => absint( get_option( 'bazaar_max_ware_size', BAZAAR_MAX_UNCOMPRESSED_SIZE ) ) / 1024 / 1024,
-					// Tells main.js to emit postMessage events when wares change so
-					// the parent shell can update its nav rail without a page reload.
-					'inShell'   => true,
+					// main.js uses this to decide whether to emit postMessage events
+				// back to the parent shell. We detect the iframe context server-side
+				// from the Sec-Fetch-Dest header; the admin_head inline script also
+				// adds .bazaar-in-shell on the <html> element as a CSS hook.
+				'inShell'   => ( isset( $_SERVER['HTTP_SEC_FETCH_DEST'] ) && 'iframe' === $_SERVER['HTTP_SEC_FETCH_DEST'] ) || ( isset( $_SERVER['HTTP_REFERER'] ) && str_contains( (string) $_SERVER['HTTP_REFERER'], 'page=bazaar' ) ),
 				)
 			);
 

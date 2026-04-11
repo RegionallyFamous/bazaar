@@ -316,10 +316,12 @@ final class WareRegistry implements WareRegistryInterface {
 			if ( is_array( $legacy ) ) {
 				foreach ( $legacy as $slug => $ware ) {
 					$slug = sanitize_key( (string) $slug );
-					if ( '' === $slug ) {
+					if ( '' === $slug || ! is_array( $ware ) ) {
 						continue;
 					}
-					$this->save_ware( $slug, $ware );
+					// Re-run sanitisation so legacy data meets current schema.
+					$ware['slug'] = $slug;
+					$this->register( $ware );
 					$index[ $slug ] = $this->make_index_entry( $ware );
 				}
 			}
@@ -535,6 +537,14 @@ final class WareRegistry implements WareRegistryInterface {
 	 * @return bool
 	 */
 	public function update_field( string $slug, string $field, mixed $value ): bool {
+		static $allowed = array(
+			'enabled', 'version', 'name', 'description', 'icon', 'entry',
+			'dev_url', 'trust', 'zero_trust', 'health_check', 'jobs',
+			'settings', 'search_endpoint', 'permissions',
+		);
+		if ( ! in_array( $field, $allowed, true ) ) {
+			return false;
+		}
 		$slug = sanitize_key( $slug );
 		$ware = $this->load_ware( $slug );
 		if ( null === $ware ) {

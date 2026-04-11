@@ -41,6 +41,7 @@ const {
 	branding = {},
 	devMode: globalDevMode = false,
 	outdatedCount = 0,
+	swUrl = null,
 } = D;
 
 const LRU_CAP = Math.max(
@@ -99,9 +100,13 @@ const inspector = new WareInspector();
 	}
 	if (branding.logoUrl) {
 		const logoEl = document.querySelector('.bsh-nav__logo');
-		if (logoEl) {
+		// Guard against javascript: URIs — only allow http/https/data image URIs.
+		const safeLogoUrl = /^(https?:|data:image\/)/.test(branding.logoUrl)
+			? branding.logoUrl
+			: null;
+		if (logoEl && safeLogoUrl) {
 			const img = document.createElement('img');
-			img.src = branding.logoUrl;
+			img.src = safeLogoUrl;
 			img.alt = '';
 			img.width = 20;
 			img.height = 20;
@@ -266,7 +271,9 @@ class CommandPalette {
 					`${restUrl}/${searchEndpoint}?q=${encodeURIComponent(query)}`,
 					{
 						headers: { 'X-WP-Nonce': nonce },
-						signal: AbortSignal.timeout(2000),
+						signal: AbortSignal.timeout
+						? AbortSignal.timeout(2000)
+						: (() => { const c = new AbortController(); setTimeout(() => c.abort(), 2000); return c.signal; })(),
 					}
 				);
 				if (!r.ok) {
@@ -518,10 +525,16 @@ function renderNav() {
 	if (!enabled.length) {
 		const li = document.createElement('li');
 		li.className = 'bsh-nav__empty';
-		li.textContent =
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'bsh-nav__empty-cta';
+		btn.textContent =
 			wareMap.size === 0
-				? __('No wares installed yet.', 'bazaar')
-				: __('All wares disabled. Enable one in Manage.', 'bazaar');
+				? __('No wares installed yet. →', 'bazaar')
+				: __('All wares disabled. Enable one →', 'bazaar');
+		btn.setAttribute('aria-label', __('Go to Manage Wares', 'bazaar'));
+		btn.addEventListener('click', () => navigateTo('manage'));
+		li.appendChild(btn);
 		navList.appendChild(li);
 		attachDragHandlers(navList);
 		return;
@@ -1083,14 +1096,14 @@ document.addEventListener('keydown', (e) => {
 		}
 		return;
 	}
-	// F → fullscreen (not when typing)
+	// F → fullscreen (not when typing in an input/editable element)
+	const _active = document.activeElement;
 	if (
 		e.key === 'F' &&
 		!e.metaKey &&
 		!e.ctrlKey &&
-		!['INPUT', 'TEXTAREA', 'SELECT'].includes(
-			e.target?.ownerDocument?.activeElement?.tagName
-		)
+		!['INPUT', 'TEXTAREA', 'SELECT'].includes(_active?.tagName ?? '') &&
+		!_active?.isContentEditable
 	) {
 		toggleFullscreen(root);
 		return;
@@ -1164,7 +1177,7 @@ for (const ware of wareMap.values()) {
 
 	try {
 		const reg = await navigator.serviceWorker.register(
-			`${window.location.origin}/wp-content/plugins/bazaar/admin/dist/zero-trust-sw.js`,
+			swUrl ?? `${window.location.origin}/wp-content/plugins/bazaar/admin/dist/zero-trust-sw.js`,
 			{ scope: '/' }
 		);
 

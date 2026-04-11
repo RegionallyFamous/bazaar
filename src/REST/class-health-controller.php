@@ -80,7 +80,7 @@ final class HealthController extends BazaarController {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'get_all' ),
-				'permission_callback' => $this->require_login(),
+				'permission_callback' => $this->require_admin(),
 			)
 		);
 
@@ -90,7 +90,7 @@ final class HealthController extends BazaarController {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'get_one' ),
-				'permission_callback' => $this->require_login(),
+				'permission_callback' => $this->require_admin(),
 			)
 		);
 	}
@@ -200,18 +200,14 @@ final class HealthController extends BazaarController {
 			$code     = is_wp_error( $response ) ? 0 : (int) wp_remote_retrieve_response_code( $response );
 			$status   = ( $code >= 200 && $code < 300 ) ? 'ok' : ( ( $code >= 300 && $code < 500 ) ? 'warn' : 'error' );
 
-			// Push to SSE queue.
-			$queue   = (array) get_transient( 'bazaar_sse_queue' );
-			$queue[] = array(
-				'event' => 'health',
-				'data'  => wp_json_encode(
-					array(
-						'slug'   => $ware['slug'],
-						'status' => $status,
-					)
-				),
+			// Push health update to all connected SSE clients.
+			bazaar_push_sse_event(
+				'health',
+				array(
+					'slug'   => $ware['slug'],
+					'status' => $status,
+				)
 			);
-			set_transient( 'bazaar_sse_queue', $queue, 60 );
 		}
 	}
 }

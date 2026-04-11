@@ -47,8 +47,9 @@ export default defineConfig( {
 		manifest: true,
 		rollupOptions: {
 			input: {
-				bazaar: resolve( __dirname, 'admin/src/main.js' ),
-				shell:  resolve( __dirname, 'admin/src/shell.js' ),
+				bazaar:           resolve( __dirname, 'admin/src/main.js' ),
+				shell:            resolve( __dirname, 'admin/src/shell.js' ),
+				'zero-trust-sw':  resolve( __dirname, 'admin/src/zero-trust-sw.js' ),
 			},
 			output: {
 				entryFileNames: '[name].js',

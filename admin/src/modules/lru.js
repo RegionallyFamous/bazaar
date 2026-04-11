@@ -102,13 +102,15 @@ export class TrustAwareLruManager extends LruIframeManager {
 
 		const trust = this.wareMap.get(slug)?.trust ?? 'standard';
 		switch (trust) {
-			case 'low':
-				// No same-origin: cannot access parent APIs, no cookies.
-				return 'allow-scripts allow-forms allow-popups';
-			case 'high':
-				// Full sandbox + popups-to-escape-sandbox for OAuth flows.
+			case 'verified':
+				// Highest trust: full sandbox + OAuth popup-escape for SSO flows.
 				return 'allow-scripts allow-forms allow-same-origin allow-popups allow-downloads allow-popups-to-escape-sandbox allow-modals';
+			case 'trusted':
+				// Elevated trust: full sandbox access with modals.
+				return 'allow-scripts allow-forms allow-same-origin allow-popups allow-downloads allow-modals';
+			case 'standard':
 			default:
+				// Standard trust: basic sandbox without modal or OAuth escape.
 				return 'allow-scripts allow-forms allow-same-origin allow-popups allow-downloads';
 		}
 	}

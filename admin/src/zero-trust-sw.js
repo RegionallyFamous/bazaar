@@ -47,10 +47,10 @@ self.addEventListener('fetch', (event) => {
 	const url = new URL(req.url);
 
 	// Determine which ware this request belongs to by inspecting the referrer.
-	// Ware iframes are served under /bazaar-serve/{slug}/.
+	// Ware iframes are served under {restUrl}/serve/{slug}/…
 	const referrer = event.request.referrer;
 	const slugMatch = referrer
-		? /\/bazaar-serve\/([a-z0-9-]+)\//.exec(referrer)
+		? /\/serve\/([a-z0-9-]+)\//.exec(new URL(referrer).pathname)
 		: null;
 	const slug = slugMatch ? slugMatch[1] : null;
 
