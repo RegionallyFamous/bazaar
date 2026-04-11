@@ -35,7 +35,12 @@ export class LruIframeManager {
 		const f = document.createElement('iframe');
 		f.id = `bsh-frame-${slug}`;
 		f.className = 'bsh-iframe';
-		f.setAttribute('sandbox', sandbox);
+		// Only set the sandbox attribute when the subclass requests it.
+		// Omitting it entirely on trusted first-party pages (e.g. manage)
+		// avoids the browser warning about allow-scripts + allow-same-origin.
+		if (sandbox) {
+			f.setAttribute('sandbox', sandbox);
+		}
 		f.referrerPolicy = 'same-origin';
 		f.title = slug;
 		f.setAttribute('aria-hidden', 'true');
@@ -88,6 +93,13 @@ export class TrustAwareLruManager extends LruIframeManager {
 	}
 
 	_sandboxAttr(slug) {
+		// The built-in manage page is a trusted first-party admin page.
+		// No sandbox needed — omitting the attribute avoids the browser's
+		// "allow-scripts + allow-same-origin can escape sandboxing" warning.
+		if (slug === 'manage') {
+			return '';
+		}
+
 		const trust = this.wareMap.get(slug)?.trust ?? 'standard';
 		switch (trust) {
 			case 'low':
