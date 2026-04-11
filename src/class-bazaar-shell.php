@@ -65,22 +65,6 @@ final class BazaarShell {
 			2
 		);
 
-		add_filter( 'admin_body_class', array( $this, 'add_body_class' ) );
-	}
-
-	/**
-	 * Append bazaar-shell-active to the admin body class list.
-	 * Used to suppress the WP sidebar when the shell is open.
-	 *
-	 * @param string $classes Space-separated body class string.
-	 * @return string
-	 */
-	public function add_body_class( string $classes ): string {
-		$screen = get_current_screen();
-		if ( $screen && $screen->id === $this->screen_id ) {
-			$classes .= ' bazaar-shell-active';
-		}
-		return $classes;
 	}
 
 	/**
@@ -97,6 +81,16 @@ final class BazaarShell {
 
 		if ( '' !== $css_file ) {
 			wp_enqueue_style( self::HANDLE, BAZAAR_URL . 'admin/dist/' . $css_file, array(), $version );
+
+			/*
+			 * Suppress the WP admin sidebar so Bazaar's own nav rail is the sole
+			 * left-side navigation. Output in <head> via inline style so it applies
+			 * before the sidebar paints — no FOUC, no body-class dependency.
+			 */
+			wp_add_inline_style(
+				self::HANDLE,
+				'#adminmenuwrap,#adminmenuback{display:none!important;}#wpcontent{margin-left:0!important;}'
+			);
 		}
 
 		if ( '' !== $js_file ) {

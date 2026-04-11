@@ -28,9 +28,13 @@
 	--bsh-item-radius:    6px;
 
 	/* Shell surfaces */
-	--bsh-shell-bg:    #eef1f6;
-	--bsh-toolbar-bg:  #f8f9fb;
+	--bsh-shell-bg:    #f0f2f5;
+	--bsh-toolbar-bg:  #0e1520;
+	--bsh-toolbar-border: rgba(255, 255, 255, 0.07);
 	--bsh-border:      #e2e8f0;
+
+	/* Shared header height — nav header and toolbar must match */
+	--bsh-header-h:    44px;
 
 	/* Shadows */
 	--bsh-shadow-sm:   0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
@@ -91,16 +95,20 @@
 	pointer-events: none;
 }
 
+/* Hide the empty-state CTA text — nothing meaningful fits in 52 px */
+.bsh--no-wares .bsh-nav__empty { display: none; }
+
 .bsh--no-wares .bsh-nav__collapse .dashicons {
 	transform: rotate(180deg);
 }
 
-/* Header row */
+/* Header row — height must match .bsh-toolbar for the top-band effect */
 .bsh-nav__header {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	padding: 14px 12px 13px;
+	padding: 0 12px;
+	height: var(--bsh-header-h);
 	border-bottom: 1px solid var(--bsh-nav-border);
 	white-space: nowrap;
 	overflow: hidden;
@@ -317,7 +325,7 @@
 	flex: 1;
 	position: relative;
 	overflow: hidden;
-	background: #fff;
+	background: var(--bsh-shell-bg);
 }
 
 .bsh-iframe {
@@ -521,11 +529,11 @@
 	display: flex;
 	align-items: center;
 	gap: 2px;
-	padding: 4px 10px;
+	padding: 0 10px;
 	background: var(--bsh-toolbar-bg);
-	border-bottom: 1px solid var(--bsh-border);
+	border-bottom: 1px solid var(--bsh-toolbar-border);
 	flex-shrink: 0;
-	height: 36px;
+	height: var(--bsh-header-h);
 	justify-content: flex-end;
 	box-sizing: border-box;
 }
@@ -533,9 +541,9 @@
 .bsh-toolbar__btn {
 	background: none;
 	border: none;
-	color: #64748b;
+	color: rgba(255, 255, 255, 0.4);
 	cursor: pointer;
-	padding: 4px 7px;
+	padding: 5px 8px;
 	border-radius: var(--bsh-radius-sm);
 	line-height: 1;
 	display: flex;
@@ -544,8 +552,13 @@
 }
 
 .bsh-toolbar__btn:hover {
-	background: #e2e8f0;
-	color: #0f172a;
+	background: rgba(255, 255, 255, 0.09);
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.bsh-toolbar__btn--active {
+	color: var(--bsh-accent) !important;
+	background: rgba(var(--bsh-accent-rgb), 0.15) !important;
 }
 
 /* ─── Toast notifications ────────────────────────────────────────────────── */

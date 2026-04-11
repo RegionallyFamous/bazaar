@@ -527,6 +527,7 @@ function insertWareCard(ware) {
 	if (filtersBar) {
 		filtersBar.hidden = false;
 	}
+	document.getElementById('bazaar-app')?.classList.remove('bazaar-page--empty');
 
 	const isEnabled = ware.enabled !== false;
 	const iconUrl = `${window.bazaarData?.restUrl ?? ''}/serve/${encodeURIComponent(ware.slug)}/${encodeURIComponent(ware.icon ?? 'icon.svg')}`;

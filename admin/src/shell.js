@@ -1057,19 +1057,23 @@ window.addEventListener('message', (event) => {
 		return b;
 	}
 
-	mkBtn(__('Split view', 'bazaar'), 'dashicons-columns', () => {
+	const splitBtn = mkBtn(__('Split view', 'bazaar'), 'dashicons-columns', () => {
 		if (splitView.active) {
 			splitView.exit(iframes);
 			root.classList.remove('bsh--split');
+			splitBtn.classList.remove('bsh-toolbar__btn--active');
 		} else {
 			splitView.enter(iframes);
 			root.classList.add('bsh--split');
+			splitBtn.classList.add('bsh-toolbar__btn--active');
 		}
 	});
 
-	mkBtn(__('Fullscreen', 'bazaar'), 'dashicons-fullscreen-alt', () =>
-		toggleFullscreen(root)
-	);
+	const fsBtn = mkBtn(__('Fullscreen', 'bazaar'), 'dashicons-fullscreen-alt', () => {
+		toggleFullscreen(root);
+		const isFs = root.classList.contains('bsh--fullscreen');
+		fsBtn.classList.toggle('bsh-toolbar__btn--active', isFs);
+	});
 
 	mkBtn(__('Pop out', 'bazaar'), 'dashicons-external', () => {
 		if (activeSlug && activeSlug !== 'manage') {

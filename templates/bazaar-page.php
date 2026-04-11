@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<div class="wrap bazaar-page" id="bazaar-app">
+<div class="wrap bazaar-page<?php echo empty( $wares ) ? ' bazaar-page--empty' : ''; ?>" id="bazaar-app">
 
 	<header class="bazaar-header">
 		<h1 class="bazaar-title">

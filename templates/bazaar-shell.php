@@ -11,18 +11,11 @@
 defined( 'ABSPATH' ) || exit;
 ?>
 <style>
-/* Remove wp-admin chrome padding so the shell can be full-bleed. */
+/* Remove wp-admin chrome padding so the shell can be full-bleed.
+   Sidebar suppression is handled in <head> via wp_add_inline_style(). */
 #wpcontent         { padding-left: 0 !important; }
 #wpbody-content    { padding: 0 !important; overflow: hidden; }
 #bazaar-shell-root { margin: 0 !important; }
-
-/*
- * Hide the WP admin sidebar — Bazaar owns its own nav rail.
- * The WP admin bar stays as the "return to WordPress" anchor.
- */
-body.bazaar-shell-active #adminmenuwrap,
-body.bazaar-shell-active #adminmenuback { display: none !important; }
-body.bazaar-shell-active #wpcontent     { margin-left: 0 !important; }
 </style>
 
 <div id="bazaar-shell-root" class="bsh" aria-label="<?php esc_attr_e( 'Bazaar', 'bazaar' ); ?>">
