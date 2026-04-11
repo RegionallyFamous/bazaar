@@ -180,14 +180,6 @@
 	border-top: 1px solid var(--bsh-nav-border);
 }
 
-.bsh-nav__footer .bsh-nav__btn {
-	color: var(--bsh-nav-text-dim);
-}
-
-.bsh-nav__footer .bsh-nav__btn:hover {
-	color: var(--bsh-nav-text);
-}
-
 /* Divider */
 .bsh-nav__divider {
 	height: 1px;
@@ -216,11 +208,6 @@
 .bsh--collapsed .bsh-nav__item:has( .bsh-nav__btn--active ) {
 	background: rgba(var(--bsh-accent-rgb), 0.18);
 	box-shadow: none;
-}
-
-.bsh--collapsed .bsh-nav__btn--active .bsh-nav__icon-wrap {
-	color: var(--bsh-accent);
-	filter: drop-shadow(0 0 5px rgba(var(--bsh-accent-rgb), 0.55));
 }
 
 /* Hover: highlight entire row when the main button is hovered */
@@ -419,9 +406,24 @@
 
 .bsh-nav__group-arrow--closed { transform: rotate(-90deg); }
 
+/* Footer dim colour — less specific than grouped/collapsed overrides; must precede them */
+.bsh-nav__footer .bsh-nav__btn {
+	color: var(--bsh-nav-text-dim);
+}
+
 .bsh-nav__item--grouped .bsh-nav__btn { padding-left: 22px; }
 
 .bsh--collapsed .bsh-nav__item--grouped .bsh-nav__btn { padding-left: 12px; }
+
+/* Footer hover + collapsed active icon — must follow grouped rules */
+.bsh-nav__footer .bsh-nav__btn:hover {
+	color: var(--bsh-nav-text);
+}
+
+.bsh--collapsed .bsh-nav__btn--active .bsh-nav__icon-wrap {
+	color: var(--bsh-accent);
+	filter: drop-shadow(0 0 5px rgba(var(--bsh-accent-rgb), 0.55));
+}
 
 /* ─── Badge counts ───────────────────────────────────────────────────────── */
 

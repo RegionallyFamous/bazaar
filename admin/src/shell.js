@@ -72,6 +72,15 @@ const loading = document.getElementById( 'bsh-loading' );
 const collapse = document.getElementById( 'bsh-collapse' );
 const root = document.getElementById( 'bazaar-shell-root' );
 
+// Fail loudly in development; degrade gracefully in production when the shell
+// template is missing a required element rather than throwing a cascade of
+// null-dereference TypeErrors throughout the module.
+if ( ! navList || ! navFooter || ! navEl || ! main || ! loading || ! collapse || ! root ) {
+	// eslint-disable-next-line no-console
+	console.error( '[Bazaar] Shell template is missing required elements. Shell will not start.' );
+	throw new Error( 'Bazaar shell: missing required DOM elements' );
+}
+
 // Toast container
 const toastEl = document.createElement( 'div' );
 toastEl.className = 'bsh-toasts';
@@ -164,7 +173,12 @@ class CommandPalette {
 
 		this.input.addEventListener( 'input', () => {
 			clearTimeout( this._searchTimer );
-			this._searchTimer = setTimeout( () => this._render(), 150 );
+			this._searchTimer = setTimeout( () => {
+				void this._render().catch( ( err ) => {
+					// eslint-disable-next-line no-console
+					console.error( '[Bazaar] Palette render failed:', err );
+				} );
+			}, 150 );
 		} );
 		this.input.addEventListener( 'keydown', ( e ) => this._key( e ) );
 		this.overlay.addEventListener( 'click', ( e ) => {
@@ -178,7 +192,10 @@ class CommandPalette {
 		this.visible = true;
 		this.overlay.hidden = false;
 		this.input.value = '';
-		this._render();
+		void this._render().catch( ( err ) => {
+			// eslint-disable-next-line no-console
+			console.error( '[Bazaar] Palette render failed:', err );
+		} );
 		this.input.focus();
 		document.body.classList.add( 'bsh-palette-open' );
 	}
@@ -212,8 +229,8 @@ class CommandPalette {
 		const wareItems = q
 			? all.filter(
 				( i ) =>
-					i.label.toLowerCase().includes( ql ) ||
-						i.slug.includes( ql )
+					String( i.label ?? '' ).toLowerCase().includes( ql ) ||
+						String( i.slug ?? '' ).includes( ql )
 			)
 			: all;
 
@@ -721,9 +738,14 @@ function navigateTo( slug, route, toSecondary = false ) {
 		return;
 	}
 
+	// Guard: non-manage slugs must exist in the registry.
+	if ( slug !== 'manage' && ! wareMap.has( slug ) ) {
+		return;
+	}
+
 	if ( toSecondary && splitView.active ) {
 		const url =
-			slug === 'manage' ? manageUrl : serveUrl( wareMap.get( slug ) ?? {} );
+			slug === 'manage' ? manageUrl : serveUrl( wareMap.get( slug ) );
 		splitView.activateSecondary( slug, url );
 		return;
 	}
@@ -744,7 +766,7 @@ function navigateTo( slug, route, toSecondary = false ) {
 	} );
 
 	const url =
-		slug === 'manage' ? manageUrl : serveUrl( wareMap.get( slug ) ?? {} );
+		slug === 'manage' ? manageUrl : serveUrl( wareMap.get( slug ) );
 	const had = iframes.frames.has( slug );
 
 	dismissError( slug );
@@ -792,6 +814,9 @@ async function pollHealth() {
 			return;
 		}
 		const list = await r.json();
+		if ( ! Array.isArray( list ) ) {
+			return;
+		}
 		let dirty = false;
 		for ( const { slug, status } of list ) {
 			if ( healthMap.get( slug ) !== status ) {
@@ -819,8 +844,12 @@ async function pollBadges() {
 		if ( ! r.ok ) {
 			return;
 		}
+		const badges = await r.json();
+		if ( ! Array.isArray( badges ) ) {
+			return;
+		}
 		let dirty = false;
-		for ( const { slug, count } of await r.json() ) {
+		for ( const { slug, count } of badges ) {
 			if ( badgeMap.get( slug ) !== count ) {
 				badgeMap.set( slug, count );
 				dirty = true;
@@ -902,14 +931,19 @@ function connectSSE() {
 // ===========================================================================
 
 const _dataCache = new Map();
+const DATA_CACHE_MAX = 200;
 
 async function cacheQuery( id, path, targetWindow ) {
 	const cached = _dataCache.get( path );
 	if ( cached && Date.now() - cached.ts < 60_000 ) {
-		targetWindow.postMessage(
-			{ type: 'bazaar:query-response', id, data: cached.data },
-			window.location.origin
-		);
+		try {
+			targetWindow.postMessage(
+				{ type: 'bazaar:query-response', id, data: cached.data },
+				window.location.origin
+			);
+		} catch {
+			/* target window may have been closed */
+		}
 		return;
 	}
 	try {
@@ -918,11 +952,19 @@ async function cacheQuery( id, path, targetWindow ) {
 			{ headers: { 'X-WP-Nonce': nonce } }
 		);
 		const d = await r.json();
+		// Evict oldest entry when cache is full (simple FIFO).
+		if ( _dataCache.size >= DATA_CACHE_MAX ) {
+			_dataCache.delete( _dataCache.keys().next().value );
+		}
 		_dataCache.set( path, { data: d, ts: Date.now() } );
-		targetWindow.postMessage(
-			{ type: 'bazaar:query-response', id, data: d },
-			window.location.origin
-		);
+		try {
+			targetWindow.postMessage(
+				{ type: 'bazaar:query-response', id, data: d },
+				window.location.origin
+			);
+		} catch {
+			/* target window may have been closed */
+		}
 	} catch {
 		/* non-fatal */
 	}

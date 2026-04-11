@@ -67,6 +67,67 @@ defined( 'ABSPATH' ) || exit;
 		<div class="bazaar-notice bazaar-notice--success" id="bazaar-upload-success" hidden role="status" aria-live="polite"></div>
 	</section>
 
+	<!-- Core Apps discovery -->
+	<section class="bazaar-core-section" id="bazaar-core-section" aria-labelledby="bazaar-core-heading">
+		<div class="bazaar-core-header">
+			<h2 id="bazaar-core-heading" class="bazaar-section-heading">
+				<?php esc_html_e( 'App Directory', 'bazaar' ); ?>
+			</h2>
+			<span class="bazaar-core-count-badge" id="bazaar-core-count" aria-live="polite"></span>
+		</div>
+		<p class="bazaar-core-description">
+			<?php esc_html_e( 'First-party apps built for Bazaar — install any in one click.', 'bazaar' ); ?>
+		</p>
+
+		<div class="bazaar-core-grid bazaar-core-grid--loading" id="bazaar-core-grid" role="list">
+			<div class="bazaar-core-skeleton" aria-hidden="true">
+				<div class="bazaar-core-skeleton__top">
+					<div class="bazaar-core-skeleton__icon"></div>
+					<div class="bazaar-core-skeleton__lines">
+						<div class="bazaar-core-skeleton__line bazaar-core-skeleton__line--title"></div>
+						<div class="bazaar-core-skeleton__line bazaar-core-skeleton__line--byline"></div>
+					</div>
+				</div>
+				<div class="bazaar-core-skeleton__desc-lines">
+					<div class="bazaar-core-skeleton__line bazaar-core-skeleton__line--d1"></div>
+					<div class="bazaar-core-skeleton__line bazaar-core-skeleton__line--d2"></div>
+					<div class="bazaar-core-skeleton__line bazaar-core-skeleton__line--d3"></div>
+				</div>
+				<div class="bazaar-core-skeleton__btn"></div>
+			</div>
+			<div class="bazaar-core-skeleton" aria-hidden="true">
+				<div class="bazaar-core-skeleton__top">
+					<div class="bazaar-core-skeleton__icon"></div>
+					<div class="bazaar-core-skeleton__lines">
+						<div class="bazaar-core-skeleton__line bazaar-core-skeleton__line--title"></div>
+						<div class="bazaar-core-skeleton__line bazaar-core-skeleton__line--byline"></div>
+					</div>
+				</div>
+				<div class="bazaar-core-skeleton__desc-lines">
+					<div class="bazaar-core-skeleton__line bazaar-core-skeleton__line--d1"></div>
+					<div class="bazaar-core-skeleton__line bazaar-core-skeleton__line--d2"></div>
+					<div class="bazaar-core-skeleton__line bazaar-core-skeleton__line--d3"></div>
+				</div>
+				<div class="bazaar-core-skeleton__btn"></div>
+			</div>
+			<div class="bazaar-core-skeleton" aria-hidden="true">
+				<div class="bazaar-core-skeleton__top">
+					<div class="bazaar-core-skeleton__icon"></div>
+					<div class="bazaar-core-skeleton__lines">
+						<div class="bazaar-core-skeleton__line bazaar-core-skeleton__line--title"></div>
+						<div class="bazaar-core-skeleton__line bazaar-core-skeleton__line--byline"></div>
+					</div>
+				</div>
+				<div class="bazaar-core-skeleton__desc-lines">
+					<div class="bazaar-core-skeleton__line bazaar-core-skeleton__line--d1"></div>
+					<div class="bazaar-core-skeleton__line bazaar-core-skeleton__line--d2"></div>
+					<div class="bazaar-core-skeleton__line bazaar-core-skeleton__line--d3"></div>
+				</div>
+				<div class="bazaar-core-skeleton__btn"></div>
+			</div>
+		</div>
+	</section>
+
 	<!-- Installed wares gallery -->
 	<section class="bazaar-gallery-section" aria-labelledby="bazaar-gallery-heading">
 
@@ -164,7 +225,7 @@ defined( 'ABSPATH' ) || exit;
 					__( 'Delete %s', 'bazaar' ),
 					$ware['name']
 				);
-				$permissions  = array_filter( (array) ( $ware['permissions'] ?? array() ) );
+				$permissions = array_filter( (array) ( $ware['permissions'] ?? array() ) );
 				?>
 				<article
 					class="<?php echo esc_attr( $card_class ); ?>"

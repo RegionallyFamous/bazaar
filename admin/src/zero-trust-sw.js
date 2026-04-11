@@ -76,10 +76,14 @@ self.addEventListener( 'fetch', ( event ) => {
 	// ── Zero-trust enforcement (ware iframes only) ──────────────────────────
 
 	const referrer = req.referrer;
-	const slugMatch = referrer
-		? /\/serve\/([a-z0-9-]+)\//.exec( new URL( referrer ).pathname )
-		: null;
-	const slug = slugMatch ? slugMatch[ 1 ] : null;
+	let slug = null;
+	if ( referrer ) {
+		try {
+			slug = ( /\/serve\/([a-z0-9-]+)\//.exec( new URL( referrer ).pathname ) ?? [] )[ 1 ] ?? null;
+		} catch {
+			// Malformed referrer URL — treat as no slug (allow through).
+		}
+	}
 
 	if ( slug ) {
 		const allowed = permissionsMap.get( slug );
@@ -128,10 +132,11 @@ self.addEventListener( 'fetch', ( event ) => {
 				}
 				const response = await fetch( req );
 				if ( response.ok ) {
-					cache.put( req, response.clone() );
+					// cache.put rejection (quota etc.) must not fail the request.
+					cache.put( req, response.clone() ).catch( () => {} );
 				}
 				return response;
-			} )
+			} ).catch( () => fetch( req ) )
 		);
 	}
 	// All other requests fall through to the network unchanged.

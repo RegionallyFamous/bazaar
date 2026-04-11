@@ -27,82 +27,82 @@ const _overlays = new Map();
  * @param {HTMLElement}            mainEl   The #bsh-main container.
  * @param {(slug: string) => void} onReload Callback when the user clicks "Reload".
  */
-export function showError(slug, message, stack, mainEl, onReload) {
+export function showError( slug, message, stack, mainEl, onReload ) {
 	// Dismiss any existing overlay for this slug.
-	dismissError(slug);
+	dismissError( slug );
 
-	const overlay = document.createElement('div');
+	const overlay = document.createElement( 'div' );
 	overlay.className = 'bsh-error-overlay';
 	overlay.dataset.slug = slug;
-	overlay.setAttribute('role', 'alert');
+	overlay.setAttribute( 'role', 'alert' );
 
-	const icon = document.createElement('span');
+	const icon = document.createElement( 'span' );
 	icon.className = 'bsh-error-overlay__icon';
 	icon.textContent = '⚠';
-	icon.setAttribute('aria-hidden', 'true');
+	icon.setAttribute( 'aria-hidden', 'true' );
 
-	const title = document.createElement('h2');
+	const title = document.createElement( 'h2' );
 	title.className = 'bsh-error-overlay__title';
 	title.textContent = sprintf(
 		// translators: %s: ware slug/name
-		__('"%s" encountered an error', 'bazaar'),
+		__( '"%s" encountered an error', 'bazaar' ),
 		slug
 	);
 
-	const msg = document.createElement('p');
+	const msg = document.createElement( 'p' );
 	msg.className = 'bsh-error-overlay__message';
-	msg.textContent = message ?? __('Unknown error', 'bazaar');
+	msg.textContent = message ?? __( 'Unknown error', 'bazaar' );
 
-	const actions = document.createElement('div');
+	const actions = document.createElement( 'div' );
 	actions.className = 'bsh-error-overlay__actions';
 
-	const reloadBtn = document.createElement('button');
+	const reloadBtn = document.createElement( 'button' );
 	reloadBtn.type = 'button';
 	reloadBtn.className =
 		'bsh-error-overlay__btn bsh-error-overlay__btn--primary';
-	reloadBtn.textContent = __('Reload ware', 'bazaar');
-	reloadBtn.addEventListener('click', () => {
-		dismissError(slug);
-		onReload(slug);
-	});
+	reloadBtn.textContent = __( 'Reload ware', 'bazaar' );
+	reloadBtn.addEventListener( 'click', () => {
+		dismissError( slug );
+		onReload( slug );
+	} );
 
-	const dismissBtn = document.createElement('button');
+	const dismissBtn = document.createElement( 'button' );
 	dismissBtn.type = 'button';
 	dismissBtn.className = 'bsh-error-overlay__btn';
-	dismissBtn.textContent = __('Dismiss', 'bazaar');
-	dismissBtn.addEventListener('click', () => dismissError(slug));
+	dismissBtn.textContent = __( 'Dismiss', 'bazaar' );
+	dismissBtn.addEventListener( 'click', () => dismissError( slug ) );
 
-	actions.append(reloadBtn, dismissBtn);
-	overlay.append(icon, title, msg, actions);
+	actions.append( reloadBtn, dismissBtn );
+	overlay.append( icon, title, msg, actions );
 
-	if (stack) {
-		const details = document.createElement('details');
+	if ( stack ) {
+		const details = document.createElement( 'details' );
 		details.className = 'bsh-error-overlay__details';
-		const summary = document.createElement('summary');
-		summary.textContent = __('Stack trace', 'bazaar');
-		const pre = document.createElement('pre');
+		const summary = document.createElement( 'summary' );
+		summary.textContent = __( 'Stack trace', 'bazaar' );
+		const pre = document.createElement( 'pre' );
 		pre.className = 'bsh-error-overlay__stack';
 		pre.textContent = stack;
-		details.append(summary, pre);
-		overlay.appendChild(details);
+		details.append( summary, pre );
+		overlay.appendChild( details );
 	}
 
-	mainEl.appendChild(overlay);
-	_overlays.set(slug, overlay);
+	mainEl.appendChild( overlay );
+	_overlays.set( slug, overlay );
 }
 
 /**
  * Remove the error overlay for a ware (e.g. after it reloads successfully).
  * @param {string} slug
  */
-export function dismissError(slug) {
-	_overlays.get(slug)?.remove();
-	_overlays.delete(slug);
+export function dismissError( slug ) {
+	_overlays.get( slug )?.remove();
+	_overlays.delete( slug );
 }
 
 /** Remove all overlays (e.g. on full shell reset). */
 export function dismissAll() {
-	for (const el of _overlays.values()) {
+	for ( const el of _overlays.values() ) {
 		el.remove();
 	}
 	_overlays.clear();

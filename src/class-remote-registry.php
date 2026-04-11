@@ -164,7 +164,15 @@ final class RemoteRegistry {
 			return $manifest;
 		}
 
-		$registry->register( $manifest );
+		if ( ! $registry->register( $manifest ) ) {
+			// Files are on disk but the registry failed to record them.  Surface
+			// the error so the caller can clean up or retry — do not silently
+			// return a successful manifest while the ware is actually unreachable.
+			return new WP_Error(
+				'register_failed',
+				esc_html__( 'Ware installed but could not be registered. Please try again.', 'bazaar' )
+			);
+		}
 
 		return $manifest;
 	}

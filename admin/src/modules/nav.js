@@ -35,14 +35,18 @@ function lsSet( key, val ) {
 
 // ─── State (module-level singletons) ──────────────────────────────────────
 
+// Ensure every persisted value is the expected type; corrupt JSON could produce
+// a non-array which would throw inside the Set constructor or array methods.
+const _toArray = ( v ) => ( Array.isArray( v ) ? v : [] );
+
 /** @type {string[]} - ordered list of slugs; absent slugs go after this list */
-export const navOrder = lsGet( LS_ORDER, [] );
+export const navOrder = _toArray( lsGet( LS_ORDER, [] ) );
 
 /** @type {Set<string>} - pinned slugs */
-export const pinnedSet = new Set( lsGet( LS_PINNED, [] ) );
+export const pinnedSet = new Set( _toArray( lsGet( LS_PINNED, [] ) ) );
 
 /** @type {string[]} - up to 5 recently-visited slugs, newest first */
-export const recentList = lsGet( LS_RECENT, [] );
+export const recentList = _toArray( lsGet( LS_RECENT, [] ) );
 
 // ─── Persistence writers ────────────────────────────────────────────────────
 
@@ -97,7 +101,7 @@ export function sortedEnabled( wareMap ) {
 			return ap - bp;
 		}
 		return (
-			orderIdx( a.slug ) - orderIdx( b.slug ) || a.name.localeCompare( b.name )
+			orderIdx( a.slug ) - orderIdx( b.slug ) || ( a.name ?? '' ).localeCompare( b.name ?? '' )
 		);
 	} );
 }

@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
 ?>
 <style>
 /* Remove wp-admin chrome padding so the shell can be full-bleed.
-   Sidebar suppression is handled in <head> via wp_add_inline_style(). */
+	Sidebar suppression is handled in <head> via wp_add_inline_style(). */
 #wpcontent         { padding-left: 0 !important; }
 #wpbody-content    { padding: 0 !important; overflow: hidden; }
 #bazaar-shell-root { margin: 0 !important; }

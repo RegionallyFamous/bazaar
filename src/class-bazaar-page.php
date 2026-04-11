@@ -72,19 +72,28 @@ final class BazaarPage {
 			array( $this, 'render_page' )
 		);
 
-		// WordPress's get_admin_page_title() cannot locate titles for hidden
-		// submenu pages (parent = ''), leaving $title null and causing a
-		// PHP 8.1+ deprecation in admin-header.php:strip_tags($title).
-		// Set the global before admin-header.php runs.
+		// get_admin_page_title() cannot locate titles for hidden submenu pages
+		// (parent = ''), so the admin_title filter is used instead to ensure
+		// the <title> tag is populated correctly without touching WP globals.
 		add_action( "load-{$this->screen_id}", array( $this, 'set_page_title' ) );
 	}
 
 	/**
-	 * Pre-populate the global $title so admin-header.php doesn't receive null.
+	 * Hook the admin_title filter on the Bazaar screen so the <title> tag is
+	 * populated without overriding the protected WordPress $title global.
 	 */
 	public function set_page_title(): void {
-		global $title;
-		$title = esc_html__( 'Manage Wares', 'bazaar' );
+		add_filter( 'admin_title', array( $this, 'filter_page_title' ) );
+	}
+
+	/**
+	 * Inject the Bazaar page title into the admin <title> tag.
+	 *
+	 * @return string
+	 */
+	public function filter_page_title(): string {
+		$page_name = esc_html__( 'Manage Wares', 'bazaar' );
+		return $page_name . ' &#8249; ' . get_bloginfo( 'name' ) . ' &#8212; WordPress';
 	}
 
 	/**
@@ -128,10 +137,10 @@ final class BazaarPage {
 					'wares'     => $this->get_wares(),
 					'maxSizeMb' => absint( get_option( 'bazaar_max_ware_size', BAZAAR_MAX_UNCOMPRESSED_SIZE ) ) / 1024 / 1024,
 					// main.js uses this to decide whether to emit postMessage events
-				// back to the parent shell. We detect the iframe context server-side
-				// from the Sec-Fetch-Dest header; the admin_head inline script also
-				// adds .bazaar-in-shell on the <html> element as a CSS hook.
-				'inShell'   => ( isset( $_SERVER['HTTP_SEC_FETCH_DEST'] ) && 'iframe' === $_SERVER['HTTP_SEC_FETCH_DEST'] ) || ( isset( $_SERVER['HTTP_REFERER'] ) && str_contains( (string) $_SERVER['HTTP_REFERER'], 'page=bazaar' ) ),
+					// back to the parent shell. We detect the iframe context server-side
+					// from the Sec-Fetch-Dest header; the admin_head inline script also
+					// adds .bazaar-in-shell on the <html> element as a CSS hook.
+					'inShell'   => ( isset( $_SERVER['HTTP_SEC_FETCH_DEST'] ) && 'iframe' === $_SERVER['HTTP_SEC_FETCH_DEST'] ) || ( isset( $_SERVER['HTTP_REFERER'] ) && str_contains( (string) $_SERVER['HTTP_REFERER'], 'page=bazaar' ) ),
 				)
 			);
 

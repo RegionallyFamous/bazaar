@@ -166,7 +166,8 @@ final class WareServer {
 			);
 		}
 
-		$capability = sanitize_key( $ware['menu']['capability'] ?? 'manage_options' );
+		$menu       = is_array( $ware['menu'] ?? null ) ? $ware['menu'] : array();
+		$capability = sanitize_key( $menu['capability'] ?? 'manage_options' );
 		if ( ! current_user_can( $capability ) ) {
 			return new WP_Error(
 				'rest_forbidden',
@@ -289,6 +290,13 @@ final class WareServer {
 			}
 			WP_Filesystem();
 			global $wp_filesystem;
+			if ( empty( $wp_filesystem ) ) {
+				return new WP_Error(
+					'filesystem_error',
+					esc_html__( 'Could not initialize filesystem.', 'bazaar' ),
+					array( 'status' => 500 )
+				);
+			}
 			$content = $wp_filesystem->get_contents( $full_path );
 			if ( false === $content ) {
 				return new WP_Error( 'file_read_error', esc_html__( 'Could not read file.', 'bazaar' ), array( 'status' => 500 ) );
@@ -432,8 +440,19 @@ final class WareServer {
 			return $cache;
 		}
 
-		$registry_raw = file_get_contents( $registry_path );
-		$manifest_raw = file_get_contents( $manifest_path );
+		global $wp_filesystem;
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+		WP_Filesystem();
+
+		if ( empty( $wp_filesystem ) ) {
+			$cache = array();
+			return $cache;
+		}
+
+		$registry_raw = $wp_filesystem->get_contents( $registry_path );
+		$manifest_raw = $wp_filesystem->get_contents( $manifest_path );
 
 		$registry = is_string( $registry_raw ) ? json_decode( $registry_raw, true ) : null;
 		$manifest = is_string( $manifest_raw ) ? json_decode( $manifest_raw, true ) : null;

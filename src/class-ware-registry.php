@@ -286,7 +286,8 @@ final class WareRegistry implements WareRegistryInterface {
 	 * @return array<string, mixed>
 	 */
 	private function make_index_entry( array $ware ): array {
-		$menu = $ware['menu'] ?? array();
+		// Guard against corrupted storage where 'menu' exists but is not an array.
+		$menu = is_array( $ware['menu'] ?? null ) ? $ware['menu'] : array();
 		return array(
 			'slug'        => $ware['slug'],
 			'name'        => $ware['name'],

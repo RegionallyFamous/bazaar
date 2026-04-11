@@ -64,7 +64,6 @@ final class BazaarShell {
 			'dashicons-store',
 			2
 		);
-
 	}
 
 	/**
@@ -133,9 +132,9 @@ final class BazaarShell {
 					'manageUrl'     => esc_url_raw( admin_url( 'admin.php?page=' . BazaarPage::PAGE_SLUG ) ),
 					'wares'         => $index,
 					'branding'      => $branding,
-				'devMode'       => defined( 'WP_DEBUG' ) && WP_DEBUG,
-				'outdatedCount' => $outdated_count,
-				'swUrl'         => BAZAAR_URL . 'admin/dist/zero-trust-sw.js',
+					'devMode'       => defined( 'WP_DEBUG' ) && WP_DEBUG,
+					'outdatedCount' => $outdated_count,
+					'swUrl'         => BAZAAR_URL . 'admin/dist/zero-trust-sw.js',
 				)
 			);
 		}

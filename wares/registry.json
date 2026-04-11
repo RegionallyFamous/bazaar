@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "wares": [
+    {
+      "slug":         "pixel-art",
+      "name":         "Pixel Art",
+      "description":  "A fully featured pixel art editor with pencil, fill, eyedropper, undo/redo, colour palette, and PNG export. Draw pixel art right inside WordPress.",
+      "version":      "1.0.0",
+      "author":       "Bazaar",
+      "icon_url":     "https://github.com/RegionallyFamous/bazaar/releases/latest/download/pixel-art-icon.svg",
+      "download_url": "https://github.com/RegionallyFamous/bazaar/releases/latest/download/pixel-art.wp",
+      "tags":         ["creative", "art", "editor", "fun"]
+    },
+    {
+      "slug":         "invoice-generator",
+      "name":         "Invoice Generator",
+      "description":  "Create professional invoices, manage clients, track payment status (Draft → Sent → Paid → Overdue), and export PDFs — entirely within WordPress.",
+      "version":      "1.0.0",
+      "author":       "Bazaar",
+      "icon_url":     "https://github.com/RegionallyFamous/bazaar/releases/latest/download/invoice-generator-icon.svg",
+      "download_url": "https://github.com/RegionallyFamous/bazaar/releases/latest/download/invoice-generator.wp",
+      "tags":         ["business", "invoicing", "billing", "pdf"]
+    },
+    {
+      "slug":         "focus",
+      "name":         "Focus Timer",
+      "description":  "A beautiful Pomodoro focus timer with ambient sound mixer (rain, brown noise, white noise), session task list, and a GitHub-style session history heatmap.",
+      "version":      "1.0.0",
+      "author":       "Bazaar",
+      "icon_url":     "https://github.com/RegionallyFamous/bazaar/releases/latest/download/focus-icon.svg",
+      "download_url": "https://github.com/RegionallyFamous/bazaar/releases/latest/download/focus.wp",
+      "tags":         ["productivity", "timer", "focus", "pomodoro"]
+    }
+  ]
+}

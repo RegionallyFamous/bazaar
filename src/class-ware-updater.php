@@ -161,7 +161,14 @@ final class WareUpdater {
 			return $del;
 		}
 		// Remove from registry so the installer can re-register.
-		$this->registry->unregister( $slug );
+		if ( ! $this->registry->unregister( $slug ) ) {
+			// The registry record is still present; abort to avoid a corrupted
+			// state where files are gone but the registry still points to them.
+			return new WP_Error(
+				'unregister_failed',
+				esc_html__( 'Could not unregister ware before update. Please try again.', 'bazaar' )
+			);
+		}
 
 		// Re-install from registry.
 		$manifest = $this->remote->install( $slug, $this->loader, $this->registry );

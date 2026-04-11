@@ -168,6 +168,9 @@ final class JobsController extends BazaarController {
 	 */
 	public static function register_ware_jobs( array $ware ): void {
 		foreach ( (array) ( $ware['jobs'] ?? array() ) as $job ) {
+			if ( ! is_array( $job ) || '' === (string) ( $job['id'] ?? '' ) ) {
+				continue; // Skip malformed job entries that lack a required id.
+			}
 			$hook     = self::static_hook( $ware['slug'], $job['id'] );
 			$interval = sanitize_text_field( $job['interval'] ?? 'hourly' );
 
@@ -193,6 +196,9 @@ final class JobsController extends BazaarController {
 	 */
 	public static function deregister_ware_jobs( string $slug, array $jobs ): void {
 		foreach ( $jobs as $job ) {
+			if ( ! is_array( $job ) || '' === (string) ( $job['id'] ?? '' ) ) {
+				continue;
+			}
 			$hook = self::static_hook( $slug, $job['id'] );
 			wp_unschedule_hook( $hook );
 		}

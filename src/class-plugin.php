@@ -18,6 +18,7 @@ use Bazaar\REST\AnalyticsController;
 use Bazaar\REST\AuditController;
 use Bazaar\REST\BadgeController;
 use Bazaar\REST\ConfigController;
+use Bazaar\REST\CoreAppsController;
 use Bazaar\REST\CspController;
 use Bazaar\REST\ErrorsController;
 use Bazaar\REST\HealthController;
@@ -353,6 +354,7 @@ final class Plugin {
 		( new AuditController() )->register_routes();
 		( new JobsController( $this->registry ) )->register_routes();
 		( new CspController() )->register_routes();
+		( new CoreAppsController( $this->registry ) )->register_routes();
 	}
 
 	/**

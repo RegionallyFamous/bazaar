@@ -29,7 +29,14 @@ export function connectHmr( slug, devUrl, onReload ) {
 	let reconnectDelay = 1000;
 
 	const connect = () => {
-		ws = new WebSocket( wsUrl );
+		try {
+			ws = new WebSocket( wsUrl );
+		} catch {
+			// Invalid wsUrl (e.g. non-ws scheme) — back off and retry.
+			reconnectDelay = Math.min( reconnectDelay * 2, 30_000 );
+			setTimeout( connect, reconnectDelay );
+			return;
+		}
 
 		ws.addEventListener( 'open', () => {
 			reconnectDelay = 1000;

@@ -3,6 +3,10 @@
   "version": "1.0.5",
   "description": "Bazaar WordPress Plugin admin UI",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "wares/*"
+  ],
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",

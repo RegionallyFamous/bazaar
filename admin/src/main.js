@@ -4,7 +4,7 @@
 
 import './main.css';
 import apiFetch from '@wordpress/api-fetch';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
 // Bootstrapped from wp_localize_script in BazaarPage::enqueue_assets().
 const { restUrl, nonce, inShell } = window.bazaarData ?? {};
@@ -218,9 +218,11 @@ async function handleUpload( file ) {
 		const response = await xhrUpload( file );
 		setProgress( 100 );
 		showSuccess( response.message );
-		insertWareCard( response.ware );
-		updateWareCount( 1 );
-		notifyShell( 'bazaar:ware-installed', { ware: response.ware } );
+		if ( response?.ware ) {
+			insertWareCard( response.ware );
+			updateWareCount( 1 );
+			notifyShell( 'bazaar:ware-installed', { ware: response.ware } );
+		}
 	} catch ( err ) {
 		if ( err.message !== 'abort' ) {
 			showError(
@@ -650,4 +652,217 @@ function escHtml( str ) {
  */
 function escAttr( str ) {
 	return escHtml( str );
+}
+
+// ---------------------------------------------------------------------------
+// Core Apps discovery
+// ---------------------------------------------------------------------------
+
+const coreGrid = document.getElementById( 'bazaar-core-grid' );
+
+/**
+ * Build the set of installed ware slugs from the current gallery.
+ *
+ * @return {Set<string>} Set of installed ware slugs.
+ */
+function getInstalledSlugs() {
+	const slugs = new Set();
+	gallery.querySelectorAll( '[data-slug]' ).forEach( ( el ) => {
+		const s = el.dataset.slug;
+		if ( s ) {
+			slugs.add( s );
+		}
+	} );
+	return slugs;
+}
+
+/**
+ * Map a tag to the card accent colour.
+ * Each category family shares a palette that distinguishes apps at a glance.
+ *
+ * @param {string[]} tags App tags from the registry.
+ * @return {string} CSS hex colour for the card accent.
+ */
+function tagToAccent( tags ) {
+	/** @type {Record<string, string>} */
+	const MAP = {
+		creative: '#f59e0b', art: '#f59e0b', editor: '#f59e0b', fun: '#ef4444',
+		business: '#2563eb', invoicing: '#2563eb', billing: '#2563eb', pdf: '#2563eb',
+		productivity: '#7c3aed', timer: '#7c3aed', focus: '#7c3aed', pomodoro: '#7c3aed',
+	};
+	for ( const tag of ( tags ?? [] ) ) {
+		if ( MAP[ tag ] ) {
+			return MAP[ tag ];
+		}
+	}
+	return '#6b7280';
+}
+
+/**
+ * Render a single core app card inside the core grid.
+ *
+ * @param {Object}  app         Catalog entry from /bazaar/v1/core-apps.
+ * @param {boolean} isInstalled Whether this slug is already installed.
+ * @return {HTMLElement} The rendered card element.
+ */
+function renderCoreCard( app, isInstalled ) {
+	const card = document.createElement( 'div' );
+	card.className = 'bazaar-core-card';
+	card.setAttribute( 'role', 'listitem' );
+	card.dataset.slug = app.slug;
+
+	const accent = tagToAccent( app.tags );
+	card.style.setProperty( '--card-accent', accent );
+
+	const initial = ( app.name || '?' ).charAt( 0 ).toUpperCase();
+
+	const tagsHtml = ( app.tags ?? [] )
+		.map( ( t ) => `<span class="bazaar-core-tag">${ escHtml( t ) }</span>` )
+		.join( '' );
+
+	const installedBadge = isInstalled
+		? '<span class="bazaar-core-card__installed-badge">' + escHtml( __( 'Installed', 'bazaar' ) ) + '</span>'
+		: '';
+
+	const btnClass = isInstalled
+		? 'button bazaar-core-card__cta bazaar-core-card__cta--installed'
+		: 'button bazaar-core-card__cta bazaar-core-card__cta--install';
+
+	const btnLabel = isInstalled
+		? __( 'Installed', 'bazaar' )
+		: __( 'Install', 'bazaar' );
+
+	card.innerHTML = `
+		${ installedBadge }
+		<div class="bazaar-core-card__top">
+			<div class="bazaar-core-card__icon-wrap">
+				<span class="bazaar-core-card__initial" aria-hidden="true">${ escHtml( initial ) }</span>
+				<img
+					src="${ escAttr( app.icon_url ) }"
+					alt=""
+					class="bazaar-core-card__icon"
+					onerror="this.style.display='none'"
+				>
+			</div>
+			<div class="bazaar-core-card__info">
+				<h3 class="bazaar-core-card__name">${ escHtml( app.name ) }</h3>
+				<span class="bazaar-core-card__byline">v${ escHtml( app.version ) } &middot; ${ escHtml( app.author ?? 'Bazaar' ) }</span>
+			</div>
+		</div>
+		<p class="bazaar-core-card__desc">${ escHtml( app.description ) }</p>
+		<div class="bazaar-core-card__tags">${ tagsHtml }</div>
+		<button
+			type="button"
+			class="${ escAttr( btnClass ) }"
+			data-core-slug="${ escAttr( app.slug ) }"
+			data-download-url="${ escAttr( app.download_url ) }"
+			${ isInstalled ? 'disabled' : '' }
+			aria-label="${ escAttr( sprintf( /* translators: %s: app name */ __( 'Install %s', 'bazaar' ), app.name ) ) }"
+		>${ escHtml( btnLabel ) }</button>
+	`;
+
+	return card;
+}
+
+/**
+ * Fetch the core apps catalog and render cards.
+ */
+async function loadCoreApps() {
+	if ( ! coreGrid ) {
+		return;
+	}
+
+	let apps;
+	try {
+		apps = await apiFetch( { path: '/bazaar/v1/core-apps' } );
+	} catch {
+		// On failure, remove skeleton cards and show a quiet error message.
+		coreGrid.classList.remove( 'bazaar-core-grid--loading' );
+		coreGrid.innerHTML = `<p class="bazaar-core-error">${ escHtml( __( 'Could not load core apps. Check your internet connection.', 'bazaar' ) ) }</p>`;
+		return;
+	}
+
+	coreGrid.classList.remove( 'bazaar-core-grid--loading' );
+	coreGrid.innerHTML = '';
+
+	if ( ! Array.isArray( apps ) || apps.length === 0 ) {
+		return;
+	}
+
+	// Populate the count badge in the section heading.
+	const countBadge = document.getElementById( 'bazaar-core-count' );
+	if ( countBadge ) {
+		countBadge.textContent = sprintf(
+			/* translators: %d: number of apps */
+			_n( '%d app', '%d apps', apps.length, 'bazaar' ),
+			apps.length
+		);
+	}
+
+	const installed = getInstalledSlugs();
+	apps.forEach( ( app ) => {
+		coreGrid.appendChild( renderCoreCard( app, installed.has( app.slug ) ) );
+	} );
+}
+
+/**
+ * Handle a click on a core app "Install" button.
+ *
+ * @param {HTMLButtonElement} btn
+ */
+async function handleCoreInstall( btn ) {
+	const slug = btn.dataset.coreSlug;
+	const downloadUrl = btn.dataset.downloadUrl;
+
+	if ( ! slug || ! downloadUrl ) {
+		return;
+	}
+
+	btn.disabled = true;
+	btn.textContent = __( 'Installing…', 'bazaar' );
+
+	try {
+		const response = await apiFetch( {
+			path: '/bazaar/v1/core-apps/install',
+			method: 'POST',
+			data: { url: downloadUrl },
+		} );
+
+		btn.textContent = __( 'Installed', 'bazaar' );
+		btn.classList.remove( 'bazaar-core-card__cta--install' );
+		btn.classList.add( 'bazaar-core-card__cta--installed' );
+		btn.disabled = true;
+
+		// Inject the installed corner badge if not already present.
+		const cardEl = btn.closest( '.bazaar-core-card' );
+		if ( cardEl && ! cardEl.querySelector( '.bazaar-core-card__installed-badge' ) ) {
+			const badge = document.createElement( 'span' );
+			badge.className = 'bazaar-core-card__installed-badge';
+			badge.textContent = __( 'Installed', 'bazaar' );
+			cardEl.prepend( badge );
+		}
+
+		if ( response?.ware ) {
+			insertWareCard( response.ware );
+			updateWareCount( 1 );
+			notifyShell( 'bazaar:ware-installed', { ware: response.ware } );
+		}
+	} catch ( err ) {
+		btn.disabled = false;
+		btn.textContent = __( 'Install', 'bazaar' );
+		showError(
+			err?.message ?? __( 'Installation failed. Please try again.', 'bazaar' )
+		);
+	}
+}
+
+if ( coreGrid ) {
+	coreGrid.addEventListener( 'click', ( e ) => {
+		const btn = e.target.closest( '.bazaar-core-card__cta--install' );
+		if ( btn ) {
+			handleCoreInstall( /** @type {HTMLButtonElement} */ ( btn ) );
+		}
+	} );
+
+	loadCoreApps();
 }
