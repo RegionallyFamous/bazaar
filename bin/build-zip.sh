@@ -39,7 +39,16 @@ npm run build --silent
 
 # 2. Production autoloader --------------------------------------------------
 echo "  [2/4] Installing production autoloader (--no-dev)…"
-php composer.phar install --no-dev --no-scripts --classmap-authoritative --quiet
+# Prefer a local composer.phar (used in CI); fall back to the system composer.
+if [[ -f "${REPO_ROOT}/composer.phar" ]]; then
+  COMPOSER="php ${REPO_ROOT}/composer.phar"
+elif command -v composer &>/dev/null; then
+  COMPOSER="composer"
+else
+  echo "  ERROR: composer not found (no composer.phar and no system composer)" >&2
+  exit 1
+fi
+${COMPOSER} install --no-dev --no-scripts --classmap-authoritative --quiet
 
 # Sanity check: vendor/ must now contain the autoloader and nothing else
 if [[ ! -f "${REPO_ROOT}/vendor/autoload.php" ]]; then
@@ -64,7 +73,7 @@ zip -r "${DIST_DIR}/${ZIP_NAME}" "${PLUGIN_SLUG}/" --quiet
 
 # Restore full dev vendor after building so local tooling still works
 cd "${REPO_ROOT}"
-php composer.phar install --no-scripts --quiet
+${COMPOSER} install --no-scripts --quiet
 
 SIZE="$(du -sh "${DIST_DIR}/${ZIP_NAME}" | cut -f1)"
 echo "  ✓ ${DIST_DIR}/${ZIP_NAME} (${SIZE})"
