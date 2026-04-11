@@ -775,10 +775,10 @@ async function loadCoreApps() {
 	let apps;
 	try {
 		apps = await apiFetch( { path: '/bazaar/v1/core-apps' } );
-	} catch {
-		// On failure, remove skeleton cards and show a quiet error message.
+	} catch ( err ) {
 		coreGrid.classList.remove( 'bazaar-core-grid--loading' );
-		coreGrid.innerHTML = `<p class="bazaar-core-error">${ escHtml( __( 'Could not load core apps. Check your internet connection.', 'bazaar' ) ) }</p>`;
+		const msg = err?.message || __( 'Could not load the app catalog.', 'bazaar' );
+		coreGrid.innerHTML = `<p class="bazaar-core-error">${ escHtml( msg ) }</p>`;
 		return;
 	}
 

@@ -126,13 +126,19 @@ final class CoreAppsController extends BazaarController {
 	}
 
 	/**
+	 * Path to the bundled fallback registry within the plugin.
+	 */
+	private const BUNDLED_REGISTRY = BAZAAR_DIR . 'wares/registry.json';
+
+	/**
 	 * Return the core apps catalog, fetching and caching from GitHub as needed.
+	 * Falls back to the bundled wares/registry.json when the remote is unreachable.
 	 *
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function get_catalog(): WP_REST_Response|WP_Error {
 		$cached = get_transient( self::TRANSIENT );
-		if ( is_array( $cached ) ) {
+		if ( is_array( $cached ) && count( $cached ) > 0 ) {
 			return new WP_REST_Response( $cached, 200 );
 		}
 
@@ -145,44 +151,52 @@ final class CoreAppsController extends BazaarController {
 			)
 		);
 
-		if ( is_wp_error( $response ) ) {
-			// Cache the failure briefly so a broken network doesn't cause repeated requests.
-			set_transient( self::TRANSIENT, array(), 2 * MINUTE_IN_SECONDS );
-			return new WP_Error(
-				'fetch_failed',
-				__( 'Could not reach the core apps catalog.', 'bazaar' ),
-				array( 'status' => 502 )
-			);
+		if ( ! is_wp_error( $response ) ) {
+			$code = (int) wp_remote_retrieve_response_code( $response );
+			$body = wp_remote_retrieve_body( $response );
+			$data = json_decode( $body, true );
+
+			if ( 200 === $code && is_array( $data ) && isset( $data['wares'] ) && is_array( $data['wares'] ) ) {
+				$wares = $this->sanitize_wares( $data['wares'] );
+				set_transient( self::TRANSIENT, $wares, self::CACHE_TTL );
+				return new WP_REST_Response( $wares, 200 );
+			}
 		}
 
-		$code = (int) wp_remote_retrieve_response_code( $response );
-		if ( 200 !== $code ) {
-			set_transient( self::TRANSIENT, array(), 2 * MINUTE_IN_SECONDS );
-			return new WP_Error(
-				'catalog_unavailable',
-				/* translators: %d: HTTP status code */
-				sprintf( __( 'Core apps catalog returned HTTP %d.', 'bazaar' ), $code ),
-				array( 'status' => 502 )
-			);
+		// Remote fetch failed or returned bad data — fall back to the bundled registry.
+		$wares = $this->load_bundled_registry();
+		if ( null !== $wares ) {
+			// Cache briefly so the next request retries the remote sooner.
+			set_transient( self::TRANSIENT, $wares, 5 * MINUTE_IN_SECONDS );
+			return new WP_REST_Response( $wares, 200 );
 		}
 
-		$body = wp_remote_retrieve_body( $response );
-		$data = json_decode( $body, true );
+		return new WP_Error(
+			'catalog_unavailable',
+			__( 'Core apps catalog is unavailable.', 'bazaar' ),
+			array( 'status' => 502 )
+		);
+	}
+
+	/**
+	 * Parse the bundled wares/registry.json and return sanitized entries.
+	 * Returns null if the file is missing or unparseable.
+	 *
+	 * @return array<int, array<string, mixed>>|null
+	 */
+	private function load_bundled_registry(): ?array {
+		if ( ! file_exists( self::BUNDLED_REGISTRY ) ) {
+			return null;
+		}
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$raw  = file_get_contents( self::BUNDLED_REGISTRY );
+		$data = is_string( $raw ) ? json_decode( $raw, true ) : null;
 
 		if ( ! is_array( $data ) || ! isset( $data['wares'] ) || ! is_array( $data['wares'] ) ) {
-			set_transient( self::TRANSIENT, array(), 2 * MINUTE_IN_SECONDS );
-			return new WP_Error(
-				'invalid_catalog',
-				__( 'Core apps catalog has an unexpected format.', 'bazaar' ),
-				array( 'status' => 502 )
-			);
+			return null;
 		}
 
-		$wares = $this->sanitize_wares( $data['wares'] );
-
-		set_transient( self::TRANSIENT, $wares, self::CACHE_TTL );
-
-		return new WP_REST_Response( $wares, 200 );
+		return $this->sanitize_wares( $data['wares'] );
 	}
 
 	/**
