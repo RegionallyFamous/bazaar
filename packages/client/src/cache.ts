@@ -13,7 +13,6 @@
  *   const posts = await wpCachedFetch<WpPost[]>( '/wp/v2/posts?per_page=5' );
  */
 
-import { getBazaarContext } from './context.js';
 import { wpJson } from './fetch.js';
 
 let _seq = 0;

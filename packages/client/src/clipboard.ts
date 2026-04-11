@@ -12,8 +12,6 @@
  * const data = await bzr.paste<{ type: string; id: number }>();
  */
 
-import type { BazaarClientConfig } from './types.js';
-
 type JsonValue = unknown;
 
 let _pasteSeq = 0;

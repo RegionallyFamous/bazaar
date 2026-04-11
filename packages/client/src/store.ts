@@ -17,9 +17,9 @@ type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]:
 
 export interface WareStore {
 	/** Read a value; returns `undefined` if the key doesn't exist. */
-	get<T extends JsonValue = JsonValue>( key: string ): Promise<T | undefined>;
+	get<T = JsonValue>( key: string ): Promise<T | undefined>;
 	/** Write a value. */
-	set<T extends JsonValue = JsonValue>( key: string, value: T ): Promise<void>;
+	set<T = JsonValue>( key: string, value: T ): Promise<void>;
 	/** Delete a key. */
 	del( key: string ): Promise<void>;
 	/** List all keys. */
@@ -46,7 +46,7 @@ export function createStore( slug: string, config: BazaarClientConfig ): WareSto
 	}
 
 	return {
-		async get<T extends JsonValue = JsonValue>( key: string ): Promise<T | undefined> {
+		async get<T = JsonValue>( key: string ): Promise<T | undefined> {
 			try {
 				const r = await req( 'GET', `/${ encodeURIComponent( key ) }` );
 				const { value } = await r.json() as { value: T };
@@ -56,7 +56,7 @@ export function createStore( slug: string, config: BazaarClientConfig ): WareSto
 			}
 		},
 
-		async set<T extends JsonValue = JsonValue>( key: string, value: T ): Promise<void> {
+		async set<T = JsonValue>( key: string, value: T ): Promise<void> {
 			await req( 'PUT', `/${ encodeURIComponent( key ) }`, { value } as JsonValue );
 		},
 
