@@ -202,8 +202,16 @@ final class ConfigController extends BazaarController {
 	 * @param WP_REST_Request $request REST request.
 	 * @return WP_REST_Response
 	 */
-	public function reset_key( WP_REST_Request $request ): WP_REST_Response {
-		$slug   = sanitize_key( $request->get_param( 'slug' ) );
+	public function reset_key( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$slug = sanitize_key( $request->get_param( 'slug' ) );
+		$ware = $this->registry->get( $slug );
+		if ( null === $ware ) {
+			return new WP_Error(
+				'not_found',
+				esc_html__( 'Ware not found.', 'bazaar' ),
+				array( 'status' => 404 )
+			);
+		}
 		$key    = sanitize_text_field( $request->get_param( 'key' ) );
 		$stored = $this->load( $slug );
 		unset( $stored[ $key ] );

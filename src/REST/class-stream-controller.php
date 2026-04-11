@@ -159,7 +159,7 @@ final class StreamController extends BazaarController {
 			array(
 				'capability' => 'manage_options',
 				'fields'     => 'ID',
-				'number'     => -1,
+				'number'     => 200, // Cap to avoid loading all users on large sites.
 			)
 		);
 
@@ -215,7 +215,9 @@ final class StreamController extends BazaarController {
 	private function send( string $type, array $data ): void {
 		$json = wp_json_encode( $data );
 		if ( false !== $json ) {
-			echo "event: $type\ndata: $json\n\n";
+			// Strip CR/LF from the event type to prevent SSE frame splitting.
+			$safe_type = (string) preg_replace( '/[\r\n]/', '', $type );
+			echo "event: $safe_type\ndata: $json\n\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		}
 	}
 

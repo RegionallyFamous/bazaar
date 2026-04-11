@@ -63,7 +63,7 @@ final class ErrorsController extends BazaarController {
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( $this, 'create_error' ),
-					'permission_callback' => $this->require_login(),
+					'permission_callback' => $this->require_admin(),
 					'args'                => array(
 						'slug'    => array(
 							'required' => true,
@@ -142,7 +142,7 @@ final class ErrorsController extends BazaarController {
 		global $wpdb;
 		$table = $wpdb->prefix . Tables::ERRORS;
 
-		$wpdb->insert(
+		$inserted = $wpdb->insert(
 			$table,
 			array(
 				'slug'       => sanitize_key( $request->get_param( 'slug' ) ),
@@ -153,6 +153,10 @@ final class ErrorsController extends BazaarController {
 				'created_at' => current_time( 'mysql', true ),
 			)
 		);
+
+		if ( false === $inserted ) {
+			return new WP_REST_Response( array( 'ok' => false ), 500 );
+		}
 
 		return new WP_REST_Response( array( 'id' => (int) $wpdb->insert_id ), 201 );
 	}
@@ -165,7 +169,14 @@ final class ErrorsController extends BazaarController {
 	 */
 	public function delete_error( WP_REST_Request $request ): WP_REST_Response {
 		global $wpdb;
-		$wpdb->delete( $wpdb->prefix . Tables::ERRORS, array( 'id' => (int) $request->get_param( 'id' ) ) );
+		$result = $wpdb->delete(
+			$wpdb->prefix . Tables::ERRORS,
+			array( 'id' => (int) $request->get_param( 'id' ) )
+		);
+		// $wpdb->delete returns false on error, 0 if no row matched.
+		if ( false === $result || 0 === $result ) {
+			return new WP_REST_Response( array( 'deleted' => false ), 404 );
+		}
 		return new WP_REST_Response( array( 'deleted' => true ), 200 );
 	}
 

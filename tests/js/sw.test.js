@@ -85,6 +85,66 @@ describe( 'zero-trust-sw message handler', () => {
 	} );
 } );
 
+// ─── Referrer URL throw safety ───────────────────────────────────────────────
+
+describe( 'zero-trust-sw referrer URL safety', () => {
+	/**
+	 * Regression: before the fix, a malformed or non-http referrer URL would
+	 * cause `new URL(referrer)` inside the fetch handler to throw synchronously,
+	 * breaking the entire fetch pipeline for that request.
+	 */
+	test( 'malformed referrer URL does not throw during fetch', () => {
+		const fetchHandler = _listeners.fetch;
+		if ( ! fetchHandler ) return;
+
+		const event = {
+			request: {
+				method: 'GET',
+				url: 'https://example.com/some-asset.js',
+				// This is not a valid URL — should be handled gracefully.
+				referrer: 'not-a-valid-url-at-all',
+			},
+			respondWith: jest.fn(),
+		};
+
+		expect( () => fetchHandler( event ) ).not.toThrow();
+	} );
+
+	test( 'empty referrer does not throw during fetch', () => {
+		const fetchHandler = _listeners.fetch;
+		if ( ! fetchHandler ) return;
+
+		const event = {
+			request: {
+				method: 'GET',
+				url: 'https://example.com/some-asset.js',
+				referrer: '',
+			},
+			respondWith: jest.fn(),
+		};
+
+		expect( () => fetchHandler( event ) ).not.toThrow();
+	} );
+
+	test( 'non-GET request is not intercepted', () => {
+		const fetchHandler = _listeners.fetch;
+		if ( ! fetchHandler ) return;
+
+		const event = {
+			request: {
+				method: 'POST',
+				url: 'https://example.com/api',
+				referrer: 'https://example.com/wp-json/bazaar/v1/serve/my-ware/index.html',
+			},
+			respondWith: jest.fn(),
+		};
+
+		fetchHandler( event );
+		// For POST requests, respondWith should never be called.
+		expect( event.respondWith ).not.toHaveBeenCalled();
+	} );
+} );
+
 // ─── new URL() throw safety ────────────────────────────────────────────────────
 
 describe( 'zero-trust-sw fetch interception', () => {

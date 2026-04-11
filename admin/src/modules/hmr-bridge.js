@@ -10,7 +10,11 @@
  * codebase, Vite rebuilds, the shell reloads just that frame.
  */
 
-/** @type {Map<string, WebSocket>} slug → Vite WS */
+/**
+ * @typedef {{ ws: WebSocket, closeHandler: () => void }} HmrEntry
+ */
+
+/** @type {Map<string, HmrEntry>} slug → active socket + its close handler */
 const _sockets = new Map();
 
 /**
@@ -27,6 +31,8 @@ export function connectHmr( slug, devUrl, onReload ) {
 
 	let ws;
 	let reconnectDelay = 1000;
+	// Keep a stable reference so we can removeEventListener on disconnect.
+	let closeHandler;
 
 	const connect = () => {
 		try {
@@ -62,13 +68,17 @@ export function connectHmr( slug, devUrl, onReload ) {
 			}
 		} );
 
-		ws.addEventListener( 'close', () => {
+		// Store a named handler so disconnectHmr() can remove it via
+		// removeEventListener — setting ws.onclose = null would not remove
+		// listeners registered with addEventListener.
+		closeHandler = () => {
 			reconnectDelay = Math.min( reconnectDelay * 2, 30_000 );
 			setTimeout( connect, reconnectDelay );
-		} );
+		};
+		ws.addEventListener( 'close', closeHandler );
 
 		ws.addEventListener( 'error', () => ws.close() );
-		_sockets.set( slug, ws );
+		_sockets.set( slug, { ws, closeHandler } );
 	};
 
 	connect();
@@ -76,13 +86,17 @@ export function connectHmr( slug, devUrl, onReload ) {
 
 /**
  * Disconnect from a ware's Vite HMR WebSocket.
+ * Removes the close handler before closing so no reconnect is scheduled.
  * @param {string} slug
  */
 export function disconnectHmr( slug ) {
-	const ws = _sockets.get( slug );
-	if ( ws ) {
-		ws.onclose = null;
-		ws.close();
+	const entry = _sockets.get( slug );
+	if ( entry ) {
+		// Remove the close listener first — prevents reconnect after explicit
+		// disconnect.  Setting ws.onclose = null does not remove listeners that
+		// were registered with addEventListener.
+		entry.ws.removeEventListener( 'close', entry.closeHandler );
+		entry.ws.close();
 		_sockets.delete( slug );
 	}
 }

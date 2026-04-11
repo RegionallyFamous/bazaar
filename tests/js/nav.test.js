@@ -255,6 +255,34 @@ describe( 'buildSectionLabel', () => {
 	} );
 } );
 
+// ─── sortedEnabled — undefined name regression ────────────────────────────────
+
+describe( 'sortedEnabled with missing name fields', () => {
+	/**
+	 * Regression: before the fix, a.name.localeCompare(b.name) threw TypeError
+	 * when any ware entry had an undefined or null name field.
+	 */
+	test( 'does not throw when ware name is undefined', () => {
+		const map = new Map( [
+			[ 'crm', { slug: 'crm', enabled: true } ],           // name missing
+			[ 'kanban', { slug: 'kanban', name: null, enabled: true } ], // name null
+			[ 'billing', { slug: 'billing', name: 'Billing', enabled: true } ],
+		] );
+
+		expect( () => sortedEnabled( map ) ).not.toThrow();
+	} );
+
+	test( 'wares with undefined name sort stably after named wares', () => {
+		const map = new Map( [
+			[ 'crm', { slug: 'crm', name: undefined, enabled: true } ],
+			[ 'billing', { slug: 'billing', name: 'Billing', enabled: true } ],
+		] );
+		// Should not throw and should return both wares.
+		const result = sortedEnabled( map );
+		expect( result ).toHaveLength( 2 );
+	} );
+} );
+
 // ─── attachDragHandlers ───────────────────────────────────────────────────────
 
 describe( 'attachDragHandlers', () => {

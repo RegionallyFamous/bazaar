@@ -145,7 +145,7 @@ final class AnalyticsController extends BazaarController {
 			);
 		}
 
-		$wpdb->insert(
+		$inserted = $wpdb->insert(
 			$table,
 			array(
 				'slug'        => $slug,
@@ -156,6 +156,10 @@ final class AnalyticsController extends BazaarController {
 			),
 			array( '%s', '%s', '%d', '%d', '%s' )
 		);
+
+		if ( false === $inserted ) {
+			return new WP_REST_Response( array( 'ok' => false ), 500 );
+		}
 
 		return new WP_REST_Response( array( 'ok' => true ), 201 );
 	}

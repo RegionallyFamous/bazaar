@@ -206,6 +206,21 @@ final class CoreAppsController extends BazaarController {
 			);
 		}
 
+		// Enforce the expected path prefix so only genuine release assets are
+		// downloadable, even when the host filter is left at its default value.
+		$allowed_prefix = (string) apply_filters(
+			'bazaar_core_apps_allowed_path_prefix',
+			'/RegionallyFamous/bazaar/releases/'
+		);
+		$url_path       = (string) ( wp_parse_url( $url, PHP_URL_PATH ) ?? '' );
+		if ( '' !== $allowed_prefix && ! str_starts_with( $url_path, $allowed_prefix ) ) {
+			return new WP_Error(
+				'untrusted_path',
+				__( 'The supplied URL path is not from an allowed location.', 'bazaar' ),
+				array( 'status' => 400 )
+			);
+		}
+
 		// Download to a temp file.
 		$response = wp_remote_get(
 			$url,
@@ -244,7 +259,15 @@ final class CoreAppsController extends BazaarController {
 
 		// Write to a unique temp file so WareLoader can read it.
 		$tmp = wp_tempnam( 'bazaar-core-app-.wp' );
+		if ( false === $tmp ) {
+			return new WP_Error(
+				'temp_failed',
+				__( 'Could not create a temporary file for the download.', 'bazaar' ),
+				array( 'status' => 500 )
+			);
+		}
 		if ( false === file_put_contents( $tmp, $body ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+			wp_delete_file( $tmp );
 			return new WP_Error(
 				'write_failed',
 				__( 'Could not write temporary file.', 'bazaar' ),

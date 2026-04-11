@@ -136,6 +136,11 @@ final class Plugin {
 	 */
 	public static function deactivate(): void {
 		WareUpdater::unschedule();
+		// Clear the health-refresh cron that activate() schedules.
+		$ts = wp_next_scheduled( 'bazaar_health_refresh' );
+		if ( $ts ) {
+			wp_unschedule_event( $ts, 'bazaar_health_refresh' );
+		}
 	}
 
 

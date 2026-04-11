@@ -221,6 +221,44 @@ final class RemoteRegistryTest extends TestCase {
 		$this->assertSame( 'crm', $results[0]['slug'] );
 	}
 
+	// ─── install() regressions ───────────────────────────────────────────────
+
+	/**
+	 * install() must return WP_Error('no_download_url') when the remote entry
+	 * has no download URL, before WareLoader or WareRegistry are ever touched.
+	 */
+	public function test_install_returns_no_download_url_when_missing(): void {
+		Functions\when( 'get_option' )->justReturn( '' );
+		Functions\when( 'esc_url_raw' )->returnArg();
+		Functions\when( 'apply_filters' )->returnArg();
+		Functions\when( 'esc_html__' )->returnArg();
+		Functions\when( 'sanitize_key' )->returnArg();
+		Functions\when( 'sanitize_text_field' )->returnArg();
+		Functions\when( 'sanitize_textarea_field' )->returnArg();
+		Functions\when( 'absint' )->alias( 'intval' );
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+		Functions\when( 'gmdate' )->alias( 'gmdate' );
+		Functions\when( 'get_bloginfo' )->justReturn( '6.6' );
+		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
+		Functions\when( 'get_transient' )->justReturn(
+			array(
+				array( 'slug' => 'crm', 'name' => 'CRM', 'version' => '1.0.0' ), // No download_url.
+			)
+		);
+		Functions\when( 'set_transient' )->justReturn( true );
+		Functions\when( 'delete_transient' )->justReturn( true );
+
+		$remote   = new RemoteRegistry();
+		// Use real (final) instances — install() should bail before calling them.
+		$registry = new \Bazaar\WareRegistry();
+		$loader   = new \Bazaar\WareLoader( $registry );
+
+		$result = $remote->install( 'crm', $loader, $registry );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'no_download_url', $result->get_error_code() );
+	}
+
 	public function test_search_empty_query_returns_all(): void {
 		$cached_index = array(
 			array(

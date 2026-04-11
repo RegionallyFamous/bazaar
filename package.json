@@ -55,7 +55,28 @@
     "env": {
       "browser": true,
       "es2022": true
-    }
+    },
+    "rules": {
+      "no-console": [
+        "error",
+        {
+          "allow": [
+            "error"
+          ]
+        }
+      ]
+    },
+    "overrides": [
+      {
+        "files": [
+          "tests/**/*.js",
+          "tests/**/*.ts"
+        ],
+        "rules": {
+          "no-console": "off"
+        }
+      }
+    ]
   },
   "stylelint": {
     "extends": [

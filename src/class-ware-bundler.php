@@ -63,7 +63,9 @@ final class WareBundler {
 		}
 
 		require_once ABSPATH . 'wp-admin/includes/file.php';
-		WP_Filesystem();
+		if ( ! WP_Filesystem() || empty( $GLOBALS['wp_filesystem'] ) ) {
+			throw new \RuntimeException( 'Could not initialise WordPress filesystem.' );
+		}
 
 		$tmp    = get_temp_dir() . 'bazaar_bundle_' . wp_generate_password( 8, false );
 		$result = unzip_file( $bundle_path, $tmp );

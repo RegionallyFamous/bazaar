@@ -380,6 +380,53 @@ final class WareRegistryTest extends TestCase {
 	}
 
 	// -------------------------------------------------------------------------
+	// Regression: make_index_entry null/non-array menu
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Registering a ware whose 'menu' field is null must not throw a TypeError
+	 * and must produce sensible defaults in the index entry.
+	 */
+	public function test_register_with_null_menu_uses_defaults(): void {
+		$registry = new WareRegistry();
+		$result   = $registry->register(
+			array(
+				'slug'    => 'null-menu',
+				'name'    => 'Null Menu Ware',
+				'version' => '1.0.0',
+				'menu'    => null,
+			)
+		);
+
+		$this->assertTrue( $result, 'register() must succeed even when menu is null.' );
+
+		$index = $registry->get_index();
+		$this->assertArrayHasKey( 'null-menu', $index );
+		$this->assertSame( 'Null Menu Ware', $index['null-menu']['menu_title'], 'menu_title must fall back to ware name.' );
+		$this->assertSame( 'manage_options', $index['null-menu']['capability'], 'capability must fall back to manage_options.' );
+	}
+
+	/**
+	 * Same guard: 'menu' set to a non-array scalar (e.g. from corrupted storage).
+	 */
+	public function test_register_with_non_array_menu_uses_defaults(): void {
+		$registry = new WareRegistry();
+		$result   = $registry->register(
+			array(
+				'slug'    => 'bad-menu',
+				'name'    => 'Bad Menu Ware',
+				'version' => '1.0.0',
+				'menu'    => 'corrupted-string',
+			)
+		);
+
+		$this->assertTrue( $result );
+
+		$index = $registry->get_index();
+		$this->assertSame( 'manage_options', $index['bad-menu']['capability'] );
+	}
+
+	// -------------------------------------------------------------------------
 	// Regression: save_index / save_ware false-negative on unchanged value
 	// -------------------------------------------------------------------------
 

@@ -145,7 +145,7 @@ final class UploadController extends BazaarController {
 				'message' => sprintf(
 					/* translators: %s: ware display name */
 					esc_html__( '"%s" installed successfully.', 'bazaar' ),
-					esc_html( $manifest['name'] )
+					esc_html( (string) ( $manifest['name'] ?? '' ) )
 				),
 				'ware'    => $ware,
 			),

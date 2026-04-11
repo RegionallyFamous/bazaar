@@ -120,7 +120,7 @@ final class WebhooksController extends BazaarController {
 	public function list_webhooks( WP_REST_Request $request ): WP_REST_Response {
 		$slug = sanitize_key( $request->get_param( 'slug' ) );
 		$all  = $this->load_all();
-		return new WP_REST_Response( array_values( array_filter( $all, fn( $w ) => $w['slug'] === $slug ) ), 200 );
+		return new WP_REST_Response( array_values( array_filter( $all, fn( $w ) => isset( $w['slug'] ) && $w['slug'] === $slug ) ), 200 );
 	}
 
 	/**
@@ -141,7 +141,7 @@ final class WebhooksController extends BazaarController {
 		}
 
 		$all   = $this->load_all();
-		$count = count( array_filter( $all, fn( $w ) => $w['slug'] === $slug ) );
+		$count = count( array_filter( $all, fn( $w ) => isset( $w['slug'] ) && $w['slug'] === $slug ) );
 		if ( $count >= self::MAX_PER_WARE ) {
 			/* translators: %d: maximum number of webhooks allowed per ware */
 			return new WP_Error( 'limit', sprintf( __( 'Maximum %d webhooks per ware.', 'bazaar' ), self::MAX_PER_WARE ), array( 'status' => 422 ) );
@@ -172,7 +172,7 @@ final class WebhooksController extends BazaarController {
 		$id   = sanitize_text_field( $request->get_param( 'id' ) );
 		$all  = $this->load_all();
 
-		$new = array_values( array_filter( $all, fn( $w ) => ! ( $w['slug'] === $slug && $w['id'] === $id ) ) );
+		$new = array_values( array_filter( $all, fn( $w ) => ! ( isset( $w['slug'], $w['id'] ) && $w['slug'] === $slug && $w['id'] === $id ) ) );
 		if ( count( $new ) === count( $all ) ) {
 			return new WP_Error( 'not_found', __( 'Webhook not found.', 'bazaar' ), array( 'status' => 404 ) );
 		}

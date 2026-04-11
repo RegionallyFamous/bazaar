@@ -301,6 +301,9 @@ class CommandPalette {
 					continue;
 				}
 				const items = await r.json();
+				if ( ! Array.isArray( items ) ) {
+					continue;
+				}
 				for ( const item of items ) {
 					results.push( {
 						slug: item.slug ?? slug,

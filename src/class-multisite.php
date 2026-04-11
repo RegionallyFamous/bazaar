@@ -140,7 +140,10 @@ final class Multisite {
 		$overrides          = self::get_site_overrides();
 		$slug               = sanitize_key( $slug );
 		$overrides[ $slug ] = true;
-		update_option( 'bazaar_site_overrides', wp_json_encode( $overrides ), false );
+		$json               = wp_json_encode( $overrides );
+		if ( false !== $json ) {
+			update_option( 'bazaar_site_overrides', $json, false );
+		}
 	}
 
 	/**
@@ -152,7 +155,10 @@ final class Multisite {
 		$overrides          = self::get_site_overrides();
 		$slug               = sanitize_key( $slug );
 		$overrides[ $slug ] = false;
-		update_option( 'bazaar_site_overrides', wp_json_encode( $overrides ), false );
+		$json               = wp_json_encode( $overrides );
+		if ( false !== $json ) {
+			update_option( 'bazaar_site_overrides', $json, false );
+		}
 	}
 
 	/**

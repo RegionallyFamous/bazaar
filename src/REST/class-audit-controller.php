@@ -78,7 +78,7 @@ final class AuditController extends BazaarController {
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( $this, 'create_entry' ),
-					'permission_callback' => $this->require_login(),
+					'permission_callback' => $this->require_admin(),
 					'args'                => array(
 						'slug'  => array(
 							'required' => true,
