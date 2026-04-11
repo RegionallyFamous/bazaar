@@ -3,7 +3,7 @@
  * Plugin Name:       Bazaar
  * Plugin URI:        https://github.com/nickhblair/bazaar
  * Description:       Turn wp-admin into an app marketplace. Install .wp ware packages and they appear as menu pages in your sidebar.
- * Version:           1.0.1
+ * Version:           1.0.2
  * Requires at least: 6.6
  * Requires PHP:      8.2
  * Author:            Nick
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'BAZAAR_VERSION', '1.0.1' );
+define( 'BAZAAR_VERSION', '1.0.2' );
 define( 'BAZAAR_FILE', __FILE__ );
 define( 'BAZAAR_PLUGIN_FILE', __FILE__ );
 define( 'BAZAAR_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
