@@ -24,6 +24,7 @@ use Bazaar\REST\ErrorsController;
 use Bazaar\REST\HealthController;
 use Bazaar\REST\JobsController;
 use Bazaar\REST\NonceController;
+use Bazaar\REST\ServiceWorkerController;
 use Bazaar\REST\StorageController;
 use Bazaar\REST\StreamController;
 use Bazaar\REST\UploadController;
@@ -345,6 +346,7 @@ final class Plugin {
 	 */
 	public function register_rest_routes(): void {
 		( new WareServer( $this->registry ) )->register_routes();
+		( new ServiceWorkerController() )->register_routes();
 		( new UploadController( $this->registry ) )->register_routes();
 		( new WareController( $this->registry ) )->register_routes();
 		( new BadgeController() )->register_routes();
@@ -372,7 +374,8 @@ final class Plugin {
 
 		global $wp_filesystem;
 		if ( empty( $wp_filesystem ) ) {
-			require_once ABSPATH . 'wp-admin/includes/file.php';
+			$wp_admin_file = ABSPATH . 'wp-admin/includes/file.php';
+			require_once $wp_admin_file; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
 			WP_Filesystem();
 		}
 

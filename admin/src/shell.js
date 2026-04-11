@@ -1274,7 +1274,7 @@ for ( const ware of wareMap.values() ) {
 	try {
 		const reg = await navigator.serviceWorker.register(
 			swUrl ??
-				`${ window.location.origin }/wp-content/plugins/bazaar/admin/dist/zero-trust-sw.js`,
+				`${ window.location.origin }/wp-json/bazaar/v1/sw`,
 			{ scope: '/' }
 		);
 

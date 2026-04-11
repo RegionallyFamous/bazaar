@@ -10,6 +10,11 @@ parameters:
         - vendor/php-stubs/wp-cli-stubs/wp-cli-i18n-stubs.php
         - bazaar.php
     treatPhpDocTypesAsCertain: false
+    ignoreErrors:
+        # ABSPATH is defined as '/' in the phpstan-wordpress bootstrap; the actual
+        # wp-admin/includes/file.php is always present in real WordPress installs.
+        - message: '#Path in require_once\(\) .* is not a file or it does not exist#'
+          path: src/Plugin.php
     # Run single-process in CI so all memory stays in one PHP process.
     # PHPStan's parallel workers each inherit the PHP memory_limit; with the
     # heavyweight WordPress stubs this tips the total well over 512 MB.
