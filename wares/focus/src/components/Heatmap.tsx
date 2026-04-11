@@ -8,10 +8,6 @@ interface Props {
 const WEEKS = 26;   // 6 months
 const DAYS  = 7;
 
-function isoToDate( iso: string ): Date {
-	const [ y, m, d ] = iso.split( '-' ).map( Number ) as [ number, number, number ];
-	return new Date( y, m - 1, d );
-}
 
 export default function Heatmap( { history }: Props ) {
 	const cells = useMemo( () => {
