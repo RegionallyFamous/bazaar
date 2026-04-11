@@ -2,9 +2,10 @@
 /**
  * Server-Sent Events endpoint for real-time shell updates.
  *
- * This controller exposes a long-running SSE stream over the WP REST API.
- * Because PHP processes are typically short-lived, we use a polling loop
- * that reads from a per-user event queue stored in a transient.
+ * Design: each connection drains the per-user event queue and exits
+ * immediately, telling the browser to reconnect after RETRY_MS.  This is
+ * short-polling via the EventSource API — each PHP process lives for < 100 ms
+ * instead of holding a PHP-FPM worker open for tens of seconds.
  *
  * Producer side: any PHP code can push an event via bazaar_push_sse_event().
  * Consumer side: the Bazaar Shell connects with EventSource and receives events.
@@ -48,13 +49,15 @@ final class StreamController extends BazaarController {
 	 */
 	protected $rest_base = 'stream';
 
-	/** Maximum seconds to keep the connection open before closing cleanly. */
-	private const MAX_DURATION = 45;
+	/**
+	 * Client reconnect interval (ms).
+	 * Each connection drains the queue and exits immediately; the browser
+	 * EventSource reconnects after this delay, turning long-polling into
+	 * lightweight short-polling without holding a PHP-FPM worker open.
+	 */
+	private const RETRY_MS = 5000;
 
-	/** Poll interval in seconds. */
-	private const POLL_INTERVAL = 2;
-
-	/** Transient TTL — slightly longer than max duration. */
+	/** Transient TTL — long enough to survive several reconnect cycles. */
 	private const QUEUE_TTL = 60;
 
 	/** Transient key prefix for per-user queues. */
@@ -84,12 +87,12 @@ final class StreamController extends BazaarController {
 	 */
 
 	/**
-	 * Long-running SSE response.
-	 * WordPress's REST API infrastructure does not support streaming natively,
-	 * so we emit headers and flush output manually, then exit.
+	 * Drain the event queue and exit immediately.
+	 * The browser EventSource reconnects after RETRY_MS, giving us
+	 * short-polling without holding a PHP-FPM worker open.
 	 *
 	 * @param WP_REST_Request $request REST request.
-	 * @return void  Never returns normally — exits after max duration.
+	 * @return void  Exits after flushing events.
 	 */
 	public function stream( WP_REST_Request $request ): void {
 		// Validate nonce manually; WP REST already verified it, but belt+suspenders.
@@ -100,6 +103,12 @@ final class StreamController extends BazaarController {
 
 		$uid = get_current_user_id();
 
+		// Release the PHP session lock so concurrent requests (badge polls,
+		// REST calls) are never blocked waiting for this response.
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_write_close();
+		}
+
 		// Clear any existing output buffers.
 		while ( ob_get_level() ) {
 			ob_end_clean();
@@ -109,39 +118,25 @@ final class StreamController extends BazaarController {
 		header( 'Content-Type: text/event-stream; charset=UTF-8' );
 		header( 'Cache-Control: no-store, no-cache, must-revalidate' );
 		header( 'X-Accel-Buffering: no' ); // Disable nginx buffering.
-		header( 'Connection: keep-alive' );
+		header( 'Connection: close' );     // Release the TCP connection immediately.
 
 		// Remove any content-length that WP might have set.
 		header_remove( 'Content-Length' );
 
-		// Keep-alive comment every cycle.
-		echo ": connected\n\n";
-		$this->flush();
+		// Tell the client how long to wait before reconnecting.
+		// Each connection drains the queue and exits — the browser reconnects
+		// after RETRY_MS, giving us short-polling without holding a worker.
+		printf( "retry: %d\n\n", self::RETRY_MS );
 
-		$start = time();
-
-		while ( ( time() - $start ) < self::MAX_DURATION ) {
-			// Drain the queue for this user.
-			$events = $this->dequeue( $uid );
-
-			foreach ( $events as $event ) {
-				$this->send( $event['type'], $event['data'] );
-			}
-
-			// Check server liveness.
-			if ( connection_aborted() ) {
-				break;
-			}
-
-			// Heartbeat comment to keep proxies alive.
-			echo ": heartbeat\n\n";
-			$this->flush();
-
-			sleep( self::POLL_INTERVAL );
+		// Drain any pending events for this user.
+		$events = $this->dequeue( $uid );
+		foreach ( $events as $event ) {
+			$this->send( $event['type'], $event['data'] );
 		}
 
-		// Clean close.
-		echo "event: close\ndata: {}\n\n";
+		// Heartbeat comment to confirm the connection was live.
+		echo ": ok\n\n";
+
 		$this->flush();
 		exit;
 	}
