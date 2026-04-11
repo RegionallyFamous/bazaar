@@ -47,7 +47,7 @@ else
 fi
 
 if [[ -n "${COMPOSER}" ]]; then
-  ${COMPOSER} dump-autoload --no-dev --quiet
+  ${COMPOSER} dump-autoload --optimize --no-dev --quiet
 fi
 
 # ---------------------------------------------------------------------------

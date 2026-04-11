@@ -24,15 +24,9 @@
     <rule ref="WordPress-Docs"/>
 
     <!--
-        Files use PSR-4 class names (PascalCase) stored in class-*.php files.
-        Allow any lowercase-hyphenated filename without requiring the class-
-        prefix derived from the class name.
-    -->
-    <!--
-        This codebase uses PSR-4 autoloading (PascalCase class names in
-        class-*.php files and bare PascalCase for traits/services). Allow any
-        valid PSR-4 filename without enforcing WordPress's hyphenated-lowercase
-        convention.
+        This codebase uses PSR-4 autoloading: filenames match class names
+        exactly (PascalCase). Disable WordPress's hyphenated-lowercase
+        filename requirement so phpcs accepts e.g. BazaarPage.php.
     -->
     <rule ref="WordPress.Files.FileName">
         <properties>
@@ -69,15 +63,15 @@
         corrupting it.
     -->
     <rule ref="WordPress.WP.AlternativeFunctions.file_system_read_readfile">
-        <exclude-pattern>src/REST/class-ware-server.php</exclude-pattern>
+        <exclude-pattern>src/REST/WareServer.php</exclude-pattern>
     </rule>
     <rule ref="WordPress.WP.AlternativeFunctions.file_system_operations_readfile">
-        <exclude-pattern>src/REST/class-ware-server.php</exclude-pattern>
+        <exclude-pattern>src/REST/WareServer.php</exclude-pattern>
     </rule>
     <rule ref="WordPress.Security.EscapeOutput.OutputNotEscaped">
-        <exclude-pattern>src/REST/class-ware-server.php</exclude-pattern>
+        <exclude-pattern>src/REST/WareServer.php</exclude-pattern>
         <!-- SSE text/event-stream protocol: JSON-encoded data cannot be HTML-escaped without corrupting the stream. -->
-        <exclude-pattern>src/REST/class-stream-controller.php</exclude-pattern>
+        <exclude-pattern>src/REST/StreamController.php</exclude-pattern>
     </rule>
 
     <!--
@@ -86,6 +80,6 @@
         WordPress-rendered pages, not for content streamed through REST.
     -->
     <rule ref="WordPress.WP.EnqueuedResources.NonEnqueuedScript">
-        <exclude-pattern>src/REST/class-ware-server.php</exclude-pattern>
+        <exclude-pattern>src/REST/WareServer.php</exclude-pattern>
     </rule>
 </ruleset>

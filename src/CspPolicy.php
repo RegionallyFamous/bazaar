@@ -8,7 +8,7 @@
  * the file-serving hot path.
  *
  * The REST surface for managing directives lives in
- * REST/class-csp-controller.php.
+ * REST/CspController.php.
  *
  * @package Bazaar
  */

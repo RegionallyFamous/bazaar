@@ -4,11 +4,11 @@
  *
  * A thin write-only interface for the bazaar_audit_log table.
  * All code that needs to record an audit event (lifecycle hooks in
- * class-plugin.php, CLI commands, REST controllers) imports this class
+ * Plugin.php, CLI commands, REST controllers) imports this class
  * instead of reaching directly into AuditController.
  *
  * The actual REST surface (listing, filtering) lives in
- * REST/class-audit-controller.php, which delegates writes here.
+ * REST/AuditController.php, which delegates writes here.
  *
  * @package Bazaar
  */

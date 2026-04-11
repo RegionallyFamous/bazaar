@@ -19,10 +19,10 @@
         "php-stubs/wp-cli-stubs": "^2.12"
     },
     "autoload": {
-        "classmap": ["src/"]
+        "psr-4": { "Bazaar\\": "src/" }
     },
     "autoload-dev": {
-        "classmap": ["tests/php/"]
+        "psr-4": { "Bazaar\\Tests\\": "tests/php/" }
     },
     "scripts": {
         "lint": [

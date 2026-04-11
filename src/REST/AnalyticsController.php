@@ -5,7 +5,7 @@
  * Records time-in-ware and interaction events to a dedicated DB table.
  * The shell fires-and-forgets a POST whenever a ware is de-activated.
  *
- * Table schema (created in class-plugin.php on activation)
+ * Table schema (created in Plugin.php on activation)
  * ─────────────────────────────────────────────────────────
  *   id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY
  *   slug         VARCHAR(191) NOT NULL

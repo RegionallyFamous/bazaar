@@ -48,7 +48,7 @@ else
   echo "  ERROR: composer not found (no composer.phar and no system composer)" >&2
   exit 1
 fi
-${COMPOSER} install --no-dev --no-scripts --classmap-authoritative --quiet
+${COMPOSER} install --no-dev --no-scripts --optimize-autoloader --quiet
 
 # Sanity check: vendor/ must now contain the autoloader and nothing else
 if [[ ! -f "${REPO_ROOT}/vendor/autoload.php" ]]; then
