@@ -1,6 +1,8 @@
 # Dependencies
 /vendor/
 /node_modules/
+packages/*/node_modules/
+wares/*/node_modules/
 
 # Composer phar
 composer.phar
