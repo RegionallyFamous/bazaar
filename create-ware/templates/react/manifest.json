@@ -10,5 +10,6 @@
     "title": "__WARE_NAME__",
     "position": 99,
     "capability": "manage_options"
-  }
+  },
+  "shared": ["react", "react-dom"]
 }

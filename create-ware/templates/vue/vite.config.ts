@@ -8,6 +8,11 @@ export default defineConfig( {
     outDir:      'dist',
     emptyOutDir: true,
     assetsDir:   'assets',
+    rollupOptions: {
+      // Vue is provided by the Bazaar shell via an importmap.
+      // Marking it external keeps it out of this bundle.
+      external: [ 'vue' ],
+    },
   },
   server: {
     cors: true,

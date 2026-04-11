@@ -1187,23 +1187,27 @@ for (const ware of wareMap.values()) {
 	}
 }
 
-// Zero-trust service worker.
-(async function initZeroTrust() {
+// Service worker — always registered for universal asset caching;
+// also sends zero-trust permissions when relevant wares are installed.
+(async function initServiceWorker() {
 	if (!('serviceWorker' in navigator)) {
-		return;
-	}
-	const ztWares = [...wareMap.values()].filter(
-		(w) => w.zero_trust && w.permissions?.network
-	);
-	if (!ztWares.length) {
 		return;
 	}
 
 	try {
 		const reg = await navigator.serviceWorker.register(
-			swUrl ?? `${window.location.origin}/wp-content/plugins/bazaar/admin/dist/zero-trust-sw.js`,
+			swUrl ??
+				`${window.location.origin}/wp-content/plugins/bazaar/admin/dist/zero-trust-sw.js`,
 			{ scope: '/' }
 		);
+
+		// Send zero-trust permissions for wares that require network enforcement.
+		const ztWares = [...wareMap.values()].filter(
+			(w) => w.zero_trust && w.permissions?.network
+		);
+		if (!ztWares.length) {
+			return;
+		}
 
 		const sendInit = () => {
 			const permissions = Object.fromEntries(
@@ -1228,7 +1232,7 @@ for (const ware of wareMap.values()) {
 			);
 		}
 	} catch {
-		// SW registration failure is non-fatal; the shell functions without zero-trust enforcement.
+		// SW registration failure is non-fatal.
 	}
 })();
 

@@ -46,13 +46,27 @@ export default defineConfig( {
 		emptyOutDir: true,
 		manifest: true,
 		rollupOptions: {
+			// Preserve all exports from every entry point so shared lib bundles
+			// expose their full API even though no other entry in this build
+			// imports from them.
+			preserveEntrySignatures: 'exports-only',
 			input: {
-				bazaar:           resolve( __dirname, 'admin/src/main.js' ),
-				shell:            resolve( __dirname, 'admin/src/shell.js' ),
-				'zero-trust-sw':  resolve( __dirname, 'admin/src/zero-trust-sw.js' ),
+				bazaar:            resolve( __dirname, 'admin/src/main.js' ),
+				shell:             resolve( __dirname, 'admin/src/shell.js' ),
+				'zero-trust-sw':   resolve( __dirname, 'admin/src/zero-trust-sw.js' ),
+				// Shared bundles — hosted by the shell, referenced via importmap.
+				// Content-hashed so they can be cached immutably by browsers and SWs.
+				'shared/react':     resolve( __dirname, 'admin/src/shared/react.js' ),
+				'shared/react-dom': resolve( __dirname, 'admin/src/shared/react-dom.js' ),
+				'shared/vue':       resolve( __dirname, 'admin/src/shared/vue.js' ),
 			},
 			output: {
-				entryFileNames: '[name].js',
+				// Shared libs get content-hash in their filename; other entries keep
+				// stable names so WordPress enqueue handles work without manifest lookups.
+				entryFileNames: ( chunkInfo ) =>
+					chunkInfo.name.startsWith( 'shared/' )
+						? '[name]-[hash].js'
+						: '[name].js',
 				chunkFileNames: '[name]-[hash].js',
 				assetFileNames: ( assetInfo ) => {
 					if ( assetInfo.name?.endsWith( '.css' ) ) {

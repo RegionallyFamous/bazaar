@@ -13,6 +13,12 @@ export default defineConfig( {
     outDir:      'dist',
     emptyOutDir: true,
     assetsDir:   'assets',
+    rollupOptions: {
+      // React and ReactDOM are provided by the Bazaar shell via an importmap.
+      // Marking them external keeps them out of this bundle — the browser loads
+      // the shared copy once and reuses it across all ware iframes.
+      external: [ 'react', 'react-dom', 'react/jsx-runtime' ],
+    },
   },
 
   // Allow the Vite dev server to accept connections from wp-admin

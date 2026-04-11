@@ -1,0 +1,5 @@
+{
+  "react":     { "version": "19.2.5", "src": "admin/src/shared/react.js" },
+  "react-dom": { "version": "19.2.5", "src": "admin/src/shared/react-dom.js" },
+  "vue":       { "version": "3.5.32", "src": "admin/src/shared/vue.js" }
+}

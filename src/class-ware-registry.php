@@ -92,6 +92,7 @@ final class WareRegistry implements WareRegistryInterface {
 			'jobs'            => $this->sanitize_jobs( $manifest['jobs'] ?? array() ),
 			'settings'        => is_array( $manifest['settings'] ?? null ) ? $manifest['settings'] : array(),
 			'search_endpoint' => isset( $manifest['search_endpoint'] ) ? sanitize_text_field( (string) $manifest['search_endpoint'] ) : '',
+			'shared'          => $this->sanitize_shared( $manifest['shared'] ?? array() ),
 			'enabled'         => true,
 			'installed'       => gmdate( 'Y-m-d\TH:i:s\Z' ),
 		);
@@ -481,6 +482,32 @@ final class WareRegistry implements WareRegistryInterface {
 		$allowed = array( 'standard', 'trusted', 'verified' );
 		$value   = sanitize_text_field( (string) $raw );
 		return in_array( $value, $allowed, true ) ? $value : 'standard';
+	}
+
+	/**
+	 * Sanitize the `shared` array — a list of package names the ware wants
+	 * resolved via the shell's importmap rather than bundled in its own JS.
+	 *
+	 * Only package names consisting of alphanumeric characters, hyphens,
+	 * forward-slashes (for scoped packages like @scope/pkg), and @ signs are
+	 * accepted. Any value that does not match is silently dropped.
+	 *
+	 * @param mixed $raw Raw value from the manifest.
+	 * @return string[]
+	 */
+	private function sanitize_shared( mixed $raw ): array {
+		if ( ! is_array( $raw ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( $raw as $item ) {
+			$pkg = sanitize_text_field( (string) $item );
+			// Accept npm package names: optional leading @, then word/hyphen/dot/slash chars.
+			if ( preg_match( '/^@?[a-z0-9][a-z0-9._\/-]*$/i', $pkg ) ) {
+				$out[] = $pkg;
+			}
+		}
+		return array_values( array_unique( $out ) );
 	}
 
 	/**

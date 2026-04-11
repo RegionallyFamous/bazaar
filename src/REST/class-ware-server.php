@@ -293,10 +293,11 @@ final class WareServer {
 			if ( false === $content ) {
 				return new WP_Error( 'file_read_error', esc_html__( 'Could not read file.', 'bazaar' ), array( 'status' => 500 ) );
 			}
+			$ware    = $this->registry->get( $slug );
 			$content = $this->inject_base_href( $content, $slug );
+			$content = $this->inject_importmap( $content, $ware ?? array() );
 			$content = $this->inject_error_reporter( $content );
 			// Inject Vite HMR client only in dev mode.
-			$ware = $this->registry->get( $slug );
 			if ( ! empty( $ware['dev_url'] ) ) {
 				$content = $this->inject_vite_client( $content, (string) $ware['dev_url'] );
 			}
@@ -362,6 +363,96 @@ final class WareServer {
 
 		// Insert immediately after the opening <head> tag.
 		return (string) preg_replace( '/(<head\b[^>]*>)/i', '$1' . $tag, $html, 1 );
+	}
+
+	/**
+	 * Inject a <script type="importmap"> so the ware can import shared libs
+	 * (React, Vue, etc.) from the shell's versioned, immutable bundles instead
+	 * of bundling its own copy.
+	 *
+	 * The importmap is inserted immediately after the <base> tag so it precedes
+	 * any <script type="module"> elements — a browser requirement.
+	 *
+	 * Wares opt in via manifest.json: `"shared": ["react", "react-dom"]`.
+	 * If the ware declares no shared libs, or the shell doesn't provide the
+	 * requested lib, the HTML is returned unmodified (fully backwards-compatible).
+	 *
+	 * @param string               $html Raw (already base-href-injected) HTML.
+	 * @param array<string, mixed> $ware Full ware record from the registry.
+	 * @return string
+	 */
+	private function inject_importmap( string $html, array $ware ): string {
+		$requested = $ware['shared'] ?? array();
+		if ( empty( $requested ) || ! is_array( $requested ) ) {
+			return $html;
+		}
+
+		$registry = $this->get_shared_registry();
+		if ( empty( $registry ) ) {
+			return $html;
+		}
+
+		$imports = array();
+		foreach ( $requested as $pkg ) {
+			$pkg = (string) $pkg;
+			if ( isset( $registry[ $pkg ] ) ) {
+				$imports[ $pkg ] = BAZAAR_URL . 'admin/dist/' . $registry[ $pkg ];
+			}
+		}
+
+		if ( empty( $imports ) ) {
+			return $html;
+		}
+
+		$map = '<script type="importmap">' . wp_json_encode( array( 'imports' => $imports ) ) . '</script>';
+		// Insert right after the <base> tag that inject_base_href() added.
+		return (string) preg_replace( '/(<base\b[^>]*>)/i', '$1' . $map, $html, 1 );
+	}
+
+	/**
+	 * Build a map of package-name → dist-relative-file-path by cross-referencing
+	 * the shell's shared/registry.json (package → Vite src key) with the Vite
+	 * build manifest (Vite src key → hashed output filename).
+	 *
+	 * The result is cached for the lifetime of the PHP request.
+	 *
+	 * @return array<string, string> e.g. ['react' => 'shared/react-abc123.js']
+	 */
+	private function get_shared_registry(): array {
+		static $cache = null;
+		if ( null !== $cache ) {
+			return $cache;
+		}
+
+		$registry_path = BAZAAR_DIR . 'admin/src/shared/registry.json';
+		$manifest_path = BAZAAR_DIR . 'admin/dist/.vite/manifest.json';
+
+		if ( ! file_exists( $registry_path ) || ! file_exists( $manifest_path ) ) {
+			$cache = array();
+			return $cache;
+		}
+
+		$registry_raw = file_get_contents( $registry_path );
+		$manifest_raw = file_get_contents( $manifest_path );
+
+		$registry = is_string( $registry_raw ) ? json_decode( $registry_raw, true ) : null;
+		$manifest = is_string( $manifest_raw ) ? json_decode( $manifest_raw, true ) : null;
+
+		if ( ! is_array( $registry ) || ! is_array( $manifest ) ) {
+			$cache = array();
+			return $cache;
+		}
+
+		$out = array();
+		foreach ( $registry as $pkg => $meta ) {
+			$src = $meta['src'] ?? '';
+			if ( isset( $manifest[ $src ]['file'] ) ) {
+				$out[ (string) $pkg ] = $manifest[ $src ]['file'];
+			}
+		}
+
+		$cache = $out;
+		return $cache;
 	}
 
 	/**

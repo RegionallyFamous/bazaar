@@ -1,26 +1,39 @@
 /**
- * Bazaar Zero-Trust Service Worker.
+ * Bazaar Service Worker.
  *
- * When `zero_trust` is enabled in a ware's manifest, this Service Worker
- * intercepts all fetch requests made from within the ware's iframe and
- * enforces the declared `permissions.network` allowlist.
+ * Two responsibilities:
  *
- * Ware manifests declare allowed origins:
- *   "permissions": {
- *     "network": ["https://api.example.com", "https://cdn.example.com"]
- *   }
+ * 1. ZERO-TRUST NETWORK ENFORCEMENT
+ *    When `zero_trust` is enabled in a ware's manifest, fetch requests from
+ *    that ware's iframe are checked against its declared `permissions.network`
+ *    allowlist. Any request to an unlisted origin is blocked with a 403.
+ *    Requests to the WordPress origin are always allowed.
  *
- * Any fetch to an origin not in the allowlist is blocked with a 403.
- * Requests to the WordPress origin are always allowed (REST API, media, etc.).
+ * 2. UNIVERSAL WARE ASSET CACHE
+ *    All static assets served from wp-content/bazaar/** are cached after the
+ *    first fetch (cache-first strategy). Content-hashed filenames mean a cache
+ *    entry is valid forever; the browser never re-downloads the same bytes.
+ *    This also covers the shared library bundles at admin/dist/shared/**, so
+ *    React / Vue is downloaded exactly once regardless of how many ware iframes
+ *    open.
  *
- * Registration: shell.js registers this SW and passes the permissions map
- * via a postMessage after registration.
- *
- * NOTE: This SW runs in a separate global scope. The permissions map is sent
- * from shell.js after registration using `sw.postMessage()`.
+ * Registration: shell.js registers this SW unconditionally (asset caching) and
+ * sends permissions via postMessage when zero-trust wares are present.
  */
 
 /* eslint-env serviceworker */
+
+// ── Asset cache ──────────────────────────────────────────────────────────────
+
+const ASSET_CACHE_NAME = 'bazaar-ware-assets-v1';
+
+/**
+ * Matches both ware static files (wp-content/bazaar/**) and the shell's
+ * shared library bundles (wp-content/plugins/bazaar/admin/dist/shared/**).
+ */
+const CACHEABLE_RE = /\/wp-content\/bazaar\/|\/admin\/dist\/shared\//;
+
+// ── Zero-trust state ─────────────────────────────────────────────────────────
 
 /** @type {Map<string, string[]>} slug → allowed origin list */
 const permissionsMap = new Map();
@@ -44,51 +57,71 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('fetch', (event) => {
 	const req = event.request;
+
+	// Only handle GET requests; leave mutations to the network.
+	if (req.method !== 'GET') {
+		return;
+	}
+
 	const url = new URL(req.url);
 
-	// Determine which ware this request belongs to by inspecting the referrer.
-	// Ware iframes are served under {restUrl}/serve/{slug}/…
-	const referrer = event.request.referrer;
+	// ── Zero-trust enforcement (ware iframes only) ──────────────────────────
+
+	const referrer = req.referrer;
 	const slugMatch = referrer
 		? /\/serve\/([a-z0-9-]+)\//.exec(new URL(referrer).pathname)
 		: null;
 	const slug = slugMatch ? slugMatch[1] : null;
 
-	if (!slug) {
-		return;
-	} // Not from a ware frame — let it pass.
+	if (slug) {
+		const allowed = permissionsMap.get(slug);
+		if (allowed) {
+			// Same-origin (WordPress site) is always allowed.
+			if (url.origin !== siteOrigin) {
+				const permitted = allowed.some((allowedOrigin) => {
+					const ao = new URL(allowedOrigin);
+					return url.origin === ao.origin;
+				});
 
-	const allowed = permissionsMap.get(slug);
-	if (!allowed) {
-		return;
-	} // Ware has no zero-trust constraint — let it pass.
-
-	// Same-origin (WordPress site) is always allowed.
-	if (url.origin === siteOrigin) {
-		return;
+				if (!permitted) {
+					event.respondWith(
+						new Response(
+							JSON.stringify({ error: 'blocked', url: req.url, slug }),
+							{
+								status: 403,
+								headers: {
+									'Content-Type': 'application/json',
+									'X-Bazaar-ZT-Block': '1',
+								},
+							}
+						)
+					);
+					return;
+				}
+			}
+		}
 	}
 
-	// Check against the declared allow-list.
-	const permitted = allowed.some((allowedOrigin) => {
-		const ao = new URL(allowedOrigin);
-		return url.origin === ao.origin;
-	});
+	// ── Universal ware asset cache (cache-first) ────────────────────────────
+	// Covers: wp-content/bazaar/{slug}/assets/** and admin/dist/shared/**
+	// Both use content-hashed filenames → safe to cache indefinitely.
 
-	if (!permitted) {
+	if (CACHEABLE_RE.test(url.pathname)) {
 		event.respondWith(
-			new Response(
-				JSON.stringify({ error: 'blocked', url: req.url, slug }),
-				{
-					status: 403,
-					headers: {
-						'Content-Type': 'application/json',
-						'X-Bazaar-ZT-Block': '1',
-					},
+			caches.open(ASSET_CACHE_NAME).then(async (cache) => {
+				const cached = await cache.match(req);
+				if (cached) {
+					return cached;
 				}
-			)
+				const response = await fetch(req);
+				if (response.ok) {
+					cache.put(req, response.clone());
+				}
+				return response;
+			})
 		);
 	}
-	// Otherwise fall through to the network.
+	// All other requests fall through to the network unchanged.
 });
 
 // ── Install / activate — skip waiting for immediate control ─────────────────
