@@ -64,6 +64,23 @@ final class BazaarShell {
 			'dashicons-store',
 			2
 		);
+
+		add_filter( 'admin_body_class', array( $this, 'add_body_class' ) );
+	}
+
+	/**
+	 * Append bazaar-shell-active to the admin body class list.
+	 * Used to suppress the WP sidebar when the shell is open.
+	 *
+	 * @param string $classes Space-separated body class string.
+	 * @return string
+	 */
+	public function add_body_class( string $classes ): string {
+		$screen = get_current_screen();
+		if ( $screen && $screen->id === $this->screen_id ) {
+			$classes .= ' bazaar-shell-active';
+		}
+		return $classes;
 	}
 
 	/**

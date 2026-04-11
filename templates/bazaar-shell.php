@@ -15,6 +15,14 @@ defined( 'ABSPATH' ) || exit;
 #wpcontent         { padding-left: 0 !important; }
 #wpbody-content    { padding: 0 !important; overflow: hidden; }
 #bazaar-shell-root { margin: 0 !important; }
+
+/*
+ * Hide the WP admin sidebar — Bazaar owns its own nav rail.
+ * The WP admin bar stays as the "return to WordPress" anchor.
+ */
+body.bazaar-shell-active #adminmenuwrap,
+body.bazaar-shell-active #adminmenuback { display: none !important; }
+body.bazaar-shell-active #wpcontent     { margin-left: 0 !important; }
 </style>
 
 <div id="bazaar-shell-root" class="bsh" aria-label="<?php esc_attr_e( 'Bazaar', 'bazaar' ); ?>">
@@ -22,11 +30,7 @@ defined( 'ABSPATH' ) || exit;
 	<nav class="bsh-nav" id="bsh-nav" aria-label="<?php esc_attr_e( 'Wares', 'bazaar' ); ?>">
 
 		<div class="bsh-nav__header">
-			<span class="dashicons dashicons-store bsh-nav__logo" aria-hidden="true"></span>
-			<span class="bsh-nav__title"><?php esc_html_e( 'Bazaar', 'bazaar' ); ?></span>
-			<span class="bsh-nav__kbd-hint" aria-label="<?php esc_attr_e( 'Press ⌘K to search', 'bazaar' ); ?>" title="<?php esc_attr_e( 'Command palette (⌘K)', 'bazaar' ); ?>">
-				<kbd>⌘</kbd><kbd>K</kbd>
-			</span>
+			<span class="dashicons dashicons-store bsh-nav__logo" aria-hidden="true" title="<?php esc_attr_e( 'Bazaar', 'bazaar' ); ?>"></span>
 			<button
 				class="bsh-nav__collapse"
 				id="bsh-collapse"

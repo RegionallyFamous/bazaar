@@ -14,7 +14,7 @@
 	/* Nav rail surfaces */
 	--bsh-nav-bg:         #0e1520;
 	--bsh-nav-border:     rgba(255, 255, 255, 0.06);
-	--bsh-nav-width:      240px;
+	--bsh-nav-width:      200px;
 	--bsh-nav-collapsed:  52px;
 
 	/* Nav text */
@@ -77,6 +77,24 @@
 	min-width: var(--bsh-nav-collapsed);
 }
 
+/* No wares: force icon-only rail until first ware is installed */
+.bsh--no-wares .bsh-nav {
+	width: var(--bsh-nav-collapsed) !important;
+	min-width: var(--bsh-nav-collapsed) !important;
+}
+
+.bsh--no-wares .bsh-nav__title,
+.bsh--no-wares .bsh-nav__label,
+.bsh--no-wares .bsh-nav__kbd-hint,
+.bsh--no-wares .bsh-nav__shortcut-hint {
+	opacity: 0;
+	pointer-events: none;
+}
+
+.bsh--no-wares .bsh-nav__collapse .dashicons {
+	transform: rotate(180deg);
+}
+
 /* Header row */
 .bsh-nav__header {
 	display: flex;
@@ -120,6 +138,7 @@
 	padding: 3px;
 	border-radius: var(--bsh-radius-sm);
 	flex-shrink: 0;
+	margin-left: auto;
 	line-height: 1;
 	display: flex;
 	align-items: center;

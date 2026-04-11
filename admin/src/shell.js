@@ -508,6 +508,8 @@ function updateUrl(slug, route) {
 // ===========================================================================
 
 function renderNav() {
+	const hadNoWares = root.classList.contains('bsh--no-wares');
+
 	navList.innerHTML = '';
 
 	// Manage
@@ -521,8 +523,18 @@ function renderNav() {
 	navList.appendChild(buildDivider());
 
 	const enabled = sortedEnabled(wareMap);
+	const nowHasWares = enabled.length > 0;
 
-	if (!enabled.length) {
+	root.classList.toggle('bsh--no-wares', !nowHasWares);
+
+	// Transitioning from no-wares → first ware: expand nav as a welcome moment.
+	if (hadNoWares && nowHasWares) {
+		root.classList.remove('bsh--collapsed');
+		collapse.setAttribute('aria-expanded', 'true');
+		collapse.setAttribute('aria-label', __('Collapse navigation', 'bazaar'));
+	}
+
+	if (!nowHasWares) {
 		const li = document.createElement('li');
 		li.className = 'bsh-nav__empty';
 		const btn = document.createElement('button');
@@ -1147,6 +1159,12 @@ navList.addEventListener('click', (e) => {
 // Seed the manage-nav badge from the server-side outdated count.
 if (outdatedCount > 0) {
 	badgeMap.set('manage', outdatedCount);
+}
+
+// Collapse nav to icon-only rail when no wares are installed yet.
+// renderNav() will lift this once the first enabled ware appears.
+if (!sortedEnabled(wareMap).length) {
+	root.classList.add('bsh--no-wares');
 }
 
 renderNav();
