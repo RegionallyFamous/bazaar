@@ -126,14 +126,15 @@ describe( 'TrustAwareLruManager sandbox attributes', () => {
 		return container.querySelector( '#bsh-frame-test' ).getAttribute( 'sandbox' );
 	}
 
-	test( 'low-trust sandbox excludes allow-same-origin', () => {
-		const s = sandboxFor( 'low' );
-		expect( s ).not.toContain( 'allow-same-origin' );
+	test( 'standard trust includes allow-same-origin but not popup-escape', () => {
+		const s = sandboxFor( 'standard' );
+		expect( s ).toContain( 'allow-same-origin' );
 		expect( s ).toContain( 'allow-scripts' );
+		expect( s ).not.toContain( 'allow-popups-to-escape-sandbox' );
 	} );
 
-	test( 'high-trust sandbox includes allow-popups-to-escape-sandbox', () => {
-		const s = sandboxFor( 'high' );
+	test( 'verified trust includes allow-popups-to-escape-sandbox', () => {
+		const s = sandboxFor( 'verified' );
 		expect( s ).toContain( 'allow-popups-to-escape-sandbox' );
 		expect( s ).toContain( 'allow-modals' );
 	} );

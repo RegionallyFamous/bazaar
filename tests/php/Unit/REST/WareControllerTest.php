@@ -268,4 +268,62 @@ final class WareControllerTest extends TestCase {
 		$this->assertInstanceOf( \WP_Error::class, $result );
 		$this->assertSame( 'ware_not_found', $result->get_error_code() );
 	}
+
+	/**
+	 * Regression: before the fix, unregister()'s return value was ignored.
+	 * If files are deleted but the registry update fails, delete() must return
+	 * a 500 error rather than silently reporting success.
+	 *
+	 * We test this by making save_index() fail (update_option returns false
+	 * AND get_option returns a stale value so the fallback also fails).
+	 * WareLoader::delete() returns true immediately because the ware directory
+	 * does not exist on the test filesystem.
+	 */
+	public function test_delete_returns_500_when_unregister_fails(): void {
+		$this->seed_ware( 'crm' );
+
+		// Re-stub get_option and update_option so save_index() returns false.
+		// After this re-stub, the registry's in-memory cache (already loaded in
+		// the constructor call below) returns the seeded ware while saves fail.
+		$store = &$this->store;
+
+		// Build the registry and PRIME its lazy index_cache before overriding
+		// stubs.  The registry uses lazy loading — constructing it alone does not
+		// read the index.  Calling get_index() forces load_index() to populate
+		// index_cache from $store while the original stubs are still active.
+		$registry = new WareRegistry();
+		$registry->get_index(); // primes index_cache
+
+		// Now re-stub so that subsequent save_index() calls inside unregister() fail.
+		// update_option returns false for the index; get_option returns a stale/
+		// mismatched value so the "unchanged" fallback in save_index() also fails.
+		Functions\when( 'update_option' )->alias(
+			function ( string $opt, mixed $val ) use ( &$store ): bool {
+				if ( $opt === 'bazaar_index' ) {
+					return false; // Simulate DB failure for the index save.
+				}
+				$store[ $opt ] = $val;
+				return true;
+			}
+		);
+
+		Functions\when( 'get_option' )->alias(
+			function ( string $opt, mixed $default = false ) use ( &$store ): mixed {
+				if ( $opt === 'bazaar_index' ) {
+					return '{"stale":"data"}'; // Mismatch → fallback check also fails.
+				}
+				return $store[ $opt ] ?? $default;
+			}
+		);
+
+		$request = new WP_REST_Request();
+		$request->set_param( 'slug', 'crm' );
+
+		$controller = new WareController( $registry );
+		$result     = $controller->delete( $request );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'unregister_failed', $result->get_error_code() );
+		$this->assertSame( 500, ( $result->get_error_data() )['status'] );
+	}
 }

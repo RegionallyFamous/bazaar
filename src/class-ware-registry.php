@@ -270,11 +270,13 @@ final class WareRegistry implements WareRegistryInterface {
 		if ( false === $encoded ) {
 			return false;
 		}
-		$saved = (bool) update_option( self::INDEX_KEY, $encoded, false );
-		if ( $saved ) {
-			$this->index_cache = $index;
-		}
-		return $saved;
+		// update_option() returns false both on genuine DB failure AND when the
+		// stored value is already identical (no-change). Always update the cache
+		// so in-memory state stays consistent with what is on disk.
+		$this->index_cache = $index;
+		$result            = update_option( self::INDEX_KEY, $encoded, false );
+		// Treat the no-change case as success.
+		return $result || ( get_option( self::INDEX_KEY ) === $encoded );
 	}
 
 	/**
@@ -309,8 +311,12 @@ final class WareRegistry implements WareRegistryInterface {
 	 * @return array<string, array<string, mixed>> The migrated index.
 	 */
 	private function migrate_legacy(): array {
-		$raw   = get_option( self::LEGACY_KEY );
-		$index = array();
+		// Seed the cache with an empty index before calling register() inside the
+		// loop. Without this, each register() → load_index() call would find
+		// index_cache === null and recurse back into migrate_legacy() infinitely.
+		$this->index_cache = array();
+
+		$raw = get_option( self::LEGACY_KEY );
 
 		if ( false !== $raw ) {
 			$legacy = json_decode( (string) $raw, true );
@@ -321,15 +327,18 @@ final class WareRegistry implements WareRegistryInterface {
 						continue;
 					}
 					// Re-run sanitisation so legacy data meets current schema.
+					// register() updates $this->index_cache via save_index(), so
+					// the cache accumulates correct, sanitized entries as we go.
 					$ware['slug'] = $slug;
 					$this->register( $ware );
-					$index[ $slug ] = $this->make_index_entry( $ware );
 				}
 			}
 		}
 
-		$this->save_index( $index );
-		return $index;
+		// $this->index_cache now reflects what register() actually persisted.
+		// Do NOT rebuild/overwrite from the raw $ware loop variables — that would
+		// replace sanitized index entries with pre-sanitization data.
+		return $this->index_cache;
 	}
 
 	// =========================================================================
@@ -378,11 +387,11 @@ final class WareRegistry implements WareRegistryInterface {
 		if ( false === $encoded ) {
 			return false;
 		}
-		$saved = (bool) update_option( self::WARE_PREFIX . $slug, $encoded, false );
-		if ( $saved ) {
-			$this->ware_cache[ $slug ] = $ware;
-		}
-		return $saved;
+		// Same no-change false-negative as save_index — always keep cache current.
+		$this->ware_cache[ $slug ] = $ware;
+		$key                       = self::WARE_PREFIX . $slug;
+		$result                    = update_option( $key, $encoded, false );
+		return $result || ( get_option( $key ) === $encoded );
 	}
 
 	/**
@@ -565,9 +574,20 @@ final class WareRegistry implements WareRegistryInterface {
 	 */
 	public function update_field( string $slug, string $field, mixed $value ): bool {
 		static $allowed = array(
-			'enabled', 'version', 'name', 'description', 'icon', 'entry',
-			'dev_url', 'trust', 'zero_trust', 'health_check', 'jobs',
-			'settings', 'search_endpoint', 'permissions',
+			'enabled',
+			'version',
+			'name',
+			'description',
+			'icon',
+			'entry',
+			'dev_url',
+			'trust',
+			'zero_trust',
+			'health_check',
+			'jobs',
+			'settings',
+			'search_endpoint',
+			'permissions',
 		);
 		if ( ! in_array( $field, $allowed, true ) ) {
 			return false;

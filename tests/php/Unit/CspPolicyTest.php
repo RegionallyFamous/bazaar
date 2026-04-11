@@ -17,6 +17,8 @@ final class CspPolicyTest extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 		Monkey\setUp();
+		// CspPolicy::load() and save() call sanitize_key() on the slug parameter.
+		Functions\when( 'sanitize_key' )->returnArg();
 	}
 
 	protected function tearDown(): void {
@@ -131,5 +133,61 @@ final class CspPolicyTest extends TestCase {
 
 		$this->assertNotEmpty( $header );
 		$this->assertStringContainsString( 'default-src', $header );
+	}
+
+	// ─── Regression: missing sanitize_key() on slug ──────────────────────────
+
+	/**
+	 * Before the fix, a slug containing option-key-unsafe characters was passed
+	 * directly to get_option / update_option. Now sanitize_key() normalises the
+	 * slug first, so dangerous characters are stripped.
+	 */
+	public function test_load_normalizes_slug_via_sanitize_key(): void {
+		$accessed_key = null;
+
+		Functions\when( 'sanitize_key' )->alias(
+			function ( string $s ): string {
+				// Replicate WP behaviour: lowercase, strip non-alphanumeric-dash-underscore.
+				return preg_replace( '/[^a-z0-9_-]/', '', strtolower( $s ) ) ?? '';
+			}
+		);
+
+		Functions\when( 'get_option' )->alias(
+			function ( string $opt, mixed $default = false ) use ( &$accessed_key ): mixed {
+				$accessed_key = $opt;
+				return $default;
+			}
+		);
+
+		CspPolicy::load( 'my-ware../../etc' );
+
+		// The option key must not contain the path-traversal characters.
+		$this->assertNotNull( $accessed_key );
+		$this->assertStringNotContainsString( '..', (string) $accessed_key );
+		$this->assertStringNotContainsString( '/', (string) $accessed_key );
+	}
+
+	public function test_save_normalizes_slug_via_sanitize_key(): void {
+		$saved_key = null;
+
+		Functions\when( 'sanitize_key' )->alias(
+			function ( string $s ): string {
+				return preg_replace( '/[^a-z0-9_-]/', '', strtolower( $s ) ) ?? '';
+			}
+		);
+
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+		Functions\when( 'update_option' )->alias(
+			function ( string $opt ) use ( &$saved_key ): bool {
+				$saved_key = $opt;
+				return true;
+			}
+		);
+
+		CspPolicy::save( 'my-ware../../etc', array() );
+
+		$this->assertNotNull( $saved_key );
+		$this->assertStringNotContainsString( '..', (string) $saved_key );
+		$this->assertStringNotContainsString( '/', (string) $saved_key );
 	}
 }

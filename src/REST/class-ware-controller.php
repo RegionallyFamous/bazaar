@@ -239,7 +239,8 @@ final class WareController extends BazaarController {
 	public function delete( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$slug = (string) $request->get_param( 'slug' );
 
-		if ( null === $this->registry->get( $slug ) ) {
+		$ware = $this->registry->get( $slug );
+		if ( null === $ware ) {
 			return new WP_Error(
 				'ware_not_found',
 				esc_html__( 'Ware not found.', 'bazaar' ),
@@ -248,10 +249,7 @@ final class WareController extends BazaarController {
 		}
 
 		// Unschedule any manifest-declared background jobs before files are removed.
-		$ware = $this->registry->get( $slug );
-		if ( is_array( $ware ) ) {
-			JobsController::deregister_ware_jobs( $slug, (array) ( $ware['jobs'] ?? array() ) );
-		}
+		JobsController::deregister_ware_jobs( $slug, (array) ( $ware['jobs'] ?? array() ) );
 
 		$deleted = $this->loader->delete( $slug );
 		if ( is_wp_error( $deleted ) ) {
@@ -259,7 +257,15 @@ final class WareController extends BazaarController {
 			return $deleted;
 		}
 
-		$this->registry->unregister( $slug );
+		if ( ! $this->registry->unregister( $slug ) ) {
+			// Files are already gone; the registry must also be cleaned up or the
+			// ware will appear as installed without any files backing it.
+			return new \WP_Error(
+				'unregister_failed',
+				esc_html__( 'Files deleted but registry update failed. Please try again.', 'bazaar' ),
+				array( 'status' => 500 )
+			);
+		}
 
 		return new WP_REST_Response(
 			array(

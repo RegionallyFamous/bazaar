@@ -57,7 +57,8 @@ final class CspPolicy {
 	 * @return array<string, string>
 	 */
 	public static function load( string $slug ): array {
-		$raw = get_option( "bazaar_csp_{$slug}", '' );
+		$slug = sanitize_key( $slug );
+		$raw  = get_option( "bazaar_csp_{$slug}", '' );
 		if ( '' === $raw ) {
 			return self::BASELINE;
 		}
@@ -79,6 +80,7 @@ final class CspPolicy {
 	 * @param array<string, string> $directives Map of CSP directive name to source list.
 	 */
 	public static function save( string $slug, array $directives ): void {
+		$slug = sanitize_key( $slug );
 		foreach ( self::REQUIRED as $d => $v ) {
 			$directives[ $d ] = $v;
 		}

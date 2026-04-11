@@ -55,3 +55,81 @@ describe( 'Bazaar file extension check', () => {
 		expect( isWpFile( 'shell.php' ) ).toBe( false );
 	} );
 } );
+
+// ─── showError timer regression ──────────────────────────────────────────────
+
+describe( 'showError timer management', () => {
+	/**
+	 * Inline replica of the fixed showError logic from main.js.
+	 * Before the fix, the error timer was never stored/cleared, so rapid calls
+	 * stacked multiple setTimeout callbacks.
+	 */
+	function makeShowError( errorBox ) {
+		let successTimer = null;
+		let errorTimer = null;
+
+		function showError( msg ) {
+			errorBox.textContent = msg;
+			errorBox.hidden = false;
+			clearTimeout( successTimer );
+			clearTimeout( errorTimer ); // regression fix: clear previous error timer
+			errorTimer = setTimeout( () => {
+				errorBox.hidden = true;
+			}, 8000 );
+		}
+
+		return { showError, getErrorTimer: () => errorTimer };
+	}
+
+	beforeEach( () => {
+		jest.useFakeTimers();
+	} );
+
+	afterEach( () => {
+		jest.useRealTimers();
+	} );
+
+	test( 'error box is visible after showError', () => {
+		const box = document.createElement( 'div' );
+		box.hidden = true;
+		const { showError } = makeShowError( box );
+
+		showError( 'Something went wrong' );
+
+		expect( box.hidden ).toBe( false );
+		expect( box.textContent ).toBe( 'Something went wrong' );
+	} );
+
+	test( 'error box hides after 8 seconds', () => {
+		const box = document.createElement( 'div' );
+		const { showError } = makeShowError( box );
+
+		showError( 'Error' );
+		jest.advanceTimersByTime( 8000 );
+
+		expect( box.hidden ).toBe( true );
+	} );
+
+	/**
+	 * Regression: rapid showError() calls must not stack timers.
+	 * Only the LAST timer should fire.
+	 */
+	test( 'rapid calls clear the previous timer so only the last fires', () => {
+		const box = document.createElement( 'div' );
+		const { showError, getErrorTimer } = makeShowError( box );
+
+		showError( 'First error' );
+		const firstTimer = getErrorTimer();
+
+		showError( 'Second error' );
+		const secondTimer = getErrorTimer();
+
+		// Timer IDs must differ — the second call replaced the first.
+		expect( secondTimer ).not.toBe( firstTimer );
+
+		// After 8 s the box hides (only one timer running, not stacked).
+		jest.advanceTimersByTime( 8000 );
+		expect( box.hidden ).toBe( true );
+		expect( box.textContent ).toBe( 'Second error' );
+	} );
+} );

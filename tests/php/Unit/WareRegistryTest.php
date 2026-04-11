@@ -313,4 +313,105 @@ final class WareRegistryTest extends TestCase {
 		$this->assertNotNull( $ware );
 		$this->assertArrayNotHasKey( 'dev_url', $ware );
 	}
+
+	// -------------------------------------------------------------------------
+	// Regression: migrate_legacy() stale index overwrite
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Before the fix, migrate_legacy() called register() for each ware (which
+	 * saved sanitized index entries) but then overwrote the index with entries
+	 * built from the raw, pre-sanitization $ware array.  The index should
+	 * reflect the sanitized data that register() persisted.
+	 */
+	public function test_migrate_legacy_index_uses_sanitized_register_data(): void {
+		// Remove the new-format index so load_index() triggers migration.
+		unset( $this->store['bazaar_index'] );
+
+		// Populate the legacy option with one ware.
+		$this->store['bazaar_registry'] = json_encode(
+			array(
+				'crm' => array(
+					'name'    => "Bad <script>Name</script>",
+					'version' => '2.0.0',
+					'entry'   => 'index.html',
+					'slug'    => 'crm',
+				),
+			)
+		);
+
+		// sanitize_text_field strips tags; mock that behaviour.
+		Functions\when( 'sanitize_text_field' )->alias( 'strip_tags' );
+
+		$registry = new WareRegistry();
+
+		// Trigger load (and therefore migration) by listing wares.
+		$index = $registry->get_index();
+
+		// The index should exist and contain the sanitized name.
+		$this->assertArrayHasKey( 'crm', $index, 'Migrated ware must appear in index.' );
+		$this->assertStringNotContainsString(
+			'<script>',
+			$index['crm']['name'] ?? '',
+			'Index must use sanitized data from register(), not raw legacy data.'
+		);
+	}
+
+	/**
+	 * Migration must not recurse: calling load_index() inside register()
+	 * (which happens during migration) must find the empty seed cache and
+	 * return early, not call migrate_legacy() again.
+	 */
+	public function test_migrate_legacy_does_not_recurse(): void {
+		unset( $this->store['bazaar_index'] );
+
+		$this->store['bazaar_registry'] = json_encode(
+			array(
+				'crm'    => array( 'name' => 'CRM',    'version' => '1.0', 'slug' => 'crm' ),
+				'kanban' => array( 'name' => 'Kanban', 'version' => '1.0', 'slug' => 'kanban' ),
+			)
+		);
+
+		// Should not throw a stack-overflow / infinite recursion.
+		$registry = new WareRegistry();
+		$index    = $registry->get_index();
+
+		$this->assertCount( 2, $index, 'Both wares must be migrated exactly once.' );
+	}
+
+	// -------------------------------------------------------------------------
+	// Regression: save_index / save_ware false-negative on unchanged value
+	// -------------------------------------------------------------------------
+
+	/**
+	 * update_option() returns false when the value is unchanged.
+	 * save_index() must treat this as success, not a failure.
+	 */
+	public function test_save_index_returns_true_when_value_unchanged(): void {
+		// Return false from update_option to simulate "value unchanged" path.
+		$store   = &$this->store;
+		$encoded = json_encode( array( 'crm' => array( 'slug' => 'crm', 'name' => 'CRM' ) ) );
+
+		Functions\when( 'update_option' )->alias(
+			function ( string $opt, mixed $val ) use ( &$store ): bool {
+				// Simulate WordPress: return false when value is the same.
+				if ( isset( $store[ $opt ] ) && $store[ $opt ] === $val ) {
+					return false;
+				}
+				$store[ $opt ] = $val;
+				return true;
+			}
+		);
+
+		$this->store['bazaar_index'] = $encoded;
+
+		$this->seed_ware( 'crm' );
+		$registry = new WareRegistry();
+
+		// Re-enabling an already-enabled ware hits the "unchanged" path.
+		$result = $registry->enable( 'crm' );
+
+		// Must succeed even though update_option returned false.
+		$this->assertTrue( $result, 'enable() must succeed when the stored value is unchanged.' );
+	}
 }

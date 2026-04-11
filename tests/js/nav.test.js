@@ -9,6 +9,7 @@ import {
 	buildDivider,
 	buildSectionLabel,
 	healthMap,
+	attachDragHandlers,
 } from '../../admin/src/modules/nav.js';
 
 // Reset shared module-level state before every test so tests are isolated.
@@ -251,5 +252,45 @@ describe( 'buildSectionLabel', () => {
 		const li = buildSectionLabel( 'Recently Visited' );
 		expect( li.textContent ).toBe( 'Recently Visited' );
 		expect( li.getAttribute( 'role' ) ).toBe( 'presentation' );
+	} );
+} );
+
+// ─── attachDragHandlers ───────────────────────────────────────────────────────
+
+describe( 'attachDragHandlers', () => {
+	/**
+	 * Regression: before the fix, calling attachDragHandlers on every renderNav()
+	 * stacked duplicate event listeners on the same navList element.  This caused
+	 * multiple dragstart/drop callbacks to fire for a single user action.
+	 */
+	test( 'attaches handlers only once per unique navList element', () => {
+		const navList = document.createElement( 'ul' );
+		const addSpy = jest.spyOn( navList, 'addEventListener' );
+
+		// Simulate three renderNav() cycles calling attachDragHandlers each time.
+		attachDragHandlers( navList );
+		attachDragHandlers( navList );
+		attachDragHandlers( navList );
+
+		// Listeners must have been registered only on the first call.
+		const dragstartCalls = addSpy.mock.calls.filter(
+			( [ type ] ) => type === 'dragstart'
+		);
+		expect( dragstartCalls ).toHaveLength( 1 );
+	} );
+
+	test( 'attaches handlers to each distinct element independently', () => {
+		const listA = document.createElement( 'ul' );
+		const listB = document.createElement( 'ul' );
+		const spyA = jest.spyOn( listA, 'addEventListener' );
+		const spyB = jest.spyOn( listB, 'addEventListener' );
+
+		attachDragHandlers( listA );
+		attachDragHandlers( listB );
+
+		const dragstartA = spyA.mock.calls.filter( ( [ t ] ) => t === 'dragstart' );
+		const dragstartB = spyB.mock.calls.filter( ( [ t ] ) => t === 'dragstart' );
+		expect( dragstartA ).toHaveLength( 1 );
+		expect( dragstartB ).toHaveLength( 1 );
 	} );
 } );

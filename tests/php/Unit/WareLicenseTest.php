@@ -284,6 +284,49 @@ final class WareLicenseTest extends TestCase {
 		$this->assertInstanceOf( \WP_Error::class, $result );
 	}
 
+	// ─── Regression: strict valid === true check ─────────────────────────────
+
+	/**
+	 * A license server returning { "valid": "false" } (truthy string!) must be
+	 * rejected.  Before the fix, empty("false") === false so it passed.
+	 *
+	 * @dataProvider truthy_but_not_true_valid_provider
+	 */
+	public function test_validate_rejects_truthy_non_true_valid( mixed $valid_value ): void {
+		Functions\when( 'esc_url_raw' )->justReturn( 'https://vendor.example.com/license' );
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+		Functions\when( 'home_url' )->justReturn( 'http://example.com' );
+		Functions\when( 'is_wp_error' )->justReturn( false );
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn(
+			json_encode( array( 'valid' => $valid_value, 'message' => 'Bad license' ) )
+		);
+		Functions\when( 'wp_remote_post' )->justReturn( array() );
+		Functions\when( 'esc_html' )->returnArg();
+		Functions\when( '__' )->returnArg();
+
+		$license = new WareLicense();
+		$result  = $license->validate( 'crm', 'KEY', array( 'url' => 'https://vendor.example.com/license' ) );
+
+		$this->assertInstanceOf(
+			\WP_Error::class,
+			$result,
+			"validate() must reject 'valid' => " . var_export( $valid_value, true )
+		);
+	}
+
+	/** @return array<string, array{mixed}> */
+	public static function truthy_but_not_true_valid_provider(): array {
+		return array(
+			'string false'  => array( 'false' ),
+			'integer 1'     => array( 1 ),
+			'string 1'      => array( '1' ),
+			'string yes'    => array( 'yes' ),
+			'empty array'   => array( array() ),
+			'object truthy' => array( new \stdClass() ),
+		);
+	}
+
 	public function test_validate_marks_key_as_validated_on_success(): void {
 		Functions\when( 'esc_url_raw' )->justReturn( 'https://vendor.example.com/license' );
 		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );

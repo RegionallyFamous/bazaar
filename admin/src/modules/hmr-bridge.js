@@ -20,45 +20,48 @@ const _sockets = new Map();
  * @param {string}                 devUrl   Base URL of the Vite dev server (e.g. "http://localhost:5173")
  * @param {(slug: string) => void} onReload Callback to reload the ware's iframe.
  */
-export function connectHmr(slug, devUrl, onReload) {
-	disconnectHmr(slug);
+export function connectHmr( slug, devUrl, onReload ) {
+	disconnectHmr( slug );
 
-	const wsUrl = devUrl.replace(/^http/, 'ws') + '/__vite_hmr';
+	const wsUrl = devUrl.replace( /^http/, 'ws' ) + '/__vite_hmr';
 
 	let ws;
 	let reconnectDelay = 1000;
 
 	const connect = () => {
-		ws = new WebSocket(wsUrl);
+		ws = new WebSocket( wsUrl );
 
-		ws.addEventListener('open', () => {
+		ws.addEventListener( 'open', () => {
 			reconnectDelay = 1000;
-		});
+		} );
 
-		ws.addEventListener('message', (evt) => {
+		ws.addEventListener( 'message', ( evt ) => {
 			let msg;
 			try {
-				msg = JSON.parse(evt.data);
+				msg = JSON.parse( evt.data );
 			} catch {
 				return;
 			}
 
-			if (msg.type === 'full-reload' || msg.type === 'connected') {
+			// 'connected' is an informational ping — nothing to do.
+			if ( msg.type === 'connected' ) {
 				return;
 			}
 
-			if (msg.type === 'update' || msg.type === 'full-reload') {
-				onReload(slug);
+			// Both 'update' (HMR patch) and 'full-reload' (no HMR possible)
+			// should trigger an iframe reload.
+			if ( msg.type === 'update' || msg.type === 'full-reload' ) {
+				onReload( slug );
 			}
-		});
+		} );
 
-		ws.addEventListener('close', () => {
-			reconnectDelay = Math.min(reconnectDelay * 2, 30_000);
-			setTimeout(connect, reconnectDelay);
-		});
+		ws.addEventListener( 'close', () => {
+			reconnectDelay = Math.min( reconnectDelay * 2, 30_000 );
+			setTimeout( connect, reconnectDelay );
+		} );
 
-		ws.addEventListener('error', () => ws.close());
-		_sockets.set(slug, ws);
+		ws.addEventListener( 'error', () => ws.close() );
+		_sockets.set( slug, ws );
 	};
 
 	connect();
@@ -68,18 +71,18 @@ export function connectHmr(slug, devUrl, onReload) {
  * Disconnect from a ware's Vite HMR WebSocket.
  * @param {string} slug
  */
-export function disconnectHmr(slug) {
-	const ws = _sockets.get(slug);
-	if (ws) {
+export function disconnectHmr( slug ) {
+	const ws = _sockets.get( slug );
+	if ( ws ) {
 		ws.onclose = null;
 		ws.close();
-		_sockets.delete(slug);
+		_sockets.delete( slug );
 	}
 }
 
 /** Disconnect all HMR sockets (e.g. on shell teardown). */
 export function disconnectAll() {
-	for (const slug of _sockets.keys()) {
-		disconnectHmr(slug);
+	for ( const slug of _sockets.keys() ) {
+		disconnectHmr( slug );
 	}
 }

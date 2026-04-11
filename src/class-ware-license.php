@@ -162,7 +162,9 @@ final class WareLicense {
 		$code = wp_remote_retrieve_response_code( $response );
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 
-		if ( 200 !== (int) $code || ! is_array( $body ) || empty( $body['valid'] ) ) {
+		// Require strict true — empty(), truthy strings ("false", "1"), and numbers
+		// must not be treated as valid.
+		if ( 200 !== (int) $code || ! is_array( $body ) || true !== ( $body['valid'] ?? null ) ) {
 			$message = $body['message'] ?? __( 'License key is not valid.', 'bazaar' );
 			return new WP_Error( 'license_invalid', esc_html( $message ) );
 		}

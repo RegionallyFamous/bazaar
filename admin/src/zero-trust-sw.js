@@ -43,50 +43,63 @@ let siteOrigin = '';
 
 // ── Receive permissions map from shell.js ────────────────────────────────────
 
-self.addEventListener('message', (event) => {
-	const { type, permissions, origin } = event.data ?? {};
-	if (type === 'bazaar:zt-init') {
-		siteOrigin = origin ?? '';
-		for (const [slug, allowed] of Object.entries(permissions ?? {})) {
-			permissionsMap.set(slug, allowed);
-		}
-	}
-});
-
-// ── Fetch interception ───────────────────────────────────────────────────────
-
-self.addEventListener('fetch', (event) => {
-	const req = event.request;
-
-	// Only handle GET requests; leave mutations to the network.
-	if (req.method !== 'GET') {
+self.addEventListener( 'message', ( event ) => {
+	// Reject messages from unexpected origins once we have established the site
+	// origin. Before the first zt-init the SW doesn't know the site origin yet,
+	// so we accept it but then lock it in — subsequent inits must match.
+	if ( siteOrigin && event.origin !== siteOrigin ) {
 		return;
 	}
 
-	const url = new URL(req.url);
+	const { type, permissions } = event.data ?? {};
+	if ( type === 'bazaar:zt-init' ) {
+		// Trust the verified event.origin, not the untrusted payload 'origin' field.
+		siteOrigin = event.origin;
+		for ( const [ slug, allowed ] of Object.entries( permissions ?? {} ) ) {
+			permissionsMap.set( slug, allowed );
+		}
+	}
+} );
+
+// ── Fetch interception ───────────────────────────────────────────────────────
+
+self.addEventListener( 'fetch', ( event ) => {
+	const req = event.request;
+
+	// Only handle GET requests; leave mutations to the network.
+	if ( req.method !== 'GET' ) {
+		return;
+	}
+
+	const url = new URL( req.url );
 
 	// ── Zero-trust enforcement (ware iframes only) ──────────────────────────
 
 	const referrer = req.referrer;
 	const slugMatch = referrer
-		? /\/serve\/([a-z0-9-]+)\//.exec(new URL(referrer).pathname)
+		? /\/serve\/([a-z0-9-]+)\//.exec( new URL( referrer ).pathname )
 		: null;
-	const slug = slugMatch ? slugMatch[1] : null;
+	const slug = slugMatch ? slugMatch[ 1 ] : null;
 
-	if (slug) {
-		const allowed = permissionsMap.get(slug);
-		if (allowed) {
+	if ( slug ) {
+		const allowed = permissionsMap.get( slug );
+		if ( allowed ) {
 			// Same-origin (WordPress site) is always allowed.
-			if (url.origin !== siteOrigin) {
-				const permitted = allowed.some((allowedOrigin) => {
-					const ao = new URL(allowedOrigin);
-					return url.origin === ao.origin;
-				});
+			if ( url.origin !== siteOrigin ) {
+				const permitted = allowed.some( ( allowedOrigin ) => {
+					try {
+						const ao = new URL( allowedOrigin );
+						return url.origin === ao.origin;
+					} catch {
+						// Malformed entry in permissions list — treat as not permitted.
+						return false;
+					}
+				} );
 
-				if (!permitted) {
+				if ( ! permitted ) {
 					event.respondWith(
 						new Response(
-							JSON.stringify({ error: 'blocked', url: req.url, slug }),
+							JSON.stringify( { error: 'blocked', url: req.url, slug } ),
 							{
 								status: 403,
 								headers: {
@@ -106,25 +119,25 @@ self.addEventListener('fetch', (event) => {
 	// Covers: wp-content/bazaar/{slug}/assets/** and admin/dist/shared/**
 	// Both use content-hashed filenames → safe to cache indefinitely.
 
-	if (CACHEABLE_RE.test(url.pathname)) {
+	if ( CACHEABLE_RE.test( url.pathname ) ) {
 		event.respondWith(
-			caches.open(ASSET_CACHE_NAME).then(async (cache) => {
-				const cached = await cache.match(req);
-				if (cached) {
+			caches.open( ASSET_CACHE_NAME ).then( async ( cache ) => {
+				const cached = await cache.match( req );
+				if ( cached ) {
 					return cached;
 				}
-				const response = await fetch(req);
-				if (response.ok) {
-					cache.put(req, response.clone());
+				const response = await fetch( req );
+				if ( response.ok ) {
+					cache.put( req, response.clone() );
 				}
 				return response;
-			})
+			} )
 		);
 	}
 	// All other requests fall through to the network unchanged.
-});
+} );
 
 // ── Install / activate — skip waiting for immediate control ─────────────────
 
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+self.addEventListener( 'install', () => self.skipWaiting() );
+self.addEventListener( 'activate', ( e ) => e.waitUntil( self.clients.claim() ) );
