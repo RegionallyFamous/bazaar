@@ -7,6 +7,7 @@ composer.phar
 
 # Build output
 /admin/dist/
+/dist/
 
 # Composer lock (committed in libraries, not plugins)
 composer.lock
