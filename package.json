@@ -15,7 +15,7 @@
     "lint:css": "wp-scripts lint-style 'admin/src/*.css'",
     "format": "wp-scripts format admin/src/",
     "test": "wp-scripts test-unit-js --config jest.config.js",
-    "prepare": "husky"
+    "prepare": "husky || :"
   },
   "dependencies": {
     "@wordpress/api-fetch": "^7.43.0",
