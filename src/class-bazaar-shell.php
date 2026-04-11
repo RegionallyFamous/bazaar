@@ -25,7 +25,7 @@ final class BazaarShell {
 	public const PAGE_SLUG = 'bazaar';
 
 	/** JS/CSS handle. */
-	private const HANDLE = 'bazaar-shell';
+	public const HANDLE = 'bazaar-shell';
 
 	/**
 	 * Provides the ware index for the nav rail.

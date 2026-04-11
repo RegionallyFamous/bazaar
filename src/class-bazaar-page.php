@@ -23,7 +23,7 @@ final class BazaarPage {
 	public const PAGE_SLUG = 'bazaar-manage';
 
 	/** Handle used when enqueuing the admin script. */
-	private const SCRIPT_HANDLE = 'bazaar-admin';
+	public const SCRIPT_HANDLE = 'bazaar-admin';
 
 	/**
 	 * Provides installed-ware data for the page.

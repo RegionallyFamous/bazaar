@@ -201,6 +201,11 @@ final class Plugin {
 		add_action( 'admin_init', array( self::class, 'ensure_wares_directory' ) );
 		add_action( 'admin_menu', array( $this, 'register_admin_menus' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_assets' ) );
+
+		// Vite outputs ES modules. wp_enqueue_script emits plain <script> tags
+		// by default; we must add type="module" so the browser accepts the
+		// import statements that reference the shared vendor chunk.
+		add_filter( 'script_loader_tag', array( $this, 'add_module_type' ), 10, 2 );
 	}
 
 	/**
@@ -267,6 +272,22 @@ final class Plugin {
 				'version' => $manifest['version'] ?? '',
 			)
 		);
+	}
+
+	/**
+	 * Add type="module" to Bazaar script tags so the browser accepts the
+	 * ES-module import statements emitted by Vite's build.
+	 *
+	 * @param string $tag    The full <script> HTML tag.
+	 * @param string $handle The script handle passed to wp_enqueue_script().
+	 * @return string Modified tag, or original tag for unrelated handles.
+	 */
+	public function add_module_type( string $tag, string $handle ): string {
+		$bazaar_handles = array( BazaarShell::HANDLE, BazaarPage::SCRIPT_HANDLE );
+		if ( ! in_array( $handle, $bazaar_handles, true ) ) {
+			return $tag;
+		}
+		return str_replace( ' src=', ' type="module" src=', $tag );
 	}
 
 	/**
