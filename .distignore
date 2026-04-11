@@ -44,6 +44,10 @@ admin/src
 # @bazaar/client source — compiled into admin/dist/
 packages
 
+# Release artifacts — built by bin/build-zip.sh, never ship inside a zip
+# Leading / anchors to repo root so admin/dist/ (compiled assets) is kept.
+/dist
+
 # macOS noise
 .DS_Store
 Thumbs.db

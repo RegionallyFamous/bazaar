@@ -65,9 +65,16 @@ rsync -a --no-links \
   "${REPO_ROOT}/" \
   "${STAGE_DIR}/${PLUGIN_SLUG}/"
 
+# Explicitly remove the release-artifact directory; rsync's root-anchored
+# exclude (/dist) is not reliable on macOS's bundled rsync version.
+rm -rf "${STAGE_DIR}/${PLUGIN_SLUG}/dist"
+
 # 4. Zip --------------------------------------------------------------------
 echo "  [4/4] Zipping…"
 mkdir -p "${DIST_DIR}"
+# Remove any stale zip — zip -r updates existing archives rather than
+# recreating them, so old entries (e.g. a previously staged dist/) persist.
+rm -f "${DIST_DIR}/${ZIP_NAME}"
 cd "${STAGE_DIR}"
 zip -r "${DIST_DIR}/${ZIP_NAME}" "${PLUGIN_SLUG}/" --quiet
 
