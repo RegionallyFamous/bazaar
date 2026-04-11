@@ -32,7 +32,9 @@ defined( 'ABSPATH' ) || exit;
 			tabindex="0"
 			aria-label="<?php esc_attr_e( 'Drop a .wp file here or click to browse', 'bazaar' ); ?>"
 		>
-			<span class="dashicons dashicons-upload bazaar-dropzone__icon" aria-hidden="true"></span>
+			<span class="bazaar-dropzone__icon-wrap" aria-hidden="true">
+				<span class="dashicons dashicons-upload bazaar-dropzone__icon"></span>
+			</span>
 			<p class="bazaar-dropzone__text">
 				<?php esc_html_e( 'Drop a .wp file here, or', 'bazaar' ); ?>
 				<label for="bazaar-file-input" class="bazaar-dropzone__browse">
@@ -53,7 +55,9 @@ defined( 'ABSPATH' ) || exit;
 		</div>
 
 		<div class="bazaar-upload-progress" id="bazaar-upload-progress" hidden aria-live="polite">
-			<div class="bazaar-upload-progress__bar" id="bazaar-upload-bar"></div>
+			<div class="bazaar-upload-progress__bar-wrap">
+				<div class="bazaar-upload-progress__bar" id="bazaar-upload-bar"></div>
+			</div>
 			<p class="bazaar-upload-progress__label" id="bazaar-upload-label">
 				<?php esc_html_e( 'Uploading…', 'bazaar' ); ?>
 			</p>

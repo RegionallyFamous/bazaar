@@ -2,6 +2,7 @@
  * Bazaar admin page — gallery interactions, drag-drop upload, enable/disable/delete.
  */
 
+import './main.css';
 import apiFetch from '@wordpress/api-fetch';
 import { __, sprintf } from '@wordpress/i18n';
 
