@@ -774,7 +774,7 @@ async function loadCoreApps() {
 
 	let apps;
 	try {
-		apps = await apiFetch( { path: '/bazaar/v1/core-apps' } );
+		apps = await apiFetch( { path: '/core-apps' } );
 	} catch ( err ) {
 		coreGrid.classList.remove( 'bazaar-core-grid--loading' );
 		const msg = err?.message || __( 'Could not load the app catalog.', 'bazaar' );
@@ -823,7 +823,7 @@ async function handleCoreInstall( btn ) {
 
 	try {
 		const response = await apiFetch( {
-			path: '/bazaar/v1/core-apps/install',
+			path: '/core-apps/install',
 			method: 'POST',
 			data: { url: downloadUrl },
 		} );
