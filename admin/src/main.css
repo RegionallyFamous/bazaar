@@ -670,3 +670,44 @@
 		width: 100%;
 	}
 }
+
+/* ---------------------------------------------------------------------------
+ * Shell-iframe mode
+ * When the manage page is embedded in the Bazaar Shell, main.js adds
+ * .bazaar-in-shell to <html>. Hide all WordPress admin chrome so only
+ * the page content fills the iframe.
+ * --------------------------------------------------------------------------*/
+
+html.bazaar-in-shell #wpadminbar,
+html.bazaar-in-shell #adminmenuback,
+html.bazaar-in-shell #adminmenuwrap,
+html.bazaar-in-shell #wpfooter {
+	display: none !important;
+}
+
+html.bazaar-in-shell #wpwrap {
+	padding-top: 0 !important;
+}
+
+html.bazaar-in-shell body.admin-bar {
+	padding-top: 0 !important;
+	margin-top: 0 !important;
+}
+
+html.bazaar-in-shell #wpcontent {
+	margin-left: 0 !important;
+	float: none !important;
+}
+
+html.bazaar-in-shell #wpbody {
+	padding-top: 0 !important;
+}
+
+html.bazaar-in-shell #wpbody-content {
+	padding-bottom: 0 !important;
+	float: none !important;
+}
+
+html.bazaar-in-shell .wrap {
+	margin: 0 !important;
+}

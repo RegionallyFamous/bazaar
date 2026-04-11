@@ -9,6 +9,13 @@ import { __, sprintf } from '@wordpress/i18n';
 // Bootstrapped from wp_localize_script in BazaarPage::enqueue_assets().
 const { restUrl, nonce, inShell } = window.bazaarData ?? {};
 
+// When the manage page is embedded inside the Bazaar Shell iframe, suppress
+// the full WordPress admin chrome (sidebar, admin bar, footer) so only the
+// page content is visible.
+if (window !== window.top) {
+	document.documentElement.classList.add('bazaar-in-shell');
+}
+
 /**
  * Notify the parent shell of a ware state change.
  * Only fires when the manage page is running inside the shell iframe.

@@ -565,6 +565,10 @@
 
 /* ─── Command Palette ────────────────────────────────────────────────────── */
 
+/* The hidden attribute must win over display:flex — without this the overlay
+   is visible on page load before JS can call overlay.hidden = true. */
+.bsh-palette[hidden] { display: none !important; }
+
 .bsh-palette {
 	position: fixed;
 	inset: 0;
