@@ -10,6 +10,7 @@ A **ware** is any web app packaged as a `.wp` file (a renamed ZIP archive) with 
 - [Anatomy of a Ware](#anatomy-of-a-ware)
 - [Quickstart: Vanilla JS](#quickstart-vanilla-js)
 - [Building with a Framework](#building-with-a-framework)
+- [Shared Libraries](#shared-libraries)
 - [Communicating with WordPress](#communicating-with-wordpress)
 - [iframe Sandbox Capabilities](#iframe-sandbox-capabilities)
 - [Updating a Ware](#updating-a-ware)
@@ -113,12 +114,48 @@ zip hello-ware.wp manifest.json index.html
 
 Wares work with any framework that produces static output.
 
+> [!TIP]
+> The fastest way to start is `npm create ware@latest` — it scaffolds a complete project with the right Vite config, `manifest.json`, and a `package` script that outputs a `.wp` file. The React and Vue scaffolds include shared library optimisation out of the box (see [Shared Libraries](#shared-libraries) below).
+
 <details>
-<summary><strong>React (Vite)</strong></summary>
+<summary><strong>React (Vite) — recommended approach</strong></summary>
+
+Use the Bazaar scaffold for the best out-of-the-box experience:
+
+```bash
+npm create ware@latest   # choose React when prompted
+```
+
+Or manually with shared-library support:
 
 ```bash
 npm create vite@latest my-ware -- --template react
-cd my-ware && npm install && npm run build
+cd my-ware && npm install
+```
+
+`manifest.json`:
+```json
+{
+  "name": "My Ware",
+  "slug": "my-ware",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "menu": { "title": "My Ware" },
+  "shared": ["react", "react-dom"]
+}
+```
+
+`vite.config.ts`:
+```ts
+build: {
+  rollupOptions: {
+    external: ['react', 'react-dom', 'react/jsx-runtime'],
+  },
+},
+```
+
+```bash
+npm run build
 cp manifest.json dist/
 cd dist && zip -r ../../my-ware.wp . && cd ../..
 ```
@@ -126,11 +163,42 @@ cd dist && zip -r ../../my-ware.wp . && cd ../..
 </details>
 
 <details>
-<summary><strong>Vue</strong></summary>
+<summary><strong>Vue — recommended approach</strong></summary>
+
+```bash
+npm create ware@latest   # choose Vue when prompted
+```
+
+Or manually with shared-library support:
 
 ```bash
 npm create vue@latest my-ware
-cd my-ware && npm install && npm run build
+cd my-ware && npm install
+```
+
+`manifest.json`:
+```json
+{
+  "name": "My Ware",
+  "slug": "my-ware",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "menu": { "title": "My Ware" },
+  "shared": ["vue"]
+}
+```
+
+`vite.config.ts`:
+```ts
+build: {
+  rollupOptions: {
+    external: ['vue'],
+  },
+},
+```
+
+```bash
+npm run build
 cp manifest.json dist/
 cd dist && zip -r ../../my-ware.wp . && cd ../..
 ```
@@ -147,7 +215,30 @@ cp manifest.json build/
 cd build && zip -r ../../my-ware.wp . && cd ../..
 ```
 
+Svelte compiles to vanilla JS so no shared library declaration is needed.
+
 </details>
+
+---
+
+## Shared Libraries
+
+When multiple wares use the same framework (React, Vue), each iframe would normally download and parse its own copy. Bazaar solves this with a two-layer approach:
+
+**Layer 1 — Import Maps:** The shell hosts versioned, content-hashed bundles of React and Vue. Wares that declare `"shared": ["react", "react-dom"]` in their `manifest.json` have an `<importmap>` injected into their HTML, pointing those package names at the shared URLs. The browser downloads React once; every subsequent ware iframe loads the already-compiled bytecode from the V8 cache.
+
+**Layer 2 — Service Worker Cache:** All ware assets under `wp-content/bazaar/` (and the shared bundles themselves) are cached by the Bazaar service worker after the first fetch. On subsequent page loads, nothing hits the network — not even a conditional request.
+
+**Result:**
+
+| Scenario | Without shared libs | With shared libs |
+|:---|:---|:---|
+| 3 React wares, first load | 3 × ~140 KB download + parse | 1 × ~140 KB download + cached bytecode |
+| Any ware, repeat visit | ETag round-trip per asset | 0 network requests (SW cache) |
+
+Opt in by adding `"shared"` to your `manifest.json` and marking the packages as `external` in your Vite config. The `create-ware` React and Vue scaffolds do both automatically.
+
+---
 
 ### Add a `package` script
 

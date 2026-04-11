@@ -18,6 +18,7 @@
   - [entry](#entry)
   - [menu](#menu)
   - [permissions](#permissions)
+  - [shared](#shared)
   - [health_check](#health_check)
   - [jobs](#jobs)
   - [license](#license)
@@ -59,6 +60,7 @@ That's all you need. Bazaar fills in sensible defaults for everything else.
     "parent": null,
     "group": "finance"
   },
+  "shared": ["react", "react-dom"],
   "permissions": {
     "network": [
       "https://api.stripe.com",
@@ -326,6 +328,52 @@ An allowlist of origins the ware is permitted to fetch from. Any fetch request t
 
 > [!NOTE]
 > The WordPress site's own origin is always implicitly allowed regardless of this field. Zero-trust enforcement only activates if the ware declares `"zero_trust": true` or if it is enabled globally by the admin.
+
+---
+
+### `shared`
+
+| Property | Value |
+|:---|:---|
+| Type | `string[]` |
+| Required | No |
+| Default | `[]` |
+| Example | `["react", "react-dom"]` |
+
+A list of npm package names that the ware wants to load from the Bazaar shell's shared bundle, rather than bundling its own copy.
+
+When the shell serves a ware's HTML entry file, it injects a `<script type="importmap">` that maps each declared package name to a versioned, content-hashed URL hosted by the plugin. The browser downloads that URL once and caches it forever — subsequent ware iframes that declare the same dependency get the compiled module from the browser's V8 bytecode cache with zero re-download.
+
+**Currently provided shared packages:**
+
+| Package | Version |
+|:---|:---|
+| `react` | 19.x |
+| `react-dom` | 19.x |
+| `vue` | 3.x |
+
+To opt in, declare the packages in `manifest.json` **and** mark them as external in your Vite config so they are not bundled:
+
+```json
+{
+  "shared": ["react", "react-dom"]
+}
+```
+
+```ts
+// vite.config.ts
+build: {
+  rollupOptions: {
+    external: ['react', 'react-dom', 'react/jsx-runtime'],
+  },
+},
+```
+
+> [!TIP]
+> The `create-ware` React and Vue scaffolds include both of these automatically — you don't need to configure anything manually when using `npm create ware@latest`.
+
+> [!NOTE]
+> This field is purely opt-in. Wares that don't declare `shared` continue to bundle their own copy of React/Vue and require no changes. Shared and self-bundled wares can coexist on the same install.
 
 ---
 

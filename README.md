@@ -115,6 +115,8 @@ flowchart LR
 
 Wares are stored in `wp-content/bazaar/` (outside the plugin directory, so they survive plugin updates). All files are served through an authenticated REST endpoint — no direct filesystem access.
 
+**Performance at scale:** When many wares share a framework (React, Vue), each iframe would normally download and parse its own copy. Bazaar avoids this with two mechanisms: shell-hosted shared bundles (React and Vue are loaded once via `<importmap>` and re-used across all iframes via V8 bytecode cache) and a universal service worker cache (all ware assets are served from cache after the first visit). Wares opt in by adding `"shared": ["react", "react-dom"]` to their `manifest.json`.
+
 ---
 
 ## Installation
@@ -174,7 +176,8 @@ Create `manifest.json` at the root of your build output:
     "title": "Invoices",
     "position": 30,
     "capability": "manage_options"
-  }
+  },
+  "shared": ["react", "react-dom"]
 }
 ```
 
@@ -324,6 +327,7 @@ Bazaar is built with security as a first-class concern:
 | CSRF | `X-WP-Nonce` on all mutations via `@wordpress/api-fetch` |
 | iframe escaping | `sandbox="allow-scripts allow-forms allow-same-origin allow-popups"` |
 | Outbound network abuse | Zero-trust service worker intercepts all fetch calls from within a ware and enforces `permissions.network` allowlist |
+| Redundant asset loading | Universal SW cache serves all ware files and shared bundles from cache after the first visit — zero repeat network hits |
 | Storage abuse | Configurable uncompressed size cap (default 50 MB per ware) |
 | Signed wares | Optional RSA signature verification on install (`wp bazaar sign` + `keypair`) |
 
@@ -411,7 +415,7 @@ bazaar/
 │   │       └── WareOpsTrait.php        ← license/analytics/doctor/logs/audit/csp
 │   └── REST/
 │       ├── class-bazaar-controller.php ← Base controller (shared permission helpers)
-│       ├── class-ware-server.php       ← Authenticated static file server
+│       ├── class-ware-server.php       ← Authenticated static file server + import map injection
 │       ├── class-upload-controller.php ← Upload handler
 │       ├── class-ware-controller.php   ← List / toggle / delete
 │       ├── class-analytics-controller.php
@@ -429,7 +433,12 @@ bazaar/
 ├── admin/src/                      ← Vite source (shell SPA + CSS)
 │   ├── shell.js                    ← Main shell application
 │   ├── shell.css
-│   ├── zero-trust-sw.js            ← Service worker (network allowlist)
+│   ├── zero-trust-sw.js            ← Service worker (network allowlist + universal asset cache)
+│   ├── shared/                     ← Shared library re-export stubs (react, react-dom, vue)
+│   │   ├── react.js
+│   │   ├── react-dom.js
+│   │   ├── vue.js
+│   │   └── registry.json           ← Maps package names → Vite entry keys
 │   └── modules/                    ← Shell sub-modules (nav, views, inspector…)
 ├── blocks/ware/                    ← Gutenberg block definition
 ├── create-ware/                    ← `npm create ware@latest` CLI scaffolder
@@ -446,7 +455,7 @@ bazaar/
 
 | Doc | Description |
 |:---|:---|
-| [Building a Ware](docs/Building-a-Ware.md) | Complete guide to developing `.wp` apps — vanilla JS, React, Vue, Svelte, and WordPress REST auth patterns |
+| [Building a Ware](docs/Building-a-Ware.md) | Complete guide to developing `.wp` apps — vanilla JS, React, Vue, Svelte, shared library optimisation, and WordPress REST auth patterns |
 | [Manifest Reference](docs/Manifest-Reference.md) | Every `manifest.json` field documented with types, defaults, and menu position cheat sheet |
 | [REST API](docs/REST-API.md) | Full endpoint reference: all 35+ routes, request/response shapes, auth requirements, and error codes |
 | [WP-CLI](docs/WP-CLI.md) | CLI command reference with scripting recipes and multi-site patterns |
