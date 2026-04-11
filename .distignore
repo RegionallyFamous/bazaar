@@ -1,0 +1,53 @@
+# .distignore — files excluded from the release zip
+# Used by bin/build-zip.sh (rsync --exclude-from)
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# CI / tooling config
+.github
+.husky
+.wp-env.json
+.cursor
+babel.config.js
+jest.config.js
+vite.config.js
+phpcs.xml
+phpstan.neon
+phpunit.xml
+patchwork.json
+
+# Composer build tools (not runtime)
+composer.phar
+composer.json
+composer.lock
+
+# npm
+package.json
+package-lock.json
+
+# Dev dependencies — installed by composer install --no-dev before zip
+node_modules
+
+# Test suite
+tests
+
+# Developer docs (readme.txt ships; README.md is dev-facing)
+README.md
+docs
+
+# JS source — admin/dist/ (compiled output) ships instead
+admin/src
+
+# @bazaar/client source — compiled into admin/dist/
+packages
+
+# macOS noise
+.DS_Store
+Thumbs.db
+
+# PHP tool caches
+.phpunit.result.cache
+.phpstan-cache

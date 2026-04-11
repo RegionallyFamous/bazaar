@@ -54,6 +54,27 @@ $parts[] = trim( "$directive $sources" );
 $parts[] = $directive . ' ' . trim( (string) $sources );
 ```
 
+## Release zip — always include the Composer autoloader
+
+This plugin has **no runtime PHP dependencies**, but the Composer classmap autoloader (`vendor/autoload.php` + `vendor/composer/`) **must be in the zip**. Without it the plugin fatals on activation because `Bazaar\Plugin` is never defined.
+
+The correct build process:
+
+```bash
+# 1. Build JS
+npm run build
+
+# 2. Generate production-only autoloader (strips all dev packages)
+php composer.phar install --no-dev --no-scripts --classmap-authoritative
+
+# 3. Zip using .distignore (which keeps vendor/ in)
+bash bin/build-zip.sh
+```
+
+**Never** build the zip by hand-picking files with a manual exclude list — use `bin/build-zip.sh` which reads `.distignore`.
+
+CI verifies this automatically: the `release-zip` job unzips the artifact and fails if `vendor/autoload.php` is missing or if any dev package directory is present.
+
 ## WareRegistryInterface — depend on the abstraction
 
 `WareRegistry` is `final`. Any class that accepts it as a constructor parameter and needs to be unit-tested **must** type-hint `WareRegistryInterface`, not the concrete class, so tests can mock the interface.
