@@ -10,9 +10,13 @@ parameters:
         - vendor/php-stubs/wp-cli-stubs/wp-cli-i18n-stubs.php
         - bazaar.php
     treatPhpDocTypesAsCertain: false
+    # The phpstan-wordpress bootstrap sets ABSPATH='/' which makes
+    # require_once ABSPATH.'wp-admin/includes/file.php' appear to reference a
+    # non-existent path on macOS. The file is always present in real WordPress
+    # installs. reportUnmatchedIgnoredErrors: false prevents CI from failing
+    # when the same pattern doesn't trigger on Linux runners.
+    reportUnmatchedIgnoredErrors: false
     ignoreErrors:
-        # ABSPATH is defined as '/' in the phpstan-wordpress bootstrap; the actual
-        # wp-admin/includes/file.php is always present in real WordPress installs.
         - message: '#Path in require_once\(\) .* is not a file or it does not exist#'
           path: src/Plugin.php
     # Run single-process in CI so all memory stays in one PHP process.

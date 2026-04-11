@@ -193,7 +193,7 @@ final class BazaarShell {
 
 		// Dev fallback.
 		if ( file_exists( BAZAAR_DIR . 'admin/dist/shell.js' ) ) {
-			return array( 'shell.js', 'shell.css', BAZAAR_VERSION );
+			return array( 'shell.js', 'shell.css', (string) filemtime( BAZAAR_DIR . 'admin/dist/shell.js' ) );
 		}
 
 		return array( '', '', '' );

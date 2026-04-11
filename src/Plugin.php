@@ -374,8 +374,7 @@ final class Plugin {
 
 		global $wp_filesystem;
 		if ( empty( $wp_filesystem ) ) {
-			$wp_admin_file = ABSPATH . 'wp-admin/includes/file.php';
-			require_once $wp_admin_file; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+			require_once ABSPATH . 'wp-admin/includes/file.php';
 			WP_Filesystem();
 		}
 

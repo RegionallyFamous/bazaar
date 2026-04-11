@@ -152,6 +152,8 @@ jobs:
 
       - name: Build packages/client
         working-directory: packages/client
+        env:
+          HUSKY: '0'
         run: npm ci && npm run build
 
       - name: Build pixel-art
