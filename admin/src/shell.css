@@ -81,26 +81,8 @@
 	min-width: var(--bsh-nav-collapsed);
 }
 
-/* No wares: force icon-only rail until first ware is installed */
-.bsh--no-wares .bsh-nav {
-	width: var(--bsh-nav-collapsed) !important;
-	min-width: var(--bsh-nav-collapsed) !important;
-}
-
-.bsh--no-wares .bsh-nav__title,
-.bsh--no-wares .bsh-nav__label,
-.bsh--no-wares .bsh-nav__kbd-hint,
-.bsh--no-wares .bsh-nav__shortcut-hint {
-	opacity: 0;
-	pointer-events: none;
-}
-
-/* Hide the empty-state CTA text — nothing meaningful fits in 52 px */
-.bsh--no-wares .bsh-nav__empty { display: none; }
-
-.bsh--no-wares .bsh-nav__collapse .dashicons {
-	transform: rotate(180deg);
-}
+/* No wares: hide nav entirely — content fills edge-to-edge */
+.bsh--no-wares .bsh-nav { display: none; }
 
 /* Header row — height must match .bsh-toolbar for the top-band effect */
 .bsh-nav__header {
@@ -190,6 +172,22 @@
 	border-radius: 2px;
 }
 
+/* ─── Nav footer — pinned bottom action (Manage Wares) ─────────────────── */
+
+.bsh-nav__footer {
+	flex-shrink: 0;
+	padding: 6px 0;
+	border-top: 1px solid var(--bsh-nav-border);
+}
+
+.bsh-nav__footer .bsh-nav__btn {
+	color: var(--bsh-nav-text-dim);
+}
+
+.bsh-nav__footer .bsh-nav__btn:hover {
+	color: var(--bsh-nav-text);
+}
+
 /* Divider */
 .bsh-nav__divider {
 	height: 1px;
@@ -212,6 +210,17 @@
 .bsh-nav__item:has( .bsh-nav__btn--active ) {
 	background: var(--bsh-item-active-bg);
 	box-shadow: inset 2.5px 0 0 var(--bsh-accent);
+}
+
+/* Collapsed: replace full-row highlight with centred icon glow */
+.bsh--collapsed .bsh-nav__item:has( .bsh-nav__btn--active ) {
+	background: rgba(var(--bsh-accent-rgb), 0.18);
+	box-shadow: none;
+}
+
+.bsh--collapsed .bsh-nav__btn--active .bsh-nav__icon-wrap {
+	color: var(--bsh-accent);
+	filter: drop-shadow(0 0 5px rgba(var(--bsh-accent-rgb), 0.55));
 }
 
 /* Hover: highlight entire row when the main button is hovered */

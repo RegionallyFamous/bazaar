@@ -65,6 +65,8 @@ const badgeMap = new Map();
 // ===========================================================================
 
 const navList = document.getElementById('bsh-nav-list');
+const navFooter = document.getElementById('bsh-nav-footer');
+const navEl = document.getElementById('bsh-nav');
 const main = document.getElementById('bsh-main');
 const loading = document.getElementById('bsh-loading');
 const collapse = document.getElementById('bsh-collapse');
@@ -511,16 +513,16 @@ function renderNav() {
 	const hadNoWares = root.classList.contains('bsh--no-wares');
 
 	navList.innerHTML = '';
+	navFooter.innerHTML = '';
 
-	// Manage
+	// Manage — pinned in footer, not mixed with ware tabs
 	const manageItem = buildItem(
 		'manage',
 		{ label: __('Manage Wares', 'bazaar'), di: 'dashicons-admin-settings' },
 		activeSlug,
 		badgeMap
 	);
-	navList.appendChild(manageItem);
-	navList.appendChild(buildDivider());
+	navFooter.appendChild(manageItem);
 
 	const enabled = sortedEnabled(wareMap);
 	const nowHasWares = enabled.length > 0;
@@ -713,7 +715,7 @@ function navigateTo(slug, route, toSecondary = false) {
 	pushRecent(slug);
 	recordView(slug);
 
-	navList.querySelectorAll('.bsh-nav__btn').forEach((btn) => {
+	navEl.querySelectorAll('.bsh-nav__btn').forEach((btn) => {
 		const a = btn.dataset.slug === slug;
 		btn.classList.toggle('bsh-nav__btn--active', a);
 		if (a) {
@@ -1149,7 +1151,7 @@ collapse.addEventListener('click', () => {
 	);
 });
 
-navList.addEventListener('click', (e) => {
+navEl.addEventListener('click', (e) => {
 	const btn = e.target.closest('.bsh-nav__btn');
 	if (btn) {
 		navigateTo(btn.dataset.slug);

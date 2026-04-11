@@ -24,6 +24,7 @@ defined( 'ABSPATH' ) || exit;
 
 		<div class="bsh-nav__header">
 			<span class="dashicons dashicons-store bsh-nav__logo" aria-hidden="true" title="<?php esc_attr_e( 'Bazaar', 'bazaar' ); ?>"></span>
+			<span class="bsh-nav__title"><?php esc_html_e( 'Wares', 'bazaar' ); ?></span>
 			<button
 				class="bsh-nav__collapse"
 				id="bsh-collapse"
@@ -39,6 +40,10 @@ defined( 'ABSPATH' ) || exit;
 		<ul class="bsh-nav__list" id="bsh-nav-list" role="list">
 			<!-- Populated by shell.js -->
 		</ul>
+
+		<div class="bsh-nav__footer" id="bsh-nav-footer">
+			<!-- Manage Wares injected by shell.js -->
+		</div>
 
 	</nav>
 
