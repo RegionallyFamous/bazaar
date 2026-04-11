@@ -96,6 +96,9 @@ final class WareSigner {
 		}
 		WP_Filesystem();
 		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			return new WP_Error( 'fs_unavailable', esc_html__( 'WordPress filesystem could not be initialised.', 'bazaar' ) );
+		}
 		$data = $wp_filesystem->get_contents( $archive_path );
 		if ( false === $data ) {
 			return new WP_Error( 'read_error', esc_html__( 'Could not read archive for signature verification.', 'bazaar' ) );
@@ -139,6 +142,9 @@ final class WareSigner {
 		}
 		WP_Filesystem();
 		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			return new WP_Error( 'fs_unavailable', esc_html__( 'WordPress filesystem could not be initialised.', 'bazaar' ) );
+		}
 		$pem = $wp_filesystem->get_contents( $privkey_path );
 		if ( false === $pem ) {
 			return new WP_Error( 'key_read_error', esc_html__( 'Could not read private key file.', 'bazaar' ) );

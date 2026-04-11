@@ -113,6 +113,9 @@ final class JobsController extends BazaarController {
 
 		$jobs = array();
 		foreach ( (array) ( $ware['jobs'] ?? array() ) as $job ) {
+			if ( ! is_array( $job ) || empty( $job['id'] ) ) {
+				continue;
+			}
 			$hook     = $this->cron_hook( $slug, $job['id'] );
 			$next_run = wp_next_scheduled( $hook );
 			$jobs[]   = array_merge( $job, array( 'next_run' => $next_run ? gmdate( 'c', $next_run ) : null ) );

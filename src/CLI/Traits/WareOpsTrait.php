@@ -168,12 +168,16 @@ trait WareOpsTrait {
 		}
 		WP_Filesystem();
 		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			WP_CLI::error( __( 'WordPress filesystem could not be initialised.', 'bazaar' ) );
+			return;
+		}
 
 		foreach ( $wares as $ware ) {
 			$s = $ware['slug'];
 
 			// 1. Filesystem presence.
-			$dir    = WP_CONTENT_DIR . "/bazaar-wares/{$s}";
+			$dir    = rtrim( BAZAAR_WARES_DIR, '/' ) . '/' . $s;
 			$exists = is_dir( $dir );
 			$rows[] = array(
 				'ware'   => $s,
@@ -236,6 +240,9 @@ trait WareOpsTrait {
 
 			// 7. Jobs next run.
 			foreach ( (array) ( $ware['jobs'] ?? array() ) as $job ) {
+				if ( ! is_array( $job ) || empty( $job['id'] ) ) {
+					continue;
+				}
 				$hook   = "bazaar_job_{$s}_{$job['id']}";
 				$next   = wp_next_scheduled( $hook );
 				$rows[] = array(

@@ -51,7 +51,7 @@ final class AuditLog {
 	public static function record( string $slug, string $event, array $meta = array() ): void {
 		global $wpdb;
 
-		$wpdb->insert(
+		$inserted = $wpdb->insert(
 			$wpdb->prefix . Tables::AUDIT_LOG,
 			array(
 				'slug'       => substr( $slug, 0, 100 ),
@@ -61,6 +61,10 @@ final class AuditLog {
 				'created_at' => current_time( 'mysql', true ),
 			)
 		);
+		if ( false === $inserted ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'Bazaar AuditLog: failed to insert record for ' . $slug . '/' . $event . ' — ' . $wpdb->last_error );
+		}
 	}
 
 	/**

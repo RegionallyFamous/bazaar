@@ -46,6 +46,9 @@ final class WebhookDispatcher {
 		);
 
 		foreach ( $hooks as $hook ) {
+			if ( ! is_array( $hook ) || empty( $hook['url'] ) || ! filter_var( $hook['url'], FILTER_VALIDATE_URL ) ) {
+				continue;
+			}
 			$headers = array(
 				'Content-Type'      => 'application/json',
 				'X-Bazaar-Event'    => $event,

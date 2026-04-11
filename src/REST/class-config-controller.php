@@ -133,11 +133,14 @@ final class ConfigController extends BazaarController {
 			return new WP_Error( 'not_found', __( 'Ware not found.', 'bazaar' ), array( 'status' => 404 ) );
 		}
 
-		$schema = $ware['settings'] ?? array();
+		$schema = is_array( $ware['settings'] ?? null ) ? $ware['settings'] : array();
 		$stored = $this->load( $slug );
 		$values = array();
 
 		foreach ( $schema as $field ) {
+			if ( ! is_array( $field ) ) {
+				continue;
+			}
 			$key = $field['key'] ?? '';
 			if ( '' === $key ) {
 				continue;

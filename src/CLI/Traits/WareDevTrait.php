@@ -166,6 +166,10 @@ TS;
 		}
 		WP_Filesystem();
 		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			WP_CLI::error( __( 'WordPress filesystem could not be initialised.', 'bazaar' ) );
+			return;
+		}
 		$wp_filesystem->put_contents( $php_file, $php, FS_CHMOD_FILE );
 		$wp_filesystem->put_contents( $ts_file, $ts, FS_CHMOD_FILE );
 
@@ -233,6 +237,10 @@ TS;
 		}
 		WP_Filesystem();
 		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			WP_CLI::error( __( 'WordPress filesystem could not be initialised.', 'bazaar' ) );
+			return;
+		}
 		$wp_filesystem->put_contents( $priv_path, $pair['private'], FS_CHMOD_FILE );
 		$wp_filesystem->put_contents( $pub_path, $pair['public'], FS_CHMOD_FILE );
 		$wp_filesystem->chmod( $priv_path, 0600 );
@@ -309,6 +317,10 @@ TS;
 			}
 			WP_Filesystem();
 			global $wp_filesystem;
+			if ( empty( $wp_filesystem ) ) {
+				WP_CLI::error( __( 'WordPress filesystem could not be initialised.', 'bazaar' ) );
+				return;
+			}
 			$wp_filesystem->put_contents( $out, $output, FS_CHMOD_FILE );
 			WP_CLI::success( "Types written to {$out}" );
 		} else {

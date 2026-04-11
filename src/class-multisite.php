@@ -120,11 +120,12 @@ final class Multisite {
 
 		if ( is_array( $network ) ) {
 			foreach ( $network as $slug => $entry ) {
-				if ( ! isset( $index[ $slug ] ) ) {
-					// Inherit from network but mark it as network-sourced.
-					$entry['network'] = true;
-					$index[ $slug ]   = $entry;
+				if ( ! is_array( $entry ) || isset( $index[ $slug ] ) ) {
+					continue;
 				}
+				// Inherit from network but mark it as network-sourced.
+				$entry['network'] = true;
+				$index[ $slug ]   = $entry;
 			}
 		}
 

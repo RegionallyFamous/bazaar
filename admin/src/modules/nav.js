@@ -273,7 +273,7 @@ export function buildGroupHeader( name ) {
 	btn.addEventListener( 'click', () => {
 		const open = btn.getAttribute( 'aria-expanded' ) === 'true';
 		btn.setAttribute( 'aria-expanded', open ? 'false' : 'true' );
-		btn.querySelector( '.bsh-nav__group-arrow' ).classList.toggle(
+		btn.querySelector( '.bsh-nav__group-arrow' )?.classList.toggle(
 			'bsh-nav__group-arrow--closed',
 			open
 		);

@@ -134,7 +134,8 @@ final class BazaarShell {
 				$branding = array();
 			}
 
-			$outdated_wares = get_option( 'bazaar_outdated_wares', array() );
+			$outdated_raw   = get_option( 'bazaar_outdated_wares', '{}' );
+			$outdated_wares = json_decode( (string) $outdated_raw, true );
 			$outdated_count = is_array( $outdated_wares ) ? count( $outdated_wares ) : 0;
 
 			wp_localize_script(

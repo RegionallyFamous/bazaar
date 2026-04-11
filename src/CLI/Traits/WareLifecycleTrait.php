@@ -276,7 +276,15 @@ trait WareLifecycleTrait {
 			WP_CLI::error( $deleted->get_error_message() );
 		}
 
-		$this->registry->unregister( $slug );
+		if ( ! $this->registry->unregister( $slug ) ) {
+			WP_CLI::warning(
+				sprintf(
+					/* translators: %s: ware slug */
+					__( 'Files deleted but registry entry for "%s" could not be removed.', 'bazaar' ),
+					$slug
+				)
+			);
+		}
 		WP_CLI::success(
 			sprintf(
 				/* translators: %s: ware slug */
