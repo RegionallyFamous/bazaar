@@ -155,14 +155,15 @@ export class SplitView {
 	// ── Divider drag ────────────────────────────────────────────────────────
 
 	_attachDividerDrag() {
-		let startX, startAFlex;
+		let startX, startAFlex, startTotal;
 
 		const onMove = ( e ) => {
 			const dx = ( e.clientX ?? e.touches?.[ 0 ]?.clientX ) - startX;
-			const total = this.main.offsetWidth;
+			// Use the total width captured at drag-start to avoid a forced
+			// layout recalculation (offsetWidth read) on every pointer event.
 			const pct = Math.max(
 				20,
-				Math.min( 80, ( ( ( startAFlex * total ) + dx ) / total ) * 100 )
+				Math.min( 80, ( ( ( startAFlex * startTotal ) + dx ) / startTotal ) * 100 )
 			);
 			this._panelA.style.flex = `0 0 ${ pct }%`;
 			this._panelB.style.flex = `0 0 ${ 100 - pct }%`;
@@ -177,8 +178,9 @@ export class SplitView {
 		};
 
 		this._divider.addEventListener( 'mousedown', ( e ) => {
+			startTotal = this.main.offsetWidth;
 			startX = e.clientX;
-			startAFlex = this._panelA.offsetWidth / this.main.offsetWidth;
+			startAFlex = this._panelA.offsetWidth / startTotal;
 			document.body.style.userSelect = 'none';
 			document.addEventListener( 'mousemove', onMove );
 			document.addEventListener( 'mouseup', onUp );

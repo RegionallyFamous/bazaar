@@ -58,6 +58,13 @@ final class RemoteRegistry {
 	private string $url;
 
 	/**
+	 * Slug-keyed map built lazily from the fetched index for O(1) lookups.
+	 *
+	 * @var array<string, array<string, mixed>>|null
+	 */
+	private ?array $slug_map = null;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -114,10 +121,19 @@ final class RemoteRegistry {
 			return $index;
 		}
 
-		foreach ( $index as $ware ) {
-			if ( ( $ware['slug'] ?? '' ) === $slug ) {
-				return $ware;
+		// Build a slug-keyed map once per request so repeated calls are O(1).
+		if ( null === $this->slug_map ) {
+			$this->slug_map = array();
+			foreach ( $index as $ware ) {
+				$s = $ware['slug'] ?? '';
+				if ( '' !== $s ) {
+					$this->slug_map[ $s ] = $ware;
+				}
 			}
+		}
+
+		if ( isset( $this->slug_map[ $slug ] ) ) {
+			return $this->slug_map[ $slug ];
 		}
 
 		return new WP_Error(
@@ -213,6 +229,7 @@ final class RemoteRegistry {
 	 */
 	public function bust_cache(): void {
 		delete_transient( self::CACHE_KEY );
+		$this->slug_map = null;
 	}
 
 	// -------------------------------------------------------------------------

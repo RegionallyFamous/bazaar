@@ -503,7 +503,11 @@ function applyFilters() {
 	}
 }
 
-searchInput?.addEventListener( 'input', applyFilters );
+let _searchTimer;
+searchInput?.addEventListener( 'input', () => {
+	clearTimeout( _searchTimer );
+	_searchTimer = setTimeout( applyFilters, 80 );
+} );
 
 filterTabs?.addEventListener( 'click', ( e ) => {
 	const btn = e.target.closest( '[data-filter]' );
@@ -575,7 +579,7 @@ function insertWareCard( ware ) {
 	card.innerHTML = `
 		<div class="bazaar-card__content">
 			<div class="bazaar-card__icon-wrap">
-				<img src="${ escAttr( iconUrl ) }" alt="" class="bazaar-card__icon" width="48" height="48"
+				<img src="${ escAttr( iconUrl ) }" alt="" class="bazaar-card__icon" width="48" height="48" loading="lazy"
 					onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22><rect width=%2220%22 height=%2220%22 rx=%222%22 fill=%22%23ddd%22/></svg>'">
 			</div>
 			<div class="bazaar-card__body">
@@ -766,6 +770,7 @@ function renderCoreCard( app, isInstalled ) {
 					src="${ escAttr( resolvedIconUrl ) }"
 					alt=""
 					class="bazaar-core-card__icon"
+					loading="lazy"
 					onerror="this.style.display='none'"
 				>
 			</div>

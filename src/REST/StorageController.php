@@ -149,13 +149,9 @@ final class StorageController extends BazaarController {
 		}
 		$uid    = get_current_user_id();
 		$prefix = $this->meta_prefix( $slug );
-
-		$all_meta = get_user_meta( $uid );
-		$keys     = array();
-		foreach ( $all_meta as $meta_key => $_ ) {
-			if ( str_starts_with( $meta_key, $prefix ) ) {
-				$keys[] = substr( $meta_key, strlen( $prefix ) );
-			}
+		$keys   = array();
+		foreach ( $this->prefix_meta_keys( $uid, $prefix ) as $meta_key ) {
+			$keys[] = substr( $meta_key, strlen( $prefix ) );
 		}
 
 		return new WP_REST_Response( $keys, 200 );
@@ -207,7 +203,7 @@ final class StorageController extends BazaarController {
 
 		// Enforce key limit.
 		$prefix = $this->meta_prefix( $slug );
-		$count  = count( array_filter( array_keys( get_user_meta( $uid ) ), fn( $k ) => str_starts_with( (string) $k, $prefix ) ) );
+		$count  = count( $this->prefix_meta_keys( $uid, $prefix ) );
 		$meta   = $this->meta_key( $slug, $key );
 		if ( $count >= self::MAX_KEYS && '' === get_user_meta( $uid, $meta, true ) ) {
 			/* translators: %d: maximum number of storage keys allowed per ware */
@@ -261,16 +257,36 @@ final class StorageController extends BazaarController {
 		}
 		$uid    = get_current_user_id();
 		$prefix = $this->meta_prefix( $slug );
-		foreach ( array_keys( get_user_meta( $uid ) ) as $meta_key ) {
-			$meta_key = (string) $meta_key;
-			if ( str_starts_with( $meta_key, $prefix ) ) {
-				delete_user_meta( $uid, $meta_key );
-			}
+		foreach ( $this->prefix_meta_keys( $uid, $prefix ) as $meta_key ) {
+			delete_user_meta( $uid, $meta_key );
 		}
 		return new WP_REST_Response( array( 'cleared' => true ), 200 );
 	}
 
 	// ─── Helpers ──────────────────────────────────────────────────────────
+
+	/**
+	 * Fetch all usermeta keys for a user that share a given prefix.
+	 *
+	 * Uses a targeted SQL query against the usermeta index instead of loading
+	 * the entire usermeta set into PHP and filtering there.
+	 *
+	 * @param int    $user_id     WordPress user ID.
+	 * @param string $prefix      Meta-key prefix to filter on.
+	 * @return string[]           Matching meta_key values (full, un-stripped).
+	 */
+	private function prefix_meta_keys( int $user_id, string $prefix ): array {
+		global $wpdb;
+		$like = $wpdb->esc_like( $prefix ) . '%';
+		$rows = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT meta_key FROM {$wpdb->usermeta} WHERE user_id = %d AND meta_key LIKE %s",
+				$user_id,
+				$like
+			)
+		);
+		return is_array( $rows ) ? $rows : array();
+	}
 
 	/**
 	 * Meta prefix.

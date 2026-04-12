@@ -266,6 +266,7 @@ final class ConfigController extends BazaarController {
 		return match ( $type ) {
 			'number'   => is_numeric( $val ) ? (float) $val : 0,
 			'checkbox' => (bool) $val,
+			'textarea' => sanitize_textarea_field( (string) $val ),
 			default    => sanitize_text_field( (string) $val ),
 		};
 	}

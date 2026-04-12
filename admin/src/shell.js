@@ -108,15 +108,18 @@ filterInput.spellcheck = false;
 filterWrap.append( filterIcon, filterInput );
 navEl.querySelector( '.bsh-nav__header' )?.insertAdjacentElement( 'afterend', filterWrap );
 
+let _navFilterTimer;
 filterInput.addEventListener( 'input', () => {
 	navFilterQuery = filterInput.value.trim().toLowerCase();
-	applyNavFilter();
+	clearTimeout( _navFilterTimer );
+	_navFilterTimer = setTimeout( applyNavFilter, 80 );
 } );
 
 filterInput.addEventListener( 'keydown', ( e ) => {
 	if ( e.key === 'Escape' ) {
 		filterInput.value = '';
 		navFilterQuery = '';
+		clearTimeout( _navFilterTimer );
 		applyNavFilter();
 		filterInput.blur();
 	}
@@ -351,43 +354,47 @@ class CommandPalette {
 	}
 
 	async _fedSearch( query ) {
-		const results = [];
-		for ( const [ slug, ware ] of wareMap ) {
-			const searchEndpoint = ware.search_endpoint;
-			if ( ! searchEndpoint ) {
-				continue;
-			}
-			try {
-				const r = await fetch(
-					`${ restUrl }/${ searchEndpoint }?q=${ encodeURIComponent( query ) }`,
-					{
-						headers: { 'X-WP-Nonce': nonce },
-						signal: AbortSignal.timeout
-							? AbortSignal.timeout( 2000 )
-							: ( () => {
-								const c = new AbortController(); setTimeout( () => c.abort(), 2000 ); return c.signal;
-							} )(),
+		const tasks = [ ...wareMap.entries() ]
+			.filter( ( [ , ware ] ) => ware.search_endpoint )
+			.map( async ( [ slug, ware ] ) => {
+				let signal;
+				if ( AbortSignal.timeout ) {
+					signal = AbortSignal.timeout( 2000 );
+				} else {
+					const c = new AbortController();
+					setTimeout( () => c.abort(), 2000 );
+					signal = c.signal;
+				}
+				try {
+					const r = await fetch(
+						`${ restUrl }/${ ware.search_endpoint }?q=${ encodeURIComponent( query ) }`,
+						{ headers: { 'X-WP-Nonce': nonce }, signal }
+					);
+					if ( ! r.ok ) {
+						return [];
 					}
-				);
-				if ( ! r.ok ) {
-					continue;
-				}
-				const items = await r.json();
-				if ( ! Array.isArray( items ) ) {
-					continue;
-				}
-				for ( const item of items ) {
-					results.push( {
+					const items = await r.json();
+					if ( ! Array.isArray( items ) ) {
+						return [];
+					}
+					return items.map( ( item ) => ( {
 						slug: item.slug ?? slug,
 						label: item.label ?? item.title ?? item.name,
 						meta: `${ ware.menu_title ?? ware.name } › ${ item.type ?? 'result' }`,
 						url: item.url,
 						type: 'search',
 						ware: slug,
-					} );
+					} ) );
+				} catch {
+					return [];
 				}
-			} catch {
-				/* non-fatal */
+			} );
+
+		const settled = await Promise.allSettled( tasks );
+		const results = [];
+		for ( const r of settled ) {
+			if ( r.status === 'fulfilled' ) {
+				results.push( ...r.value );
 			}
 		}
 		return results;
@@ -1168,6 +1175,19 @@ async function cacheQuery( id, path, targetWindow ) {
 			`${ restUrl.replace( /\/bazaar\/v1$/, '' ) }${ path }`,
 			{ headers: { 'X-WP-Nonce': nonce } }
 		);
+		if ( ! r.ok ) {
+			try {
+				targetWindow.postMessage(
+					{ type: 'bazaar:query-error', id, status: r.status },
+					window.location.origin
+				);
+			} catch { /* target window may have been closed */ }
+			return;
+		}
+		const contentType = r.headers.get( 'content-type' ) ?? '';
+		if ( ! contentType.includes( 'application/json' ) ) {
+			return;
+		}
 		const d = await r.json();
 		// Evict oldest entry when cache is full (simple FIFO).
 		if ( _dataCache.size >= DATA_CACHE_MAX ) {
