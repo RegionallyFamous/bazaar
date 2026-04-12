@@ -24,7 +24,11 @@ defined( 'ABSPATH' ) || exit;
 	<nav class="bsh-nav" id="bsh-nav" aria-label="<?php esc_attr_e( 'Wares', 'bazaar' ); ?>">
 
 		<div class="bsh-nav__header">
-			<span class="dashicons dashicons-store bsh-nav__logo" aria-hidden="true" title="<?php esc_attr_e( 'Bazaar', 'bazaar' ); ?>"></span>
+			<svg class="bsh-nav__logo" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+				<path d="M2.5 8.5 L5 3.5 H15 L17.5 8.5 H2.5Z" fill="currentColor" opacity="0.55"/>
+				<rect x="2.5" y="8.5" width="15" height="8" rx="1.5" fill="currentColor" opacity="0.9"/>
+				<rect x="7.5" y="12" width="5" height="4.5" rx="1" fill="none" stroke="var(--bsh-nav-bg)" stroke-width="1.2"/>
+			</svg>
 			<span class="bsh-nav__title"><?php esc_html_e( 'Wares', 'bazaar' ); ?></span>
 			<button
 				class="bsh-nav__collapse"

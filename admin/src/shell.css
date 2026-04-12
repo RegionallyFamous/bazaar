@@ -96,10 +96,11 @@
 }
 
 .bsh-nav__logo {
-	color: var(--bsh-accent);
-	font-size: 20px;
+	width: 20px;
+	height: 20px;
 	flex-shrink: 0;
-	opacity: 0.9;
+	color: var(--bsh-accent);
+	display: block;
 }
 
 .bsh-nav__title {
