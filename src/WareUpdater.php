@@ -75,10 +75,28 @@ final class WareUpdater {
 	}
 
 	/**
-	 * Void wrapper called by WP-Cron so the action hook receives no return value.
+	 * Cron handler: check for updates and, when auto-apply is enabled, install them.
+	 *
+	 * Auto-apply is enabled by setting the `bazaar_auto_update` option to `'1'`
+	 * (or via the `bazaar_auto_update` filter). When disabled, this method only
+	 * records outdated slugs so the admin badge and CLI `outdated` command work
+	 * correctly — updates still require a manual `wp bazaar update` or UI action.
 	 */
 	public function cron_run_check(): void {
-		$this->run_check();
+		$outdated = $this->run_check();
+
+		$auto_apply = (bool) apply_filters(
+			'bazaar_auto_update',
+			get_option( 'bazaar_auto_update', '0' ) === '1'
+		);
+
+		if ( ! $auto_apply || empty( $outdated ) ) {
+			return;
+		}
+
+		foreach ( array_keys( $outdated ) as $slug ) {
+			$this->update( $slug );
+		}
 	}
 
 	/**
