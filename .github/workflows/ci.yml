@@ -163,6 +163,10 @@ jobs:
           HUSKY: '0'
         run: npm ci
 
+      - name: Build packages/design
+        working-directory: packages/design
+        run: npm run build
+
       - name: Build packages/client
         working-directory: packages/client
         run: npm run build

@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# .husky/pre-commit — full CI gate before every commit.
+#
+# Runs the same checks as the GitHub Actions CI pipeline so that broken
+# builds are caught locally before they reach the remote.
+#
+# Fails fast: the first failing step aborts the commit.
+
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Locate the repo root regardless of where git is invoked from.
+# ---------------------------------------------------------------------------
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+# ---------------------------------------------------------------------------
+# 1. Rebuild @bazaar/design whenever its source files are staged.
+#    The compiled dist/ is committed so CI can consume it without a build step.
+# ---------------------------------------------------------------------------
+if git diff --cached --name-only | grep -q '^packages/design/src/'; then
+  echo "▸ packages/design source changed — rebuilding dist…"
+  (cd packages/design && npm run build --silent)
+  git add packages/design/dist/
+  echo "  ✓ packages/design dist rebuilt and staged"
+fi
+
+# ---------------------------------------------------------------------------
+# 2. PHP lint (PHPCS + PHPStan)
+# ---------------------------------------------------------------------------
+echo "▸ PHP lint…"
+php composer.phar lint
+
+# ---------------------------------------------------------------------------
+# 3. JS / CSS lint
+# ---------------------------------------------------------------------------
+echo "▸ JS/CSS lint…"
+npm run lint --silent
+
+# ---------------------------------------------------------------------------
+# 4. JS build (catches TypeScript errors in the shell bundle)
+# ---------------------------------------------------------------------------
+echo "▸ JS build…"
+npm run build --silent
+
+# ---------------------------------------------------------------------------
+# 5. PHP tests
+# ---------------------------------------------------------------------------
+echo "▸ PHP tests…"
+php composer.phar test
+
+echo ""
+echo "✓ All checks passed — proceeding with commit."

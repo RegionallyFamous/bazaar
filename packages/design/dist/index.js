@@ -4,5 +4,6 @@ export { Modal } from './components/Modal.js';
 export { Badge } from './components/Badge.js';
 export { Spinner } from './components/Spinner.js';
 export { ToastProvider, useToast } from './components/Toast.js';
+export { ErrorBoundary } from './components/ErrorBoundary.js';
 export { applyAdminColor, getAccentPalette } from './theme/adminColor.js';
 //# sourceMappingURL=index.js.map

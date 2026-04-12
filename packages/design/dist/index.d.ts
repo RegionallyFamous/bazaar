@@ -10,5 +10,7 @@ export { Spinner } from './components/Spinner.js';
 export type { SpinnerProps, SpinnerSize } from './components/Spinner.js';
 export { ToastProvider, useToast } from './components/Toast.js';
 export type { ToastItem, ToastVariant, ToastProviderProps } from './components/Toast.js';
+export { ErrorBoundary } from './components/ErrorBoundary.js';
+export type { ErrorBoundaryProps } from './components/ErrorBoundary.js';
 export { applyAdminColor, getAccentPalette } from './theme/adminColor.js';
 //# sourceMappingURL=index.d.ts.map
