@@ -221,12 +221,17 @@ class ToastManager {
 		this.el = container;
 	}
 	show( message, level = 'info', ms = 4000 ) {
-		const ICONS = { success: '✓', warning: '⚠', error: '✕', info: 'ℹ' };
+		const ICONS = {
+			success: 'dashicons-yes-alt',
+			warning: 'dashicons-warning',
+			error:   'dashicons-dismiss',
+			info:    'dashicons-info',
+		};
 		const t = document.createElement( 'div' );
 		t.className = `bsh-toast bsh-toast--${ level }`;
 		t.setAttribute( 'role', 'alert' );
 		t.innerHTML =
-			`<span class="bsh-toast__icon" aria-hidden="true">${ ICONS[ level ] ?? 'ℹ' }</span>` +
+			`<span class="bsh-toast__icon dashicons ${ ICONS[ level ] ?? 'dashicons-info' }" aria-hidden="true"></span>` +
 			`<span class="bsh-toast__msg">${ esc( message ) }</span>`;
 		this.el.appendChild( t );
 		requestAnimationFrame( () => t.classList.add( 'bsh-toast--in' ) );
@@ -755,16 +760,59 @@ function navigateTo( slug, route ) {
 	} else {
 		loading.hidden = false;
 		const f = iframes.frames.get( slug );
+		const wareName = wareMap.get( slug )?.name ?? slug;
+
+		const clearLoad = () => {
+			clearTimeout( loadTimer );
+			loading.hidden = true;
+		};
+
+		// If the iframe document never fires 'load' (hung network, DNS failure,
+		// HTTP 5xx that returns no document), hide the overlay after 15 s and
+		// show a toast so the user isn't stuck indefinitely.
+		const loadTimer = setTimeout( () => {
+			loading.hidden = true;
+			toasts.show(
+				sprintf(
+					/* translators: %s: ware name */
+					__( '%s is taking a long time to load. Try reloading.', 'bazaar' ),
+					wareName
+				),
+				'error',
+				TOAST_DEFAULT_MS
+			);
+		}, 15_000 );
+
 		f?.addEventListener(
 			'load',
 			() => {
-				loading.hidden = true;
+				clearLoad();
 				if ( route ) {
 					f.contentWindow?.postMessage(
 						{ type: 'bazaar:route', route },
 						window.location.origin
 					);
 				}
+			},
+			{ once: true }
+		);
+
+		// 'error' fires when the src itself cannot be fetched (network offline,
+		// SSL failure). HTTP error documents still fire 'load', so the timeout
+		// above covers those cases.
+		f?.addEventListener(
+			'error',
+			() => {
+				clearLoad();
+				toasts.show(
+					sprintf(
+						/* translators: %s: ware name */
+						__( '%s failed to load.', 'bazaar' ),
+						wareName
+					),
+					'error',
+					TOAST_DEFAULT_MS
+				);
 			},
 			{ once: true }
 		);
@@ -878,11 +926,22 @@ const _dataCache = new Map();
 async function cacheQuery( id, path, targetWindow ) {
 	// Only proxy paths within the Bazaar namespace — prevents a ware from
 	// using the shell's admin nonce to fetch arbitrary WordPress REST data.
-	if ( typeof path !== 'string' || ! path.startsWith( '/bazaar/v1/' ) ) {
+	// Normalize through URL to collapse any ../ segments before the prefix
+	// check so that '/bazaar/v1/../wp/v2/users' cannot bypass the guard.
+	if ( typeof path !== 'string' ) {
+		return;
+	}
+	let normalizedPath;
+	try {
+		normalizedPath = new URL( path, window.location.origin ).pathname;
+	} catch {
+		return;
+	}
+	if ( ! normalizedPath.startsWith( '/bazaar/v1/' ) ) {
 		return;
 	}
 
-	const cached = _dataCache.get( path );
+	const cached = _dataCache.get( normalizedPath );
 	if ( cached && Date.now() - cached.ts < DATA_CACHE_TTL_MS ) {
 		try {
 			targetWindow.postMessage(
@@ -896,7 +955,7 @@ async function cacheQuery( id, path, targetWindow ) {
 	}
 	try {
 		const r = await fetch(
-			`${ restUrl.replace( /\/bazaar\/v1$/, '' ) }${ path }`,
+			`${ restUrl.replace( /\/bazaar\/v1$/, '' ) }${ normalizedPath }`,
 			{ headers: { 'X-WP-Nonce': nonce } }
 		);
 		if ( ! r.ok ) {
@@ -917,7 +976,7 @@ async function cacheQuery( id, path, targetWindow ) {
 		if ( _dataCache.size >= DATA_CACHE_MAX ) {
 			_dataCache.delete( _dataCache.keys().next().value );
 		}
-		_dataCache.set( path, { data: d, ts: Date.now() } );
+		_dataCache.set( normalizedPath, { data: d, ts: Date.now() } );
 		try {
 			targetWindow.postMessage(
 				{ type: 'bazaar:query-response', id, data: d },
@@ -943,19 +1002,22 @@ window.addEventListener( 'message', ( event ) => {
 	const fromSlug = slugForWindow( event.source );
 
 	switch ( type ) {
-		// Lifecycle
+		// Lifecycle — only the manage iframe is trusted to report these events.
+		// Any ware that can post same-origin messages cannot spoof installs/deletes.
 		case 'bazaar:ware-installed':
-			if ( p.ware?.slug ) {
+			if ( fromSlug === 'manage' && p.ware?.slug ) {
 				applyWareInstalled( p.ware );
 			}
 			break;
 		case 'bazaar:ware-deleted':
-			if ( p.slug ) {
+			if ( fromSlug === 'manage' && p.slug ) {
 				applyWareDeleted( p.slug );
 			}
 			break;
 		case 'bazaar:ware-toggled':
-			applyWareToggled( p.slug, p.enabled );
+			if ( fromSlug === 'manage' ) {
+				applyWareToggled( p.slug, p.enabled );
+			}
 			break;
 
 		// Event bus

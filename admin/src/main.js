@@ -4,7 +4,7 @@
 
 import './main.css';
 import apiFetch from '@wordpress/api-fetch';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 import { escHtml, escAttr } from './shared/escape.js';
 import { SEARCH_DEBOUNCE_MS, DELETE_CONFIRM_COUNTDOWN_S } from './shared/constants.js';
 import { initUpload } from './modules/upload.js';
@@ -12,6 +12,26 @@ import { initCoreApps } from './modules/core-apps.js';
 
 // Bootstrapped from wp_localize_script in BazaarPage::enqueue_assets().
 const { restUrl, nonce, inShell } = window.bazaarData ?? {};
+
+// Human-readable labels for the permission keys declared in ware manifests.
+// Must stay in sync with the $perm_labels array in templates/bazaar-page.php.
+const PERM_LABELS = {
+	'read:posts': __( 'Read posts', 'bazaar' ),
+	'write:posts': __( 'Write posts', 'bazaar' ),
+	'delete:posts': __( 'Delete posts', 'bazaar' ),
+	'read:users': __( 'Read users', 'bazaar' ),
+	'write:users': __( 'Write users', 'bazaar' ),
+	'read:options': __( 'Read options', 'bazaar' ),
+	'write:options': __( 'Write options', 'bazaar' ),
+	'read:media': __( 'Read media', 'bazaar' ),
+	'write:media': __( 'Write media', 'bazaar' ),
+	'read:comments': __( 'Read comments', 'bazaar' ),
+	'write:comments': __( 'Write comments', 'bazaar' ),
+	'moderate:comments': __( 'Moderate comments', 'bazaar' ),
+	'manage:plugins': __( 'Manage plugins', 'bazaar' ),
+	'manage:themes': __( 'Manage themes', 'bazaar' ),
+	'read:analytics': __( 'Read analytics', 'bazaar' ),
+};
 
 // When the manage page is embedded inside the Bazaar Shell iframe, suppress
 // the full WordPress admin chrome (sidebar, admin bar, footer) so only the
@@ -327,21 +347,63 @@ searchInput?.addEventListener( 'input', () => {
 	_searchTimer = setTimeout( applyFilters, SEARCH_DEBOUNCE_MS );
 } );
 
-filterTabs?.addEventListener( 'click', ( e ) => {
-	const btn = e.target.closest( '[data-filter]' );
-	if ( ! btn ) {
-		return;
-	}
-
+/**
+ * Activate a filter tab: update state, ARIA attributes, and re-filter.
+ *
+ * @param {HTMLElement} btn The tab button to activate.
+ */
+function activateFilterTab( btn ) {
 	currentFilter = btn.dataset.filter;
 
 	filterTabs.querySelectorAll( '[data-filter]' ).forEach( ( tab ) => {
 		const active = tab === btn;
 		tab.classList.toggle( 'bazaar-filter-tab--active', active );
 		tab.setAttribute( 'aria-selected', String( active ) );
+		tab.setAttribute( 'tabindex', active ? '0' : '-1' );
 	} );
 
 	applyFilters();
+}
+
+filterTabs?.addEventListener( 'click', ( e ) => {
+	const btn = e.target.closest( '[data-filter]' );
+	if ( btn ) {
+		activateFilterTab( btn );
+	}
+} );
+
+// ARIA tabs keyboard pattern (WAI-ARIA 1.2 §3.22):
+// Arrow Left/Right moves focus, Enter/Space activates, Home/End jump to ends.
+filterTabs?.addEventListener( 'keydown', ( e ) => {
+	if ( ! [ 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', ' ' ].includes( e.key ) ) {
+		return;
+	}
+
+	const tabs = [ ...filterTabs.querySelectorAll( '[data-filter]' ) ];
+	const focused = tabs.indexOf( e.currentTarget.ownerDocument.activeElement );
+	if ( focused === -1 ) {
+		return;
+	}
+
+	let next = focused;
+	if ( e.key === 'ArrowRight' ) {
+		next = ( focused + 1 ) % tabs.length;
+	} else if ( e.key === 'ArrowLeft' ) {
+		next = ( focused - 1 + tabs.length ) % tabs.length;
+	} else if ( e.key === 'Home' ) {
+		next = 0;
+	} else if ( e.key === 'End' ) {
+		next = tabs.length - 1;
+	} else if ( e.key === 'Enter' || e.key === ' ' ) {
+		activateFilterTab( tabs[ focused ] );
+		e.preventDefault();
+		return;
+	}
+
+	if ( next !== focused ) {
+		e.preventDefault();
+		tabs[ next ].focus();
+	}
 } );
 
 // ---------------------------------------------------------------------------
@@ -385,6 +447,27 @@ function insertWareCard( ware ) {
 		? `<p class="bazaar-card__description">${ escHtml( ware.description ) }</p>`
 		: '';
 
+	const permissions = Array.isArray( ware.permissions )
+		? ware.permissions.filter( Boolean )
+		: [];
+	const permsHtml = permissions.length
+		? `<details class="bazaar-card__perms">
+			<summary class="bazaar-card__perms-summary">${ escHtml(
+		sprintf(
+			/* translators: %d: number of permissions requested */
+			_n( '%d permission', '%d permissions', permissions.length, 'bazaar' ),
+			permissions.length
+		)
+	) }</summary>
+			<ul class="bazaar-card__perms-list">${ permissions.map( ( perm ) =>
+		`<li class="bazaar-card__perm-item">` +
+				`<span class="bazaar-card__perm-icon dashicons dashicons-yes-alt" aria-hidden="true"></span>` +
+				escHtml( PERM_LABELS[ perm ] ?? perm ) +
+				`</li>`
+	).join( '' ) }</ul>
+		</details>`
+		: '';
+
 	const card = document.createElement( 'article' );
 	card.className =
 		'bazaar-card' + ( isEnabled ? '' : ' bazaar-card--disabled' );
@@ -407,6 +490,7 @@ function insertWareCard( ware ) {
 					${ authorHtml }
 				</p>
 				${ descHtml }
+				${ permsHtml }
 			</div>
 		<div class="bazaar-card__actions">
 			<button type="button" class="bazaar-card__open"

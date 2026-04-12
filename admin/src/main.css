@@ -469,7 +469,7 @@
 	flex: 1;
 	font-weight: 500;
 	color: var(--bz-text);
-	font-size: 12.5px;
+	font-size: 13px;
 }
 
 .bazaar-card__confirm-countdown {
@@ -527,7 +527,7 @@
 
 .bazaar-card__meta {
 	margin: 0 0 7px;
-	font-size: 11.5px;
+	font-size: 12px;
 	color: var(--bz-text-dim);
 	display: flex;
 	gap: 6px;
@@ -536,7 +536,7 @@
 
 .bazaar-card__description {
 	margin: 0;
-	font-size: 12.5px;
+	font-size: 13px;
 	color: var(--bz-text-muted);
 	line-height: 1.55;
 	display: -webkit-box;
@@ -567,7 +567,7 @@
 .bazaar-card__perms-summary::before {
 	content: '▸';
 	font-size: 9px;
-	transition: transform 0.15s ease;
+	transition: transform var(--bz-ease-fast);
 	display: inline-block;
 }
 
@@ -624,7 +624,7 @@ html.bazaar-in-shell .bazaar-card__open {
 	border: none;
 	border-radius: 6px;
 	padding: 5px 10px;
-	font-size: 11.5px;
+	font-size: 12px;
 	font-weight: 600;
 	cursor: pointer;
 	white-space: nowrap;
@@ -660,7 +660,7 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 	inset: 0;
 	background: #cbd5e1;
 	border-radius: 21px;
-	transition: background 0.2s ease;
+	transition: background var(--bz-ease);
 }
 
 .bazaar-toggle__slider::before {
@@ -672,7 +672,7 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 	bottom: 3px;
 	background: #fff;
 	border-radius: 50%;
-	transition: transform 0.2s ease;
+	transition: transform var(--bz-ease);
 	box-shadow: 0 1px 3px rgba( 0, 0, 0, 0.25 );
 }
 
@@ -876,7 +876,7 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 	flex-direction: column;
 	gap: 12px;
 	box-shadow: var(--bz-shadow-sm);
-	transition: box-shadow .2s, transform .2s;
+	transition: box-shadow var(--bz-ease), transform var(--bz-ease);
 	overflow: hidden;
 }
 
@@ -971,7 +971,7 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 }
 
 .bazaar-core-card__byline {
-	font-size: 11.5px;
+	font-size: 12px;
 	color: var(--bz-text-muted);
 	white-space: nowrap;
 	overflow: hidden;
@@ -982,7 +982,7 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 /* Description — 3-line clamp */
 .bazaar-core-card__desc {
 	margin: 0;
-	font-size: 12.5px;
+	font-size: 13px;
 	line-height: 1.6;
 	color: var(--bz-text-dim);
 	flex: 1;
@@ -1122,7 +1122,8 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 	margin-top: 2px;
 }
 
-.bazaar-core-error {
+.bazaar-core-error,
+.bazaar-core-empty {
 	grid-column: 1 / -1;
 	color: var(--bz-text-muted);
 	font-size: 13px;
@@ -1201,7 +1202,7 @@ html.bazaar-in-shell .bazaar-title {
 }
 
 html.bazaar-in-shell .bazaar-tagline {
-	font-size: 14.5px;
+	font-size: 14px;
 	max-width: 480px;
 	margin: 8px auto 0;
 	color: var(--bz-text-muted);
@@ -1259,7 +1260,7 @@ html.bazaar-in-shell .bazaar-dropzone__icon {
 }
 
 html.bazaar-in-shell .bazaar-dropzone__text {
-	font-size: 13.5px;
+	font-size: 14px;
 }
 
 /* ── Gallery section: full-width, padded ─────────────────────────────────── */
@@ -1273,7 +1274,7 @@ html.bazaar-in-shell .bazaar-gallery-header {
 }
 
 html.bazaar-in-shell .bazaar-section-heading {
-	font-size: 17px;
+	font-size: 16px;
 }
 
 html.bazaar-in-shell .bazaar-gallery {

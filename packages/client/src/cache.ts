@@ -22,19 +22,29 @@ function _inShell(): boolean {
   return typeof window !== 'undefined' && window.parent !== window;
 }
 
-// Incoming query-response from the shell.
+// Incoming query responses from the shell.
 if ( typeof window !== 'undefined' ) {
   window.addEventListener( 'message', ( event: MessageEvent ) => {
     if ( event.source !== window.parent ) return;
     if ( event.origin !== window.location.origin ) return;
 
-    const { type, id, data } = ( event.data ?? {} ) as Record<string, unknown>;
+    const { type, id, data, status } = ( event.data ?? {} ) as Record<string, unknown>;
 
     if ( type === 'bazaar:query-response' && typeof id === 'string' ) {
       const cb = _pending.get( id );
       if ( cb ) {
         _pending.delete( id );
         cb.resolve( data );
+      }
+    }
+
+    // Fail fast instead of waiting out the 10 s timeout when the shell proxy
+    // reports an HTTP error — wares get a rejected promise immediately.
+    if ( type === 'bazaar:query-error' && typeof id === 'string' ) {
+      const cb = _pending.get( id );
+      if ( cb ) {
+        _pending.delete( id );
+        cb.reject( new Error( `bazaar:query-error (HTTP ${ status ?? 'unknown' })` ) );
       }
     }
   } );

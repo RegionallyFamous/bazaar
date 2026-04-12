@@ -9,6 +9,8 @@
 ![License](https://img.shields.io/badge/License-GPL--2.0--or--later-blue?style=flat-square)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)
 
+[![Try in Playground](https://img.shields.io/badge/Try%20in-Playground-3858E9?style=flat-square&logo=wordpress&logoColor=white)](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/RegionallyFamous/bazaar/main/blueprint.json)
+
 Drop any web app into WordPress with a single file upload. It shows up in your sidebar. Done.
 
 ```

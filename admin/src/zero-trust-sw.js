@@ -122,7 +122,7 @@ self.addEventListener( 'fetch', ( event ) => {
 				if ( ! permitted ) {
 					event.respondWith(
 						new Response(
-							JSON.stringify( { error: 'blocked', url: req.url, slug } ),
+							JSON.stringify( { error: 'blocked', origin: url.origin, slug } ),
 							{
 								status: 403,
 								headers: {

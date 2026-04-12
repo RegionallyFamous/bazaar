@@ -111,6 +111,8 @@ jobs:
         run: |
           gh release create "${GITHUB_REF_NAME}" --generate-notes --title "${GITHUB_REF_NAME}" || true
           gh release upload "${GITHUB_REF_NAME}" dist/bazaar-*.zip --clobber
+          cp dist/bazaar-*.zip dist/bazaar.zip
+          gh release upload "${GITHUB_REF_NAME}" dist/bazaar.zip --clobber
 
   # ---------------------------------------------------------------------------
   # JS — lint + build + test (Node 24)

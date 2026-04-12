@@ -25,7 +25,7 @@
   font-weight: 700;
   font-size: 15px;
   color: var( --mode-color, #f59e0b );
-  transition: color .4s;
+  transition: color 0.18s ease;
 }
 
 .focus-header__stats {
@@ -135,7 +135,7 @@
 }
 
 .mode-tab {
-  padding: 5px 12px;
+  padding: 6px 12px;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
@@ -282,7 +282,7 @@
   border: 1px solid rgba(255,255,255,.1);
   color: #fafaf9;
   border-radius: 6px;
-  padding: 7px 10px;
+  padding: 8px 10px;
   font-size: 13px;
 }
 

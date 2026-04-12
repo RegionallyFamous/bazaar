@@ -111,6 +111,11 @@
 	display: block;
 }
 
+.bsh--collapsed .bsh-nav__header {
+	justify-content: center;
+	padding: 0;
+}
+
 .bsh-nav__title {
 	font-size: 14px;
 	font-weight: 700;
@@ -405,7 +410,7 @@
 	color: var(--bsh-nav-text-dim);
 	padding: 8px 12px 3px;
 	cursor: pointer;
-	font-size: 10.5px;
+	font-size: 11px;
 	font-weight: 700;
 	text-transform: uppercase;
 	letter-spacing: 0.07em;
@@ -427,7 +432,7 @@
 
 .bsh-nav__group-arrow {
 	font-size: 13px;
-	transition: transform 0.15s ease;
+	transition: transform var(--bsh-ease-fast);
 	opacity: 0.6;
 }
 
@@ -464,7 +469,7 @@
 	border-radius: 9px;
 	background: #e53e3e;
 	color: #fff;
-	font-size: 10.5px;
+	font-size: 11px;
 	font-weight: 700;
 	line-height: 1;
 	flex-shrink: 0;
@@ -504,7 +509,7 @@
 	border-radius: var(--bsh-radius-sm);
 	padding: 10px 12px;
 	font: inherit;
-	font-size: 12.5px;
+	font-size: 13px;
 	font-weight: 500;
 	color: rgba(255, 255, 255, 0.7);
 	cursor: pointer;
@@ -666,7 +671,7 @@
 	box-shadow: var(--bsh-shadow-lg);
 	opacity: 0;
 	transform: translateY(10px) scale(0.98);
-	transition: opacity 0.22s ease, transform 0.22s ease;
+	transition: opacity var(--bsh-ease), transform var(--bsh-ease);
 	pointer-events: auto;
 	border-left: 3px solid var(--bsh-accent);
 }

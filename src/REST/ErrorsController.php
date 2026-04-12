@@ -35,6 +35,13 @@ use WP_Error;
 final class ErrorsController extends BazaarController {
 
 	/**
+	 * Maximum stored error rows per ware slug.
+	 * When the cap is reached, the oldest rows are deleted to make room,
+	 * keeping the table bounded while preserving recent diagnostic data.
+	 */
+	private const MAX_ERRORS_PER_SLUG = 500;
+
+	/**
 	 * REST API namespace.
 	 *
 	 * @var string
@@ -141,11 +148,29 @@ final class ErrorsController extends BazaarController {
 	public function create_error( WP_REST_Request $request ): WP_REST_Response {
 		global $wpdb;
 		$table = $wpdb->prefix . Tables::ERRORS;
+		$slug  = sanitize_key( $request->get_param( 'slug' ) );
+
+		// Rolling cap: keep at most MAX_ERRORS_PER_SLUG rows per ware so a
+		// noisy ware cannot grow the table unboundedly.
+		$count = (int) $wpdb->get_var(
+			$wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE slug = %s', $table, $slug )
+		);
+		if ( $count >= self::MAX_ERRORS_PER_SLUG ) {
+			$excess = $count - self::MAX_ERRORS_PER_SLUG + 1;
+			$wpdb->query(
+				$wpdb->prepare(
+					'DELETE FROM %i WHERE slug = %s ORDER BY id ASC LIMIT %d',
+					$table,
+					$slug,
+					$excess
+				)
+			);
+		}
 
 		$inserted = $wpdb->insert(
 			$table,
 			array(
-				'slug'       => sanitize_key( $request->get_param( 'slug' ) ),
+				'slug'       => $slug,
 				'user_id'    => get_current_user_id(),
 				'message'    => sanitize_text_field( (string) $request->get_param( 'message' ) ),
 				'stack'      => wp_kses( (string) ( $request->get_param( 'stack' ) ?? '' ), array() ),

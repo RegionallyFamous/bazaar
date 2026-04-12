@@ -201,6 +201,7 @@ export function initCoreApps( deps ) {
 		coreGrid.innerHTML = '';
 
 		if ( ! Array.isArray( apps ) || apps.length === 0 ) {
+			coreGrid.innerHTML = `<p class="bazaar-core-empty">${ escHtml( __( 'No apps available in the catalog right now.', 'bazaar' ) ) }</p>`;
 			return;
 		}
 

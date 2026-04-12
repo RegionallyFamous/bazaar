@@ -153,9 +153,9 @@ defined( 'ABSPATH' ) || exit;
 					role="tablist"
 					aria-label="<?php esc_attr_e( 'Filter by status', 'bazaar' ); ?>"
 				>
-					<button type="button" role="tab" class="bazaar-filter-tab bazaar-filter-tab--active" data-filter="all" aria-selected="true"><?php esc_html_e( 'All', 'bazaar' ); ?></button>
-					<button type="button" role="tab" class="bazaar-filter-tab" data-filter="enabled" aria-selected="false"><?php esc_html_e( 'Enabled', 'bazaar' ); ?></button>
-					<button type="button" role="tab" class="bazaar-filter-tab" data-filter="disabled" aria-selected="false"><?php esc_html_e( 'Disabled', 'bazaar' ); ?></button>
+					<button type="button" role="tab" class="bazaar-filter-tab bazaar-filter-tab--active" data-filter="all" aria-selected="true" tabindex="0"><?php esc_html_e( 'All', 'bazaar' ); ?></button>
+					<button type="button" role="tab" class="bazaar-filter-tab" data-filter="enabled" aria-selected="false" tabindex="-1"><?php esc_html_e( 'Enabled', 'bazaar' ); ?></button>
+					<button type="button" role="tab" class="bazaar-filter-tab" data-filter="disabled" aria-selected="false" tabindex="-1"><?php esc_html_e( 'Disabled', 'bazaar' ); ?></button>
 				</div>
 				<label for="bazaar-search" class="screen-reader-text"><?php esc_html_e( 'Search wares', 'bazaar' ); ?></label>
 				<input

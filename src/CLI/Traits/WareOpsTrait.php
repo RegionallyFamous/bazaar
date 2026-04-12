@@ -206,10 +206,15 @@ trait WareOpsTrait {
 				'detail' => $has_ep ? "{$entry} found" : "Entry {$entry} missing",
 			);
 
-			// 4. .htaccess protection.
-			$htaccess = $dir . '/.htaccess';
-			$has_ht   = $wp_filesystem->is_file( $htaccess ) && str_contains( (string) $wp_filesystem->get_contents( $htaccess ), 'php_flag' );
-			$rows[]   = array(
+			// 4. .htaccess protection — accept either a per-ware file or the
+			//    parent directory's file (which cascades to all subdirs in Apache).
+			$ht_ware   = $dir . '/.htaccess';
+			$ht_parent = rtrim( BAZAAR_WARES_DIR, '/' ) . '/.htaccess';
+			$has_ht    = (
+				( $wp_filesystem->is_file( $ht_ware ) && str_contains( (string) $wp_filesystem->get_contents( $ht_ware ), 'php_flag' ) ) ||
+				( $wp_filesystem->is_file( $ht_parent ) && str_contains( (string) $wp_filesystem->get_contents( $ht_parent ), 'php_flag' ) )
+			);
+			$rows[]    = array(
 				'ware'   => $s,
 				'check'  => 'htaccess',
 				'status' => $has_ht ? 'ok' : 'warn',
