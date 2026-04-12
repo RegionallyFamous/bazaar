@@ -525,7 +525,15 @@ final class WareServer {
 		$manifest_raw = $wp_filesystem->get_contents( $manifest_path );
 
 		$registry = is_string( $registry_raw ) ? json_decode( $registry_raw, true ) : null;
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			$cache = array();
+			return $cache;
+		}
 		$manifest = is_string( $manifest_raw ) ? json_decode( $manifest_raw, true ) : null;
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			$cache = array();
+			return $cache;
+		}
 
 		if ( ! is_array( $registry ) || ! is_array( $manifest ) ) {
 			$cache = array();

@@ -1,20 +1,21 @@
 /* ── Tome — two-panel wiki ───────────────────────────────────────────────── */
 
-*,
-*::before,
-*::after { box-sizing: border-box; margin: 0; padding: 0; }
+/*
+ * Tokens and base reset are provided by @bazaar/design/css (imported in main.tsx).
+ * Accent: violet — reading/writing tool personality.
+ */
 
 :root {
-	--sidebar-w:      260px;
-	--sidebar-bg:     #f0f2f5;
-	--sidebar-border: #dde1e7;
-	--accent:         #0f172a;
-	--accent-line:    2px solid #0f172a;
-	--muted:          #64748b;
-	--danger:         #dc2626;
-	--font-ui:        -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	--font-read:      "Charter", "Georgia", "Times New Roman", serif;
-	--font-code:      ui-monospace, "Cascadia Code", "Fira Code", monospace;
+	--sidebar-w:   260px;
+	--font-ui:     -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	--font-read:   "Charter", "Georgia", "Times New Roman", serif;
+	--font-code:   ui-monospace, "Cascadia Code", "Fira Code", monospace;
+
+	/* Violet accent overrides the design-system default indigo */
+	--bw-accent:     #7c3aed;
+	--bw-accent-hi:  #6d28d9;
+	--bw-accent-bg:  #ede9fe;
+	--bw-accent-rgb: 124, 58, 237;
 }
 
 /* ── Shell ─────────────────────────────────────────────────────────────── */
@@ -24,7 +25,7 @@
 	height:      100vh;
 	overflow:    hidden;
 	font-family: var( --font-ui );
-	background:  #fff;
+	background:  var( --bw-surface );
 }
 
 .tome-loading {
@@ -33,7 +34,7 @@
 	justify-content: center;
 	height:          100vh;
 	font-family:     var( --font-ui );
-	color:           var( --muted );
+	color:           var( --bw-text-muted );
 	font-size:       14px;
 }
 
@@ -42,8 +43,8 @@
 .tome-sidebar {
 	width:           var( --sidebar-w );
 	min-width:       var( --sidebar-w );
-	background:      var( --sidebar-bg );
-	border-right:    1px solid var( --sidebar-border );
+	background:      var( --bw-bg );
+	border-right:    1px solid var( --bw-border );
 	display:         flex;
 	flex-direction:  column;
 	overflow:        hidden;
@@ -53,7 +54,7 @@
 	display:      flex;
 	align-items:  center;
 	padding:      18px 16px 12px;
-	border-bottom: 1px solid var( --sidebar-border );
+	border-bottom: 1px solid var( --bw-border );
 }
 
 .tome-sidebar__brand {
@@ -61,7 +62,7 @@
 	font-weight: 700;
 	letter-spacing: 0.06em;
 	text-transform: uppercase;
-	color:       #1e293b;
+	color:       var( --bw-text );
 }
 
 .tome-sidebar__search {
@@ -71,18 +72,18 @@
 .tome-sidebar__search-input {
 	width:        100%;
 	padding:      6px 10px;
-	border:       1px solid var( --sidebar-border );
+	border:       1px solid var( --bw-border );
 	border-radius: 6px;
 	font-size:    13px;
 	font-family:  var( --font-ui );
-	background:   #fff;
-	color:        #1e293b;
+	background:   var( --bw-surface );
+	color:        var( --bw-text );
 	outline:      none;
 	transition:   border-color 0.15s;
 }
 
 .tome-sidebar__search-input:focus {
-	border-color: #94a3b8;
+	border-color: var( --bw-border-focus );
 }
 
 .tome-sidebar__search-input::-webkit-search-cancel-button {
@@ -98,32 +99,32 @@
 
 .tome-sidebar__empty {
 	font-size: 13px;
-	color:     var( --muted );
+	color:     var( --bw-text-muted );
 	padding:   12px 16px;
 }
 
 .tome-sidebar__footer {
 	padding:      10px 12px 14px;
-	border-top:   1px solid var( --sidebar-border );
+	border-top:   1px solid var( --bw-border );
 }
 
 .tome-sidebar__new-btn {
 	width:         100%;
 	padding:       7px 12px;
-	border:        1px solid var( --sidebar-border );
+	border:        1px solid var( --bw-border );
 	border-radius: 6px;
 	background:    transparent;
 	font-size:     13px;
 	font-family:   var( --font-ui );
-	color:         #475569;
+	color:         var( --bw-text-muted );
 	cursor:        pointer;
 	text-align:    left;
 	transition:    background 0.12s, color 0.12s;
 }
 
 .tome-sidebar__new-btn:hover {
-	background: #e2e6ea;
-	color:      #1e293b;
+	background: var( --bw-surface-2 );
+	color:      var( --bw-text );
 }
 
 /* ── Page tree ─────────────────────────────────────────────────────────── */
@@ -149,11 +150,11 @@
 	position:      relative;
 }
 
-.tome-tree__row:hover { background: #e2e6ea; }
+.tome-tree__row:hover { background: var( --bw-surface-2 ); }
 
 .tome-tree__row--active {
-	background:  #fff;
-	border-left: var( --accent-line );
+	background:  var( --bw-surface );
+	border-left: 2px solid var( --bw-accent );
 }
 
 .tome-tree__toggle {
@@ -164,7 +165,7 @@
 	background:  transparent;
 	padding:     0;
 	font-size:   12px;
-	color:       var( --muted );
+	color:       var( --bw-text-muted );
 	cursor:      pointer;
 	display:     flex;
 	align-items: center;
@@ -189,7 +190,7 @@
 	padding:     0;
 	font-size:   13.5px;
 	font-family: var( --font-ui );
-	color:       #1e293b;
+	color:       var( --bw-text );
 	text-align:  left;
 	cursor:      pointer;
 	white-space: nowrap;
@@ -221,7 +222,7 @@
 	border-radius: 4px;
 	font-size:   14px;
 	line-height: 1;
-	color:       var( --muted );
+	color:       var( --bw-text-muted );
 	cursor:      pointer;
 	display:     flex;
 	align-items: center;
@@ -229,15 +230,15 @@
 	transition:  background 0.1s, color 0.1s;
 }
 
-.tome-tree__action:hover           { background: #cbd5e1; color: #1e293b; }
-.tome-tree__action--danger:hover   { background: #fee2e2; color: var( --danger ); }
+.tome-tree__action:hover           { background: var( --bw-border ); color: var( --bw-text ); }
+.tome-tree__action--danger:hover   { background: var( --bw-danger-bg ); color: var( --bw-danger ); }
 
 /* ── Main content area ─────────────────────────────────────────────────── */
 
 .tome-main {
 	flex:       1;
 	overflow-y: auto;
-	background: #fff;
+	background: var( --bw-surface );
 }
 
 /* ── Empty state ───────────────────────────────────────────────────────── */
@@ -262,19 +263,19 @@
 .tome-empty__heading {
 	font-size:   20px;
 	font-weight: 600;
-	color:       #1e293b;
+	color:       var( --bw-text );
 	margin-bottom: 8px;
 }
 
 .tome-empty__sub {
 	font-size:     14px;
-	color:         var( --muted );
+	color:         var( --bw-text-muted );
 	margin-bottom: 24px;
 }
 
 .tome-empty__cta {
 	padding:       10px 22px;
-	background:    #1e293b;
+	background:    var( --bw-accent );
 	color:         #fff;
 	border:        none;
 	border-radius: 8px;
@@ -284,7 +285,7 @@
 	transition:    background 0.15s;
 }
 
-.tome-empty__cta:hover { background: #0f172a; }
+.tome-empty__cta:hover { background: var( --bw-accent-hi ); }
 
 /* ── Page view ─────────────────────────────────────────────────────────── */
 
@@ -306,7 +307,7 @@
 	font-size:     26px;
 	font-weight:   700;
 	line-height:   1.25;
-	color:         #0f172a;
+	color:         var( --bw-text );
 	font-family:   var( --font-ui );
 }
 
@@ -315,12 +316,12 @@
 	align-items:    center;
 	gap:            6px;
 	padding:        6px 14px;
-	border:         1px solid var( --sidebar-border );
+	border:         1px solid var( --bw-border );
 	border-radius:  6px;
 	background:     transparent;
 	font-size:      13px;
 	font-family:    var( --font-ui );
-	color:          var( --muted );
+	color:          var( --bw-text-muted );
 	cursor:         pointer;
 	white-space:    nowrap;
 	transition:     border-color 0.15s, color 0.15s;
@@ -329,8 +330,8 @@
 }
 
 .tome-view__edit-btn:hover {
-	border-color: #94a3b8;
-	color:        #1e293b;
+	border-color: var( --bw-text-dim );
+	color:        var( --bw-text );
 }
 
 /* Prose rendering ─────────────────────────────────────────────────────── */
@@ -339,7 +340,7 @@
 	font-family:  var( --font-read );
 	font-size:    17px;
 	line-height:  1.75;
-	color:        #1e293b;
+	color:        var( --bw-text );
 }
 
 .tome-view__body h1,
@@ -350,7 +351,7 @@
 	font-weight:  700;
 	margin-top:   1.8em;
 	margin-bottom: 0.5em;
-	color:        #0f172a;
+	color:        var( --bw-text );
 	line-height:  1.3;
 }
 
@@ -361,12 +362,12 @@
 .tome-view__body p  { margin-bottom: 1em; }
 
 .tome-view__body a {
-	color:           #0891b2;
+	color:           var( --bw-accent );
 	text-decoration: underline;
 	text-underline-offset: 2px;
 }
 
-.tome-view__body a:hover { color: #0e7490; }
+.tome-view__body a:hover { color: var( --bw-accent-hi ); }
 
 .tome-view__body ul,
 .tome-view__body ol {
@@ -377,24 +378,24 @@
 .tome-view__body li { margin-bottom: 0.3em; }
 
 .tome-view__body blockquote {
-	border-left:  3px solid #cbd5e1;
+	border-left:  3px solid var( --bw-border );
 	padding-left: 1em;
 	margin-left:  0;
-	color:        var( --muted );
+	color:        var( --bw-text-muted );
 	font-style:   italic;
 }
 
 .tome-view__body code {
 	font-family:   var( --font-code );
 	font-size:     0.875em;
-	background:    #f1f5f9;
+	background:    var( --bw-bg );
 	padding:       0.1em 0.35em;
 	border-radius: 4px;
 }
 
 .tome-view__body pre {
-	background:    #f8fafc;
-	border:        1px solid #e2e8f0;
+	background:    var( --bw-surface-2 );
+	border:        1px solid var( --bw-border );
 	border-radius: 8px;
 	padding:       16px;
 	overflow-x:    auto;
@@ -409,7 +410,7 @@
 
 .tome-view__body hr {
 	border:        none;
-	border-top:    1px solid #e2e8f0;
+	border-top:    1px solid var( --bw-border );
 	margin:        2em 0;
 }
 
@@ -424,19 +425,19 @@
 .tome-view__body th,
 .tome-view__body td {
 	padding:      8px 12px;
-	border:       1px solid #e2e8f0;
+	border:       1px solid var( --bw-border );
 	text-align:   left;
 }
 
 .tome-view__body th {
-	background:  #f8fafc;
+	background:  var( --bw-surface-2 );
 	font-weight: 600;
 }
 
 .tome-view__empty {
 	text-align:  center;
 	padding:     60px 0;
-	color:       var( --muted );
+	color:       var( --bw-text-muted );
 	font-family: var( --font-ui );
 }
 
@@ -444,7 +445,7 @@
 
 .tome-view__empty-cta {
 	padding:       8px 20px;
-	background:    #1e293b;
+	background:    var( --bw-accent );
 	color:         #fff;
 	border:        none;
 	border-radius: 6px;
@@ -456,7 +457,7 @@
 .tome-view__meta {
 	margin-top:  32px;
 	font-size:   12px;
-	color:       #94a3b8;
+	color:       var( --bw-text-dim );
 	font-family: var( --font-ui );
 }
 
@@ -474,8 +475,8 @@
 	align-items:   center;
 	gap:           12px;
 	padding:       20px 32px 16px;
-	border-bottom: 1px solid var( --sidebar-border );
-	background:    #fafaf8;
+	border-bottom: 1px solid var( --bw-border );
+	background:    var( --bw-surface-2 );
 	position:      sticky;
 	top:           0;
 	z-index:       10;
@@ -486,14 +487,14 @@
 	font-size:     22px;
 	font-weight:   700;
 	font-family:   var( --font-ui );
-	color:         #0f172a;
+	color:         var( --bw-text );
 	border:        none;
 	background:    transparent;
 	outline:       none;
 	padding:       4px 0;
 }
 
-.tome-editor__title::placeholder { color: #94a3b8; }
+.tome-editor__title::placeholder { color: var( --bw-text-dim ); }
 
 .tome-editor__actions {
 	display: flex;
@@ -502,7 +503,7 @@
 
 .tome-editor__btn {
 	padding:       7px 16px;
-	border:        1px solid var( --sidebar-border );
+	border:        1px solid var( --bw-border );
 	border-radius: 6px;
 	font-size:     13px;
 	font-family:   var( --font-ui );
@@ -511,19 +512,19 @@
 }
 
 .tome-editor__btn--save {
-	background:   #1e293b;
+	background:   var( --bw-accent );
 	color:        #fff;
-	border-color: #1e293b;
+	border-color: var( --bw-accent );
 }
 
-.tome-editor__btn--save:hover  { background: #0f172a; }
+.tome-editor__btn--save:hover  { background: var( --bw-accent-hi ); border-color: var( --bw-accent-hi ); }
 
 .tome-editor__btn--cancel {
 	background: transparent;
-	color:      var( --muted );
+	color:      var( --bw-text-muted );
 }
 
-.tome-editor__btn--cancel:hover { background: #f1f5f9; }
+.tome-editor__btn--cancel:hover { background: var( --bw-bg ); }
 
 .tome-editor__body {
 	flex:          1;
@@ -531,23 +532,23 @@
 	font-family:   var( --font-code );
 	font-size:     14px;
 	line-height:   1.7;
-	color:         #1e293b;
-	background:    #fafaf8;
+	color:         var( --bw-text );
+	background:    var( --bw-surface-2 );
 	border:        none;
 	outline:       none;
 	resize:        none;
 	min-height:    calc( 100vh - 120px );
 }
 
-.tome-editor__body::placeholder { color: #94a3b8; }
+.tome-editor__body::placeholder { color: var( --bw-text-dim ); }
 
 .tome-editor__hint {
 	padding:      8px 32px 16px;
 	font-size:    11px;
-	color:        #94a3b8;
+	color:        var( --bw-text-dim );
 	font-family:  var( --font-ui );
-	background:   #fafaf8;
-	border-top:   1px solid var( --sidebar-border );
+	background:   var( --bw-surface-2 );
+	border-top:   1px solid var( --bw-border );
 }
 
 /* ── Responsive ────────────────────────────────────────────────────────── */
@@ -563,7 +564,7 @@
 		width:     100%;
 		min-width: 0;
 		border-right:  none;
-		border-bottom: 1px solid var( --sidebar-border );
+		border-bottom: 1px solid var( --bw-border );
 		max-height:    40vh;
 	}
 

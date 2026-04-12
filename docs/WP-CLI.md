@@ -86,8 +86,8 @@ wp bazaar install <file> [--force]
 | `--force` | Re-install even if the slug exists — deletes the old version first |
 
 ```bash
-wp bazaar install invoice-generator.wp
-wp bazaar install invoice-generator-v2.wp --force
+wp bazaar install ledger.wp
+wp bazaar install ledger-v2.wp --force
 wp bazaar install ~/Downloads/project-tracker.wp
 ```
 
@@ -143,8 +143,8 @@ wp bazaar info <slug> [--format=<format>]
 +-------------+----------------------------------+
 | Field       | Value                            |
 +-------------+----------------------------------+
-| slug        | invoice-generator                |
-| name        | Invoice Generator                |
+| slug        | ledger                |
+| name        | Ledger                |
 | version     | 1.0.0                            |
 | author      | Nick                             |
 | description | Generate invoices from wp-admin. |
@@ -189,7 +189,7 @@ wp bazaar outdated [<slug>] [--refresh] [--format=<format>]
 
 ```bash
 wp bazaar outdated
-wp bazaar outdated invoice-generator --refresh
+wp bazaar outdated ledger --refresh
 ```
 
 ---
@@ -226,13 +226,13 @@ wp bazaar dev stop  <slug>
 
 ```bash
 # Start dev mode pointing at Vite's default port
-wp bazaar dev start invoice-generator
+wp bazaar dev start ledger
 
 # Use a custom port
-wp bazaar dev start invoice-generator http://localhost:4000
+wp bazaar dev start ledger http://localhost:4000
 
 # Stop dev mode (ware reverts to the installed build)
-wp bazaar dev stop invoice-generator
+wp bazaar dev stop ledger
 ```
 
 ---
@@ -254,10 +254,10 @@ wp bazaar license remove <slug>
 | `remove <slug>` | Delete the stored key |
 
 ```bash
-wp bazaar license set   invoice-generator XXXX-YYYY-ZZZZ
-wp bazaar license check invoice-generator
-wp bazaar license check invoice-generator --porcelain
-wp bazaar license remove invoice-generator
+wp bazaar license set   ledger XXXX-YYYY-ZZZZ
+wp bazaar license check ledger
+wp bazaar license check ledger --porcelain
+wp bazaar license remove ledger
 ```
 
 ---
@@ -273,7 +273,7 @@ wp bazaar analytics [<slug>] [--days=<days>] [--format=<format>]
 Omit `<slug>` for aggregate stats across all wares.
 
 ```bash
-wp bazaar analytics invoice-generator --days=7
+wp bazaar analytics ledger --days=7
 wp bazaar analytics --days=30 --format=json
 ```
 
@@ -289,7 +289,7 @@ wp bazaar doctor [--slug=<slug>] [--format=<format>]
 
 ```bash
 wp bazaar doctor
-wp bazaar doctor --slug=invoice-generator
+wp bazaar doctor --slug=ledger
 wp bazaar doctor --format=json
 ```
 
@@ -305,8 +305,8 @@ wp bazaar logs [<slug>] [--count=<count>] [--format=<format>]
 
 ```bash
 wp bazaar logs
-wp bazaar logs invoice-generator
-wp bazaar logs invoice-generator --count=100 --format=json
+wp bazaar logs ledger
+wp bazaar logs ledger --count=100 --format=json
 ```
 
 ---
@@ -321,7 +321,7 @@ wp bazaar audit [<slug>] [--event=<event>] [--count=<count>] [--format=<format>]
 
 ```bash
 wp bazaar audit
-wp bazaar audit invoice-generator
+wp bazaar audit ledger
 wp bazaar audit --event=install --format=json
 ```
 
@@ -343,13 +343,13 @@ wp bazaar csp <slug> [--set=<directive=value>] [--reset] [--format=<format>]
 
 ```bash
 # View current CSP
-wp bazaar csp invoice-generator
+wp bazaar csp ledger
 
 # Add Stripe to connect-src
-wp bazaar csp invoice-generator --set="connect-src 'self' https://api.stripe.com"
+wp bazaar csp ledger --set="connect-src 'self' https://api.stripe.com"
 
 # Reset to defaults
-wp bazaar csp invoice-generator --reset
+wp bazaar csp ledger --reset
 ```
 
 ---
@@ -397,8 +397,8 @@ wp bazaar types <slug> [--out=<file>]
 ```
 
 ```bash
-wp bazaar types invoice-generator
-wp bazaar types invoice-generator --out=src/types/bazaar.d.ts
+wp bazaar types ledger
+wp bazaar types ledger --out=src/types/bazaar.d.ts
 ```
 
 ---
@@ -412,8 +412,8 @@ wp bazaar sign <file.wp> --key=<privkey.pem> [--passphrase=<pass>]
 ```
 
 ```bash
-wp bazaar sign invoice-generator.wp --key=private.pem
-wp bazaar sign invoice-generator.wp --key=private.pem --passphrase=hunter2
+wp bazaar sign ledger.wp --key=private.pem
+wp bazaar sign ledger.wp --key=private.pem --passphrase=hunter2
 ```
 
 ---
@@ -496,10 +496,10 @@ ssh "$REMOTE" "wp --path='${WP_PATH}' bazaar install /tmp/my-ware.wp --force && 
 ### Check if a ware is installed before acting
 
 ```bash
-if wp bazaar list-wares --format=json | jq -e '.[] | select(.slug == "invoice-generator")' > /dev/null; then
-  echo "invoice-generator is installed"
+if wp bazaar list-wares --format=json | jq -e '.[] | select(.slug == "ledger")' > /dev/null; then
+  echo "ledger is installed"
 else
-  wp bazaar install invoice-generator.wp
+  wp bazaar install ledger.wp
 fi
 ```
 
@@ -524,7 +524,7 @@ Define site aliases in `~/.wp-cli/config.yml` to run Bazaar commands on any envi
 
 ```bash
 wp @production bazaar list-wares
-wp @staging    bazaar install invoice-generator.wp --force
+wp @staging    bazaar install ledger.wp --force
 wp @local      bazaar delete  old-ware --yes
 ```
 

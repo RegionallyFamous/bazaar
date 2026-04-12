@@ -61,7 +61,7 @@ wp> get_option( 'blogname' );
 = "My WordPress Site"
 
 wp> get_option( 'bazaar_registry' );
-= "{\"invoice-generator\":{\"name\":\"Invoice Generator\",...}}"
+= "{\"ledger\":{\"name\":\"Ledger\",...}}"
 
 wp> update_option( 'bazaar_max_ware_size', 100 * 1024 * 1024 );
 = true
@@ -108,14 +108,14 @@ wp eval 'echo json_encode(json_decode(get_option("bazaar_registry"), true), JSON
 ```bash
 wp eval '
 $registry = json_decode(get_option("bazaar_registry"), true);
-print_r($registry["invoice-generator"] ?? "not found");
+print_r($registry["ledger"] ?? "not found");
 '
 ```
 
 ### List ware files on disk
 
 ```bash
-find "$(wp eval 'echo WP_CONTENT_DIR;')/bazaar/invoice-generator/" -type f
+find "$(wp eval 'echo WP_CONTENT_DIR;')/bazaar/ledger/" -type f
 ```
 
 ### Test the file server with authentication
@@ -126,12 +126,12 @@ SITE=$(wp option get siteurl)
 
 # Hit the REST file server
 curl -s -H "X-WP-Nonce: $NONCE" \
-  "${SITE}/wp-json/bazaar/v1/serve/invoice-generator/index.html" | head -20
+  "${SITE}/wp-json/bazaar/v1/serve/ledger/index.html" | head -20
 
 # Upload a ware via REST
 curl -s -X POST \
   -H "X-WP-Nonce: $NONCE" \
-  -F "file=@invoice-generator.wp" \
+  -F "file=@ledger.wp" \
   "${SITE}/wp-json/bazaar/v1/wares" | jq .
 ```
 
@@ -169,7 +169,7 @@ foreach (json_decode(get_option("bazaar_registry"), true) as $slug => $ware) {
 # Programmatically enable a ware
 wp eval '
 $r = json_decode(get_option("bazaar_registry"), true);
-$r["invoice-generator"]["enabled"] = true;
+$r["ledger"]["enabled"] = true;
 update_option("bazaar_registry", json_encode($r), false);
 echo "Done\n";
 '
@@ -223,8 +223,8 @@ WP_CLI::success( 'Migration complete.' );
 
 ```bash
 wp @production bazaar list
-wp @staging    bazaar install invoice-generator.wp --force
-wp @local      bazaar info invoice-generator
+wp @staging    bazaar install ledger.wp --force
+wp @local      bazaar info ledger
 ```
 
 ### Sync enabled wares from production to staging
@@ -335,7 +335,7 @@ wp rest route list --format=json | grep bazaar
 
 # Make an authenticated internal request
 wp eval '
-$request  = new WP_REST_Request("GET", "/bazaar/v1/serve/invoice-generator/index.html");
+$request  = new WP_REST_Request("GET", "/bazaar/v1/serve/ledger/index.html");
 $response = rest_do_request($request);
 echo $response->get_status() . "\n";
 '

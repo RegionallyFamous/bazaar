@@ -1,4 +1,4 @@
-import { getBazaarContext, createStore } from '@bazaar/client';
+import { getBazaarContext, createStore, bzr } from '@bazaar/client';
 import type { Page } from './types.ts';
 
 const LS_KEY = 'bzr-tome-pages';
@@ -41,7 +41,9 @@ export async function loadPages(): Promise<Page[]> {
 export async function savePages( pages: Page[] ): Promise<void> {
 	const store = getStore();
 	if ( store ) {
-		try { await store.set( 'pages', pages as never ); return; } catch { /* fall through */ }
+		try { await store.set( 'pages', pages as never ); return; } catch {
+			bzr.toast( 'Saved locally — server unreachable', 'warning' );
+		}
 	}
 	lsSet( pages );
 }

@@ -60,6 +60,16 @@
       "icon_url":     "https://github.com/RegionallyFamous/bazaar/releases/latest/download/sine-icon.svg",
       "download_url": "https://github.com/RegionallyFamous/bazaar/releases/latest/download/sine.wp",
       "tags":         ["music", "audio", "synth", "fun"]
+    },
+    {
+      "slug":         "tome",
+      "name":         "Tome",
+      "description":  "A fast internal wiki for your team. Write in markdown, organise into pages, find anything instantly.",
+      "version":      "1.0.0",
+      "author":       "Regionally Famous",
+      "icon_url":     "https://github.com/RegionallyFamous/bazaar/releases/latest/download/tome-icon.svg",
+      "download_url": "https://github.com/RegionallyFamous/bazaar/releases/latest/download/tome.wp",
+      "tags":         ["wiki", "notes", "markdown", "productivity"]
     }
   ]
 }

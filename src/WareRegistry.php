@@ -599,7 +599,8 @@ final class WareRegistry implements WareRegistryInterface {
 			return false;
 		}
 
-		// Sanitize the incoming value according to what each field stores.
+		// Sanitize via the same helpers used by register() to prevent weaker
+		// validation from creating invalid registry state.
 		$value = match ( $field ) {
 			'enabled', 'zero_trust'
 				=> (bool) $value,
@@ -609,8 +610,12 @@ final class WareRegistry implements WareRegistryInterface {
 			'icon'
 				=> sanitize_file_name( (string) $value ),
 			'trust'
-				=> sanitize_key( (string) $value ),
-			'jobs', 'settings', 'permissions'
+				=> $this->sanitize_trust( $value ),
+			'jobs'
+				=> $this->sanitize_jobs( $value ),
+			'permissions'
+				=> $this->sanitize_permissions( $value ),
+			'settings'
 				=> is_array( $value ) ? $value : array(),
 			default
 				=> $value,

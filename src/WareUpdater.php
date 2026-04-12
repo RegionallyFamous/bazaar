@@ -145,6 +145,9 @@ final class WareUpdater {
 	 * Update a single ware to the latest registry version.
 	 * Deletes the old files, downloads and installs the new ones.
 	 *
+	 * On install failure the registry entry is restored so the ware remains
+	 * visible in the Manage screen and can be re-installed without data loss.
+	 *
 	 * @param string $slug Ware slug.
 	 * @return array<string, mixed>|WP_Error Updated manifest on success.
 	 */
@@ -154,6 +157,9 @@ final class WareUpdater {
 		if ( is_wp_error( $entry ) ) {
 			return $entry;
 		}
+
+		// Snapshot the current registry manifest before touching anything.
+		$old_manifest = $this->registry->get( $slug );
 
 		// Delete the old ware files (keep registry entry temporarily).
 		$del = $this->loader->delete( $slug );
@@ -173,6 +179,11 @@ final class WareUpdater {
 		// Re-install from registry.
 		$manifest = $this->remote->install( $slug, $this->loader, $this->registry );
 		if ( is_wp_error( $manifest ) ) {
+			// Install failed: files are gone but we can restore the registry
+			// entry so the ware remains visible and re-installable.
+			if ( is_array( $old_manifest ) ) {
+				$this->registry->register( $old_manifest );
+			}
 			return $manifest;
 		}
 

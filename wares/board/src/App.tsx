@@ -134,15 +134,15 @@ export default function App() {
   const doneColId = board.columns.at( -1 )?.id ?? '';
 
   return (
-    <div className="kanban">
-      <header className="kanban__header">
-        <h1 className="kanban__title">Board</h1>
-        <span className="kanban__total">
+    <div className="board">
+      <header className="board__header">
+        <h1 className="board__title">Board</h1>
+        <span className="board__total">
           { board.columns.reduce( ( s, c ) => s + c.cards.length, 0 ) } cards
         </span>
       </header>
 
-      <div className="kanban__board">
+      <div className="board__board">
         { board.columns.map( col => (
           <ColumnComponent
             key={ col.id }
@@ -168,19 +168,19 @@ export default function App() {
         ) ) }
 
         { /* Add column */ }
-        <div className="kanban__add-col">
+        <div className="board__add-col">
           { addingCol ? (
-            <form onSubmit={ handleAddColumn } className="kanban__add-col-form">
+            <form onSubmit={ handleAddColumn } className="board__add-col-form">
               <input
-                className="kanban__add-col-input"
+                className="board__add-col-input"
                 value={ newColName }
                 onChange={ e => setNewColName( e.target.value ) }
                 placeholder="Column name…"
                 autoFocus
                 onBlur={ () => { if ( ! newColName.trim() ) setAddingCol( false ); } }
               />
-              <div className="kanban__add-col-actions">
-                <button type="submit" className="kanban__add-col-btn--primary"
+              <div className="board__add-col-actions">
+                <button type="submit" className="board__add-col-btn--primary"
                   disabled={ ! newColName.trim() }>Add</button>
                 <button type="button" onClick={ () => { setAddingCol( false ); setNewColName( '' ); } }>
                   Cancel
@@ -188,7 +188,7 @@ export default function App() {
               </div>
             </form>
           ) : (
-            <button className="kanban__add-col-ghost" onClick={ () => setAddingCol( true ) }>
+            <button className="board__add-col-ghost" onClick={ () => setAddingCol( true ) }>
               + Add column
             </button>
           ) }

@@ -95,7 +95,7 @@ describe( 'showError', () => {
 
 	test( 'multiple slugs produce separate overlays', () => {
 		showError( 'crm', 'Error A', null, mainEl, reloadMock );
-		showError( 'kanban', 'Error B', null, mainEl, reloadMock );
+		showError( 'board', 'Error B', null, mainEl, reloadMock );
 		expect( mainEl.querySelectorAll( '.bsh-error-overlay' ) ).toHaveLength( 2 );
 	} );
 
@@ -117,9 +117,9 @@ describe( 'dismissError', () => {
 
 	test( 'only removes the overlay for the specified slug', () => {
 		showError( 'crm', 'Error A', null, mainEl, reloadMock );
-		showError( 'kanban', 'Error B', null, mainEl, reloadMock );
+		showError( 'board', 'Error B', null, mainEl, reloadMock );
 		dismissError( 'crm' );
-		expect( mainEl.querySelector( '.bsh-error-overlay[data-slug="kanban"]' ) ).not.toBeNull();
+		expect( mainEl.querySelector( '.bsh-error-overlay[data-slug="board"]' ) ).not.toBeNull();
 		expect( mainEl.querySelector( '.bsh-error-overlay[data-slug="crm"]' ) ).toBeNull();
 	} );
 
@@ -133,7 +133,7 @@ describe( 'dismissError', () => {
 describe( 'dismissAll', () => {
 	test( 'removes all overlays', () => {
 		showError( 'crm', 'Error A', null, mainEl, reloadMock );
-		showError( 'kanban', 'Error B', null, mainEl, reloadMock );
+		showError( 'board', 'Error B', null, mainEl, reloadMock );
 		dismissAll();
 		expect( mainEl.querySelectorAll( '.bsh-error-overlay' ) ).toHaveLength( 0 );
 	} );

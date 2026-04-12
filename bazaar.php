@@ -3,7 +3,7 @@
  * Plugin Name:       Bazaar
  * Plugin URI:        https://github.com/RegionallyFamous/bazaar
  * Description:       Your WordPress dashboard is an operating system you didn't know you had. Bazaar unlocks it.
- * Version:           1.1.0
+ * Version:           1.1.1
  * Requires at least: 6.6
  * Requires PHP:      8.2
  * Author:            Regionally Famous

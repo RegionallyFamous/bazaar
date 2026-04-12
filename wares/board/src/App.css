@@ -1,5 +1,5 @@
 /*
- * Kanban — ware-specific styles.
+ * Board — ware-specific styles.
  * Tokens and base reset are provided by @bazaar/design/css (imported in main.tsx).
  * Accent: sky blue — overrides the default indigo.
  */
@@ -9,19 +9,19 @@
   --bw-accent-hi:  #0284c7;
   --bw-accent-bg:  #e0f2fe;
   --bw-accent-rgb: 14, 165, 233;
-  /* Kanban uses slightly larger radius for cards/columns */
+  /* Board uses slightly larger radius for cards/columns */
   --bw-radius:     10px;
 }
 
 /* ── Layout ─────────────────────────────────────────────────────────────────── */
-.kanban {
+.board {
   display: flex;
   flex-direction: column;
   height: 100dvh;
   overflow: hidden;
 }
 
-.kanban__header {
+.board__header {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -31,13 +31,13 @@
   flex-shrink: 0;
 }
 
-.kanban__title {
+.board__title {
   font-size: 18px;
   font-weight: 700;
   color: var(--bw-accent);
 }
 
-.kanban__total {
+.board__total {
   font-size: 12px;
   color: var(--bw-text-dim);
   background: var(--bw-bg);
@@ -46,7 +46,7 @@
   padding: 2px 10px;
 }
 
-.kanban__board {
+.board__board {
   display: flex;
   gap: 16px;
   padding: 20px 24px 20px;
@@ -267,9 +267,9 @@
 .card__due--overdue { color: var(--bw-danger); background: #fef2f2; }
 
 /* ── Add Column ─────────────────────────────────────────────────────────────── */
-.kanban__add-col { min-width: 200px; }
+.board__add-col { min-width: 200px; }
 
-.kanban__add-col-ghost {
+.board__add-col-ghost {
   background: rgba(255,255,255,.5);
   border: 2px dashed var(--bw-border);
   border-radius: var(--bw-radius);
@@ -281,12 +281,12 @@
   transition: border-color .15s, color .15s;
 }
 
-.kanban__add-col-ghost:hover {
+.board__add-col-ghost:hover {
   border-color: var(--bw-accent);
   color: var(--bw-accent);
 }
 
-.kanban__add-col-form {
+.board__add-col-form {
   background: var(--bw-surface);
   border: 1px solid var(--bw-border);
   border-radius: var(--bw-radius);
@@ -294,7 +294,7 @@
   width: 200px;
 }
 
-.kanban__add-col-input {
+.board__add-col-input {
   width: 100%;
   border: 1px solid var(--bw-border);
   border-radius: 6px;
@@ -304,14 +304,14 @@
   outline: none;
 }
 
-.kanban__add-col-input:focus { border-color: var(--bw-accent); }
+.board__add-col-input:focus { border-color: var(--bw-accent); }
 
-.kanban__add-col-actions {
+.board__add-col-actions {
   display: flex;
   gap: 6px;
 }
 
-.kanban__add-col-btn--primary {
+.board__add-col-btn--primary {
   flex: 1;
   background: var(--bw-accent);
   border: none;
@@ -322,9 +322,9 @@
   cursor: pointer;
 }
 
-.kanban__add-col-btn--primary:disabled { opacity: .5; cursor: default; }
+.board__add-col-btn--primary:disabled { opacity: .5; cursor: default; }
 
-.kanban__add-col-actions button:last-child {
+.board__add-col-actions button:last-child {
   border: 1px solid var(--bw-border);
   background: var(--bw-bg);
   border-radius: 6px;

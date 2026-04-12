@@ -33,16 +33,16 @@ export class CommandPalette {
 	 * @param {{
 	 *   wareMap:       Map<string, Object>,
 	 *   restUrl:       string,
-	 *   nonce:         string,
+	 *   getNonce:      () => string,
 	 *   sortedEnabled: (map: Map<string, Object>) => Object[],
 	 *   onSelect:      (slug: string) => void,
 	 *   openExternal:  (url: string) => void,
 	 * }} deps
 	 */
-	constructor( { wareMap, restUrl, nonce, sortedEnabled, onSelect, openExternal } ) {
+	constructor( { wareMap, restUrl, getNonce, sortedEnabled, onSelect, openExternal } ) {
 		this._wareMap = wareMap;
 		this._restUrl = restUrl;
-		this._nonce = nonce;
+		this._getNonce = getNonce;
 		this._sortedEnabled = sortedEnabled;
 		this._openExternal = openExternal;
 
@@ -51,6 +51,7 @@ export class CommandPalette {
 		this.items = [];
 		this.sel = 0;
 		this._searchTimer = null;
+		this._renderGen = 0;
 
 		// ── Overlay ──────────────────────────────────────────────────────────
 		this.overlay = Object.assign( document.createElement( 'div' ), {
@@ -113,6 +114,8 @@ export class CommandPalette {
 
 	open() {
 		this.visible = true;
+		this.overlay.classList.add( 'bsh-palette--entering' );
+		this.overlay.classList.remove( 'bsh-palette--in' );
 		this.overlay.hidden = false;
 		this.input.value = '';
 		void this._render().catch( ( err ) => {
@@ -121,15 +124,27 @@ export class CommandPalette {
 		} );
 		this.input.focus();
 		document.body.classList.add( 'bsh-palette-open' );
+		requestAnimationFrame( () => {
+			requestAnimationFrame( () => {
+				if ( ! this.visible ) {
+					return;
+				}
+				this.overlay.classList.remove( 'bsh-palette--entering' );
+				this.overlay.classList.add( 'bsh-palette--in' );
+			} );
+		} );
 	}
 
 	close() {
+		clearTimeout( this._searchTimer );
 		this.visible = false;
 		this.overlay.hidden = true;
+		this.overlay.classList.remove( 'bsh-palette--in', 'bsh-palette--entering' );
 		document.body.classList.remove( 'bsh-palette-open' );
 	}
 
 	async _render() {
+		const gen = ++this._renderGen;
 		const q = this.input.value.trim();
 		const ql = q.toLowerCase();
 
@@ -159,6 +174,10 @@ export class CommandPalette {
 			let items = filtered;
 			if ( q.length >= FED_SEARCH_MIN_CHARS ) {
 				const fedResults = await this._fedSearch( q );
+				// A newer _render() call started while we were awaiting — discard.
+				if ( gen !== this._renderGen ) {
+					return;
+				}
 				items = [ ...filtered, ...fedResults ];
 			}
 
@@ -273,7 +292,7 @@ export class CommandPalette {
 				try {
 					const r = await fetch(
 						`${ this._restUrl }/${ ware.search_endpoint }?q=${ encodeURIComponent( query ) }`,
-						{ headers: { 'X-WP-Nonce': this._nonce }, signal }
+						{ headers: { 'X-WP-Nonce': this._getNonce() }, signal }
 					);
 					if ( ! r.ok ) {
 						return [];

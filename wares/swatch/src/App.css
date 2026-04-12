@@ -1,11 +1,11 @@
 /*
- * Color Palette Studio — ware-specific styles.
+ * Swatch — ware-specific styles.
  * Tokens and base reset are provided by @bazaar/design/css (imported in main.tsx).
  * Accent: indigo (default — no override needed).
  */
 
 /* ── App layout ──────────────────────────────────────────────────────────────── */
-.cps {
+.swatch {
   display: flex;
   height: 100dvh;
   overflow: hidden;
@@ -13,7 +13,7 @@
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────────── */
-.cps__sidebar {
+.swatch__sidebar {
   width: 200px;
   min-width: 200px;
   background: var(--bw-surface);
@@ -23,7 +23,7 @@
   overflow: hidden;
 }
 
-.cps__sidebar-header {
+.swatch__sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -32,7 +32,7 @@
   flex-shrink: 0;
 }
 
-.cps__app-title {
+.swatch__app-title {
   font-size: 11px;
   font-weight: 700;
   color: var(--bw-text-dim);
@@ -40,7 +40,7 @@
   letter-spacing: .08em;
 }
 
-.cps__sidebar-add {
+.swatch__sidebar-add {
   background: var(--bw-accent);
   border: none;
   border-radius: 6px;
@@ -56,9 +56,9 @@
   transition: background .15s;
 }
 
-.cps__sidebar-add:hover { background: var(--bw-accent-hi); }
+.swatch__sidebar-add:hover { background: var(--bw-accent-hi); }
 
-.cps__palette-list {
+.swatch__palette-list {
   list-style: none;
   overflow-y: auto;
   flex: 1;
@@ -68,16 +68,16 @@
   gap: 2px;
 }
 
-.cps__palette-item {
+.swatch__palette-item {
   position: relative;
   border-radius: 7px;
   display: flex;
   align-items: center;
 }
 
-.cps__palette-item--active { background: var(--bw-accent-bg); }
+.swatch__palette-item--active { background: var(--bw-accent-bg); }
 
-.cps__palette-btn {
+.swatch__palette-btn {
   flex: 1;
   background: none;
   border: none;
@@ -92,24 +92,24 @@
   transition: background .1s;
 }
 
-.cps__palette-btn:hover { background: var(--bw-surface-2); }
+.swatch__palette-btn:hover { background: var(--bw-surface-2); }
 
-.cps__palette-item--active .cps__palette-btn:hover { background: transparent; }
+.swatch__palette-item--active .swatch__palette-btn:hover { background: transparent; }
 
-.cps__palette-preview {
+.swatch__palette-preview {
   display: flex;
   gap: 2px;
   flex-shrink: 0;
 }
 
-.cps__palette-dot {
+.swatch__palette-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   box-shadow: 0 0 0 1px rgba(0,0,0,.12);
 }
 
-.cps__palette-name {
+.swatch__palette-name {
   font-size: 12px;
   font-weight: 500;
   flex: 1;
@@ -119,9 +119,9 @@
   color: var(--bw-text);
 }
 
-.cps__palette-item--active .cps__palette-name { font-weight: 600; color: var(--bw-accent); }
+.swatch__palette-item--active .swatch__palette-name { font-weight: 600; color: var(--bw-accent); }
 
-.cps__palette-count {
+.swatch__palette-count {
   font-size: 10px;
   color: var(--bw-text-dim);
   background: var(--bw-border);
@@ -130,12 +130,12 @@
   flex-shrink: 0;
 }
 
-.cps__palette-item--active .cps__palette-count {
+.swatch__palette-item--active .swatch__palette-count {
   background: var(--bw-accent-bg);
   color: var(--bw-accent);
 }
 
-.cps__palette-delete {
+.swatch__palette-delete {
   position: absolute;
   right: 5px;
   background: none;
@@ -149,12 +149,12 @@
   transition: opacity .1s, color .1s;
 }
 
-.cps__palette-item:hover .cps__palette-delete { opacity: 1; }
-.cps__palette-delete:hover { color: var(--bw-danger); }
+.swatch__palette-item:hover .swatch__palette-delete { opacity: 1; }
+.swatch__palette-delete:hover { color: var(--bw-danger); }
 
-.cps__rename-form { flex: 1; padding: 4px 8px; }
+.swatch__rename-form { flex: 1; padding: 4px 8px; }
 
-.cps__rename-input {
+.swatch__rename-input {
   width: 100%;
   border: 1px solid var(--bw-border-focus);
   border-radius: 5px;
@@ -166,7 +166,7 @@
 }
 
 /* ── Main ───────────────────────────────────────────────────────────────────── */
-.cps__main {
+.swatch__main {
   flex: 1;
   overflow-y: auto;
   padding: 20px 24px;
@@ -176,20 +176,20 @@
   min-width: 0;
 }
 
-.cps__palette-header {
+.swatch__palette-header {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.cps__palette-title {
+.swatch__palette-title {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -.01em;
   color: var(--bw-text);
 }
 
-.cps__palette-meta {
+.swatch__palette-meta {
   font-size: 11.5px;
   color: var(--bw-text-dim);
   background: var(--bw-border);
@@ -198,13 +198,13 @@
 }
 
 /* ── Swatch grid ─────────────────────────────────────────────────────────────── */
-.cps__swatches {
+.swatch__swatches {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
 
-.cps__swatch-tile {
+.swatch__swatch-tile {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -212,7 +212,7 @@
   width: 80px;
 }
 
-.cps__swatch-color {
+.swatch__swatch-color {
   width: 80px;
   height: 80px;
   border-radius: 12px;
@@ -224,7 +224,7 @@
   overflow: hidden;
 }
 
-.cps__swatch-color::after {
+.swatch__swatch-color::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -233,9 +233,9 @@
   border-radius: inherit;
 }
 
-.cps__swatch-color:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.18), inset 0 0 0 1px rgba(0,0,0,.1); }
+.swatch__swatch-color:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.18), inset 0 0 0 1px rgba(0,0,0,.1); }
 
-.cps__swatch-hex {
+.swatch__swatch-hex {
   font-size: 9.5px;
   font-weight: 600;
   font-family: 'SF Mono', 'Fira Code', monospace;
@@ -247,7 +247,7 @@
   white-space: nowrap;
 }
 
-.cps__swatch-name {
+.swatch__swatch-name {
   font-size: 10.5px;
   font-weight: 500;
   color: var(--bw-text-muted);
@@ -258,7 +258,7 @@
   line-height: 1;
 }
 
-.cps__swatch-remove {
+.swatch__swatch-remove {
   position: absolute;
   top: -4px;
   right: -4px;
@@ -277,9 +277,9 @@
   font-weight: 700;
 }
 
-.cps__swatch-tile:hover .cps__swatch-remove { display: flex; }
+.swatch__swatch-tile:hover .swatch__swatch-remove { display: flex; }
 
-.cps__swatch-add {
+.swatch__swatch-add {
   width: 80px;
   height: 80px;
   border-radius: 12px;
@@ -291,20 +291,20 @@
   transition: border-color .15s, color .15s, background .15s;
 }
 
-.cps__swatch-add:hover {
+.swatch__swatch-add:hover {
   border-color: var(--bw-accent);
   color: var(--bw-accent);
   background: var(--bw-accent-bg);
 }
 
 /* ── Panel tabs ──────────────────────────────────────────────────────────────── */
-.cps__panel-tabs {
+.swatch__panel-tabs {
   display: flex;
   gap: 2px;
   border-bottom: 1px solid var(--bw-border);
 }
 
-.cps__panel-tab {
+.swatch__panel-tab {
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
@@ -317,17 +317,17 @@
   transition: color .15s;
 }
 
-.cps__panel-tab:hover { color: var(--bw-text); }
+.swatch__panel-tab:hover { color: var(--bw-text); }
 
-.cps__panel-tab--active {
+.swatch__panel-tab--active {
   color: var(--bw-accent);
   border-bottom-color: var(--bw-accent);
   font-weight: 600;
 }
 
-.cps__panel { flex: 1; }
+.swatch__panel { flex: 1; }
 
-.cps__panel-hint {
+.swatch__panel-hint {
   font-size: 13px;
   color: var(--bw-text-dim);
   padding: 20px 0;
@@ -474,10 +474,10 @@
   letter-spacing: .07em;
 }
 
-.contrast__badge--aaa      { background: #dcfce7; color: #15803d; }
-.contrast__badge--aa       { background: #dbeafe; color: #1d4ed8; }
-.contrast__badge--aa-large { background: #fef9c3; color: #a16207; }
-.contrast__badge--fail     { background: #fee2e2; color: #b91c1c; }
+.contrast__badge--aaa      { background: var(--bw-success-bg); color: var(--bw-success); }
+.contrast__badge--aa       { background: var(--bw-info-bg);    color: var(--bw-info); }
+.contrast__badge--aa-large { background: var(--bw-warning-bg); color: var(--bw-warning); }
+.contrast__badge--fail     { background: var(--bw-danger-bg);  color: var(--bw-danger-hi); }
 
 .contrast__breakdown {
   display: flex;
@@ -520,8 +520,8 @@
 }
 
 .export__preview {
-  background: #0f172a;
-  color: #93c5fd;
+  background: var(--bw-text);
+  color: var(--bw-accent-bg);
   border-radius: 8px;
   padding: 14px 16px;
   font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
@@ -646,7 +646,7 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--bw-surface);
   border: 2px solid var(--bw-border-focus);
   box-shadow: 0 1px 4px rgba(0,0,0,.25);
 }
@@ -655,7 +655,7 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--bw-surface);
   border: 2px solid var(--bw-border-focus);
   box-shadow: 0 1px 4px rgba(0,0,0,.25);
 }

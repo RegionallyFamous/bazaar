@@ -120,6 +120,9 @@ final class WebhooksController extends BazaarController {
 	public function list_webhooks( WP_REST_Request $request ): WP_REST_Response {
 		$slug = sanitize_key( $request->get_param( 'slug' ) );
 		$all  = $this->load_all();
+		if ( is_wp_error( $all ) ) {
+			return new WP_REST_Response( array(), 200 );
+		}
 		return new WP_REST_Response( array_values( array_filter( $all, fn( $w ) => isset( $w['slug'] ) && $w['slug'] === $slug ) ), 200 );
 	}
 
@@ -140,7 +143,10 @@ final class WebhooksController extends BazaarController {
 			return new WP_Error( 'bad_url', __( 'Webhook URL must use http or https.', 'bazaar' ), array( 'status' => 422 ) );
 		}
 
-		$all   = $this->load_all();
+		$all = $this->load_all();
+		if ( is_wp_error( $all ) ) {
+			return $all;
+		}
 		$count = count( array_filter( $all, fn( $w ) => isset( $w['slug'] ) && $w['slug'] === $slug ) );
 		if ( $count >= self::MAX_PER_WARE ) {
 			/* translators: %d: maximum number of webhooks allowed per ware */
@@ -171,6 +177,9 @@ final class WebhooksController extends BazaarController {
 		$slug = sanitize_key( $request->get_param( 'slug' ) );
 		$id   = sanitize_text_field( $request->get_param( 'id' ) );
 		$all  = $this->load_all();
+		if ( is_wp_error( $all ) ) {
+			return $all;
+		}
 
 		$new = array_values( array_filter( $all, fn( $w ) => ! ( isset( $w['slug'], $w['id'] ) && $w['slug'] === $slug && $w['id'] === $id ) ) );
 		if ( count( $new ) === count( $all ) ) {
@@ -185,11 +194,18 @@ final class WebhooksController extends BazaarController {
 	/**
 	 * Load all persisted webhooks from options.
 	 *
-	 * @return array<int, array<string, mixed>>
+	 * @return array<int, array<string, mixed>>|WP_Error WP_Error when stored JSON is corrupt.
 	 */
-	private function load_all(): array {
+	private function load_all(): array|WP_Error {
 		$raw = get_option( 'bazaar_webhooks', '[]' );
 		$dec = json_decode( (string) $raw, true );
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			return new WP_Error(
+				'decode_error',
+				__( 'Stored webhooks are corrupt and could not be decoded.', 'bazaar' ),
+				array( 'status' => 500 )
+			);
+		}
 		return is_array( $dec ) ? $dec : array();
 	}
 

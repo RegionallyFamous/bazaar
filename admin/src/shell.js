@@ -53,7 +53,7 @@ import { WareInfo } from './modules/ware-info.js';
 const D = window.bazaarShell ?? {};
 const {
 	restUrl,
-	nonce,
+	nonce: _initialNonce,
 	adminColor,
 	manageUrl,
 	wares: initialWares,
@@ -61,6 +61,53 @@ const {
 	outdatedCount = 0,
 	swUrl = null,
 } = D;
+
+/**
+ * Current REST nonce — refreshed automatically when a 401 is detected.
+ * All fetch calls read this via _nonce or the apiFetch() helper.
+ */
+let _nonce = _initialNonce;
+
+/** Prevents concurrent nonce-refresh requests from stacking. */
+let _nonceRefreshing = false;
+
+/** Refresh the WP REST nonce from the wp-json root endpoint. */
+async function refreshNonce() {
+	if ( _nonceRefreshing ) {
+		return;
+	}
+	_nonceRefreshing = true;
+	try {
+		const r = await fetch(
+			new URL( '/wp-json/', window.location.origin ).href,
+			{ credentials: 'same-origin' }
+		);
+		const fresh = r.headers.get( 'X-WP-Nonce' );
+		if ( fresh ) {
+			_nonce = fresh;
+		}
+	} catch { /* non-fatal */ } finally {
+		_nonceRefreshing = false;
+	}
+}
+
+/**
+ * Thin wrapper around fetch() that injects the current nonce and retries
+ * once after refreshing if the server returns a 401.
+ *
+ * @param {string} url  Absolute URL to fetch.
+ * @param {Object} init Optional fetch init options (method, body, etc.).
+ * @return {Promise<Response>} The fetch Response (possibly after a retry).
+ */
+async function apiFetch( url, init = {} ) {
+	const withNonce = ( n ) => ( { ...( init.headers ?? {} ), 'X-WP-Nonce': n } );
+	const r = await fetch( url, { ...init, headers: withNonce( _nonce ) } );
+	if ( r.status === 401 ) {
+		await refreshNonce();
+		return fetch( url, { ...init, headers: withNonce( _nonce ) } );
+	}
+	return r;
+}
 
 const LRU_CAP = Math.max(
 	3,
@@ -73,11 +120,25 @@ const LRU_CAP = Math.max(
 
 let activeSlug = null;
 let navFilterQuery = '';
+/** @type {ReturnType<typeof setTimeout>|null} */
+let _loadTimer = null;
+
+/** True while a view-transition navigation is in flight. */
+let _navInFlight = false;
+/** Last-wins pending navigation queued during an in-flight transition. */
+let _navPending = /** @type {{ slug: string, route?: string }|null} */ ( null );
 
 /** @type {Map<string, Object>} slug → index entry */
 const wareMap = new Map( ( initialWares ?? [] ).map( ( w ) => [ w.slug, w ] ) );
 /** @type {Map<string, number>} slug → badge count */
 const badgeMap = new Map();
+
+/**
+ * True when a badge-render rAF has been requested but not yet flushed.
+ * Prevents a flood of badge postMessages from triggering one DOM reflow
+ * per message — all changes within a single frame are coalesced.
+ */
+let _badgeRafPending = false;
 
 // ===========================================================================
 // DOM
@@ -108,6 +169,40 @@ if ( ! navList || ! navFooter || ! navEl || ! main || ! loading || ! collapse ||
 const toastEl = document.createElement( 'div' );
 toastEl.className = 'bsh-toasts';
 document.body.appendChild( toastEl );
+
+// ─── Nav sliding pill ────────────────────────────────────────────────────────
+
+const navPill = document.createElement( 'div' );
+navPill.className = 'bsh-nav__pill';
+navPill.style.opacity = '0';
+navList.appendChild( navPill );
+
+/**
+ * Position the pill to overlap the currently-active nav item.
+ * Hides itself when the active slug is in the footer (home/manage).
+ *
+ * @param {string} slug
+ */
+function positionNavPill( slug ) {
+	if ( slug === 'home' || slug === 'manage' ) {
+		navPill.style.opacity = '0';
+		return;
+	}
+	const activeLi = navList.querySelector( `.bsh-nav__item[data-slug="${ slug }"]` );
+	if ( ! activeLi || activeLi.hidden ) {
+		navPill.style.opacity = '0';
+		return;
+	}
+	const listRect = navList.getBoundingClientRect();
+	const liRect = activeLi.getBoundingClientRect();
+	navPill.style.top = `${ liRect.top - listRect.top + navList.scrollTop }px`;
+	navPill.style.height = `${ liRect.height }px`;
+	navPill.style.opacity = '1';
+}
+
+// Re-position pill whenever the nav list is resized (window resize, WP sidebar
+// layout changes, and every frame of the collapse/expand CSS transition).
+new ResizeObserver( () => positionNavPill( activeSlug ?? '' ) ).observe( navList );
 
 // ─── Nav filter input ────────────────────────────────────────────────────────
 
@@ -320,7 +415,7 @@ const bus = new EventBus();
 const palette = new CommandPalette( {
 	wareMap,
 	restUrl,
-	nonce,
+	getNonce: () => _nonce,
 	sortedEnabled,
 	onSelect: navigateTo,
 	openExternal,
@@ -396,13 +491,13 @@ function serveUrl( ware ) {
 	const u = new URL(
 		`${ restUrl }/serve/${ encodeURIComponent( ware.slug ) }/${ encodeURIComponent( ware.entry ?? 'index.html' ) }`
 	);
-	u.searchParams.set( '_wpnonce', nonce );
+	u.searchParams.set( '_wpnonce', _nonce );
 	u.searchParams.set( '_adminColor', adminColor ?? 'fresh' );
 	return u.toString();
 }
 
 function iconUrl( ware ) {
-	return `${ restUrl }/serve/${ encodeURIComponent( ware.slug ) }/${ encodeURIComponent( ware.icon ?? 'icon.svg' ) }?_wpnonce=${ nonce }`;
+	return `${ restUrl }/serve/${ encodeURIComponent( ware.slug ) }/${ encodeURIComponent( ware.icon ?? 'icon.svg' ) }?_wpnonce=${ _nonce }`;
 }
 
 /** Return all active LRU managers. */
@@ -481,6 +576,8 @@ function applyNavFilter() {
 			li.hidden = !! q;
 		}
 	} );
+	// Active item may have been hidden/shown by the filter — re-sync pill.
+	positionNavPill( activeSlug ?? '' );
 }
 
 // ===========================================================================
@@ -684,6 +781,10 @@ function renderNav() {
 	attachDragHandlers( navList );
 	ctxMenu.attach( navList );
 	applyNavFilter();
+
+	// Re-append pill (innerHTML clear removed it) and sync position.
+	navList.appendChild( navPill );
+	positionNavPill( activeSlug ?? '' );
 }
 
 // Nav refresh event (from drag/pin toggles).
@@ -702,7 +803,7 @@ function recordView( newSlug ) {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'X-WP-Nonce': nonce,
+				'X-WP-Nonce': _nonce,
 			},
 			body: JSON.stringify( {
 				slug: _viewSlug,
@@ -798,6 +899,16 @@ function _renderToolbarContextInner( slug ) {
 // Navigation
 // ===========================================================================
 
+/** Called when the active navigation transition finishes. */
+function _navDone() {
+	_navInFlight = false;
+	if ( _navPending ) {
+		const { slug, route } = _navPending;
+		_navPending = null;
+		navigateTo( slug, route );
+	}
+}
+
 function navigateTo( slug, route ) {
 	if ( ! slug ) {
 		return;
@@ -808,9 +919,23 @@ function navigateTo( slug, route ) {
 		return;
 	}
 
+	// If a view-transition is already running, queue this call (last-wins)
+	// rather than interleaving two transitions simultaneously.
+	if ( _navInFlight ) {
+		_navPending = { slug, route };
+		return;
+	}
+
+	_navInFlight = true;
+
 	// Close the mobile drawer on navigation.
 	closeMobileNav();
 
+	// Cancel any pending slow-load toast from a previous navigation.
+	clearTimeout( _loadTimer );
+	_loadTimer = null;
+
+	const prevSlug = activeSlug;
 	activeSlug = slug;
 	updateUrl( slug, route );
 	pushRecent( slug );
@@ -829,6 +954,8 @@ function navigateTo( slug, route ) {
 		}
 	} );
 
+	positionNavPill( slug );
+
 	// Home screen — no iframe needed.
 	if ( slug === 'home' ) {
 		for ( const f of iframes.frames.values() ) {
@@ -841,6 +968,7 @@ function navigateTo( slug, route ) {
 		}
 		loading.hidden = true;
 		renderTaskbar();
+		_navDone();
 		return;
 	}
 
@@ -856,9 +984,26 @@ function navigateTo( slug, route ) {
 	dismissError( slug );
 
 	if ( 'startViewTransition' in document ) {
-		document.startViewTransition( () => iframes.activate( slug, url ) );
+		const enabled = sortedEnabled( wareMap );
+		const prevIdx = enabled.findIndex( ( w ) => w.slug === prevSlug );
+		const nextIdx = enabled.findIndex( ( w ) => w.slug === slug );
+		let dir = null;
+		if ( prevIdx !== -1 && nextIdx !== -1 ) {
+			dir = nextIdx > prevIdx ? 'down' : 'up';
+		}
+		if ( dir ) {
+			root.dataset.vtDir = dir;
+		} else {
+			delete root.dataset.vtDir;
+		}
+		const t = document.startViewTransition( () => iframes.activate( slug, url ) );
+		t.finished.finally( () => {
+			delete root.dataset.vtDir;
+			_navDone();
+		} );
 	} else {
 		iframes.activate( slug, url );
+		_navDone();
 	}
 
 	renderTaskbar();
@@ -879,14 +1024,15 @@ function navigateTo( slug, route ) {
 		const wareName = wareMap.get( slug )?.name ?? slug;
 
 		const clearLoad = () => {
-			clearTimeout( loadTimer );
+			clearTimeout( _loadTimer );
+			_loadTimer = null;
 			loading.hidden = true;
 		};
 
 		// If the iframe document never fires 'load' (hung network, DNS failure,
 		// HTTP 5xx that returns no document), hide the overlay after 15 s and
 		// show a toast so the user isn't stuck indefinitely.
-		const loadTimer = setTimeout( () => {
+		_loadTimer = setTimeout( () => {
 			loading.hidden = true;
 			toasts.show(
 				sprintf(
@@ -971,6 +1117,8 @@ function applyWareInstalled( ware ) {
  */
 function applyWareDeleted( slug ) {
 	wareMap.delete( slug );
+	badgeMap.delete( slug );
+	healthMap.delete( slug );
 	iframes.destroy( slug );
 	if ( activeSlug === slug ) {
 		navigateTo( 'home' );
@@ -1002,7 +1150,10 @@ function applyWareToggled( slug, enabled ) {
 
 const sseDeps = {
 	restUrl,
-	nonce,
+	// Getter so reconnects automatically pick up a refreshed nonce (fix 7).
+	get nonce() {
+		return _nonce;
+	},
 	// SSE-delivered badge/health events patch in-place — no full nav rebuild.
 	onBadge: ( slug, count ) => {
 		badgeMap.set( slug, count );
@@ -1023,14 +1174,20 @@ const sseDeps = {
 // badge and health updates trigger the correct targeted patch, not a full rebuild.
 const badgePollDeps = {
 	restUrl,
-	nonce,
+	// Getter so each poll call reads the current nonce (fix 1).
+	get nonce() {
+		return _nonce;
+	},
 	badgeMap,
 	onDirty: () => patchNavBadges( navList, badgeMap ),
 };
 
 const healthPollDeps = {
 	restUrl,
-	nonce,
+	// Getter so each poll call reads the current nonce (fix 1).
+	get nonce() {
+		return _nonce;
+	},
 	healthMap,
 	onDirty: () => patchNavHealth( navList, healthMap ),
 };
@@ -1071,22 +1228,26 @@ async function cacheQuery( id, path, targetWindow ) {
 		}
 		return;
 	}
+	const replyError = ( status = 0 ) => {
+		try {
+			targetWindow.postMessage(
+				{ type: 'bazaar:query-error', id, status },
+				window.location.origin
+			);
+		} catch { /* target window may have been closed */ }
+	};
 	try {
-		const r = await fetch(
-			`${ restUrl.replace( /\/bazaar\/v1$/, '' ) }${ normalizedPath }`,
-			{ headers: { 'X-WP-Nonce': nonce } }
+		const r = await apiFetch(
+			`${ restUrl.replace( /\/bazaar\/v1$/, '' ) }${ normalizedPath }`
 		);
 		if ( ! r.ok ) {
-			try {
-				targetWindow.postMessage(
-					{ type: 'bazaar:query-error', id, status: r.status },
-					window.location.origin
-				);
-			} catch { /* target window may have been closed */ }
+			replyError( r.status );
 			return;
 		}
 		const contentType = r.headers.get( 'content-type' ) ?? '';
 		if ( ! contentType.includes( 'application/json' ) ) {
+			// Non-JSON response — notify requester so it does not hang forever.
+			replyError( r.status );
 			return;
 		}
 		const d = await r.json();
@@ -1104,7 +1265,7 @@ async function cacheQuery( id, path, targetWindow ) {
 			/* target window may have been closed */
 		}
 	} catch {
-		/* non-fatal */
+		replyError();
 	}
 }
 
@@ -1170,13 +1331,26 @@ window.addEventListener( 'message', ( event ) => {
 		case 'bazaar:badge':
 			if ( fromSlug ) {
 				badgeMap.set( fromSlug, p.count ?? 0 );
-				renderNav();
-				renderTaskbar();
-				homeScreen.refresh();
+				// Coalesce all badge changes arriving within the same frame into
+				// one render pass to avoid per-message layout reflows.
+				if ( ! _badgeRafPending ) {
+					_badgeRafPending = true;
+					requestAnimationFrame( () => {
+						_badgeRafPending = false;
+						renderNav();
+						renderTaskbar();
+						homeScreen.refresh();
+					} );
+				}
 			}
 			break;
 		case 'bazaar:navigate':
-			navigateTo( p.ware, p.route, p.secondary ?? false );
+			// Only act on navigation requests from known, registered frames.
+			// fromSlug is null when the source window is not a recognised ware
+			// or the manage iframe, so this silently drops spoofed messages.
+			if ( fromSlug ) {
+				navigateTo( p.ware, p.route, p.secondary ?? false );
+			}
 			break;
 		case 'bazaar:widget':
 			if ( fromSlug ) {
@@ -1222,7 +1396,7 @@ window.addEventListener( 'message', ( event ) => {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
-						'X-WP-Nonce': nonce,
+						'X-WP-Nonce': _nonce,
 					},
 					body: JSON.stringify( {
 						slug: fromSlug,
@@ -1793,6 +1967,9 @@ collapse.addEventListener( 'click', () => {
 		navFilterQuery = '';
 		applyNavFilter();
 	}
+	// ResizeObserver handles per-frame updates during the CSS transition but
+	// fire an immediate re-position too for responsiveness on the first frame.
+	positionNavPill( activeSlug ?? '' );
 } );
 
 navEl.addEventListener( 'click', ( e ) => {
@@ -1850,10 +2027,20 @@ function stopPolling() {
 document.addEventListener( 'visibilitychange', () => {
 	if ( document.hidden ) {
 		stopPolling();
+		// Flush the active view's duration before the tab may be discarded.
+		recordView( null );
 	} else {
+		// Resume tracking from the current active view when the tab regains focus.
+		if ( activeSlug ) {
+			_viewSlug = activeSlug;
+			_viewStart = Date.now();
+		}
 		startPolling();
 	}
 } );
+
+// Flush the final view's duration when the user closes or reloads the page.
+window.addEventListener( 'pagehide', () => recordView( null ) );
 
 startPolling();
 

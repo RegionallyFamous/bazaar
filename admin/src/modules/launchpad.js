@@ -22,6 +22,7 @@ export class Launchpad {
 		this._deps = { wareMap, navigateTo, iconUrl, sortedEnabled };
 		this._visible = false;
 		this._query = '';
+		this._closeGen = 0;
 		this._el = this._build();
 
 		document.addEventListener( 'keydown', ( e ) => {
@@ -50,13 +51,16 @@ export class Launchpad {
 	close() {
 		this._visible = false;
 		this._el.classList.remove( 'bsh-launchpad--in' );
-		this._el.addEventListener(
-			'transitionend',
-			() => {
+		const gen = ++this._closeGen;
+		const apply = () => {
+			if ( this._closeGen === gen ) {
 				this._el.hidden = true;
-			},
-			{ once: true }
-		);
+			}
+		};
+		this._el.addEventListener( 'transitionend', apply, { once: true } );
+		// Fallback: guarantee hidden even when transitions don't fire
+		// (prefers-reduced-motion, display:none, test environments).
+		setTimeout( apply, 300 );
 	}
 
 	// ── Private ─────────────────────────────────────────────────────────────
@@ -83,10 +87,12 @@ export class Launchpad {
 			return;
 		}
 
+		let _itemIndex = 0;
 		for ( const w of wares ) {
 			const btn = document.createElement( 'button' );
 			btn.type = 'button';
 			btn.className = 'bsh-launchpad__item';
+			btn.style.setProperty( '--i', String( _itemIndex++ ) );
 			btn.setAttribute( 'aria-label', w.menu_title ?? w.name );
 
 			const imgWrap = document.createElement( 'span' );

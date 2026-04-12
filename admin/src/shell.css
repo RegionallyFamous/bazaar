@@ -28,10 +28,10 @@
 	--bsh-item-radius:    6px;
 
 	/* Shell surfaces */
-	--bsh-shell-bg:    #f0f2f5;
+	--bsh-shell-bg:    var(--bw-bg);     /* synced to design system */
 	--bsh-toolbar-bg:  #0e1520;
 	--bsh-toolbar-border: rgba(255, 255, 255, 0.07);
-	--bsh-border:      #e2e8f0;
+	--bsh-border:      var(--bw-border); /* synced to design system */
 
 	/* Shared header height — nav header and toolbar must match */
 	--bsh-header-h:    44px;
@@ -177,6 +177,7 @@
 	flex: 1;
 	overflow-y: auto;
 	overflow-x: hidden;
+	position: relative;
 }
 
 /* No wares: shrink list to nothing so only the empty CTA and footer show */
@@ -233,6 +234,35 @@
 	box-shadow: none;
 }
 
+/* When the sliding pill is present, delegate the active style to it */
+.bsh-nav__list:has( .bsh-nav__pill ) .bsh-nav__item:has( .bsh-nav__btn--active ) {
+	background: transparent;
+	box-shadow: none;
+}
+
+/* ─── Sliding active pill ────────────────────────────────────────────────── */
+
+.bsh-nav__pill {
+	position: absolute;
+	left: 8px;
+	right: 8px;
+	border-radius: var(--bsh-item-radius);
+	background: var(--bsh-item-active-bg);
+	box-shadow: inset 2.5px 0 0 var(--bsh-accent);
+	pointer-events: none;
+	transition: top 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+		height 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+		opacity 0.15s ease;
+	z-index: 0;
+}
+
+.bsh--collapsed .bsh-nav__pill {
+	left: 4px;
+	right: 4px;
+	box-shadow: none;
+	background: rgba(var(--bsh-accent-rgb), 0.18);
+}
+
 /* Hover: highlight entire row when the main button is hovered */
 .bsh-nav__item:has( > .bsh-nav__btn:hover ):not( :has( .bsh-nav__btn--active ) ) {
 	background: var(--bsh-item-hover);
@@ -274,6 +304,12 @@
 	width: 22px;
 	height: 22px;
 	flex-shrink: 0;
+	transition: transform 0.1s ease;
+}
+
+.bsh-nav__btn:hover .bsh-nav__icon-wrap {
+	transform: scale(1.12);
+	transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .bsh-nav__icon-wrap img {
@@ -362,6 +398,7 @@
 	position: relative;
 	overflow: hidden;
 	background: var(--bsh-shell-bg);
+	view-transition-name: bsh-main;
 }
 
 .bsh-iframe {
@@ -485,6 +522,18 @@
 }
 
 .bsh--collapsed .bsh-nav__badge { opacity: 0; }
+
+@keyframes bsh-badge-pop {
+
+	0%   { transform: scale(0.6); }
+
+	60%  { transform: scale(1.15); }
+
+	100% { transform: scale(1); }
+
+}
+
+.bsh-badge--pop { animation: bsh-badge-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
 /* ─── Section labels (Pinned / Recent / All) ──────────────────────────── */
 
@@ -638,8 +687,10 @@
 	line-height: 1;
 	display: flex;
 	align-items: center;
-	transition: background var(--bsh-ease-fast), color var(--bsh-ease-fast);
+	transition: background var(--bsh-ease-fast), color var(--bsh-ease-fast), transform 0.08s ease;
 }
+
+.bsh-toolbar__btn:active { transform: scale(0.92); }
 
 .bsh-toolbar__btn:hover {
 	background: rgba(255, 255, 255, 0.09);
@@ -725,6 +776,18 @@
 	width: 620px;
 	max-width: calc(100vw - 32px);
 	overflow: hidden;
+	transform-origin: top center;
+	transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.bsh-palette--entering .bsh-palette__inner {
+	opacity: 0;
+	transform: scale(0.95) translateY(-6px);
+}
+
+.bsh-palette--in .bsh-palette__inner {
+	opacity: 1;
+	transform: scale(1) translateY(0);
 }
 
 /* ── Search bar ── */
@@ -1537,12 +1600,13 @@
 	align-items: center;
 	justify-content: center;
 	font-size: 12px;
-	transition: color var(--bsh-ease-fast), background var(--bsh-ease-fast);
+	transition: color var(--bsh-ease-fast), background var(--bsh-ease-fast), transform 0.15s ease;
 }
 
 .bsh-taskbar__close:hover {
 	color: #f87171;
 	background: rgba(248, 113, 113, 0.15);
+	transform: rotate(90deg) scale(1.1);
 }
 
 /* ─── Status bar ─────────────────────────────────────────────────────────── */
@@ -1899,6 +1963,14 @@
 
 .bsh-launchpad--in { opacity: 1; }
 
+@keyframes bsh-launchpad-item-in {
+
+	from { opacity: 0; transform: scale(0.85) translateY(8px); }
+
+	to   { opacity: 1; transform: scale(1) translateY(0); }
+
+}
+
 .bsh-launchpad__inner {
 	width: min(700px, calc(100vw - 40px));
 	max-height: calc(100vh - 80px);
@@ -1971,6 +2043,11 @@
 	color: #fff;
 	transform: translateY(-2px);
 	outline: none;
+}
+
+.bsh-launchpad--in .bsh-launchpad__item {
+	animation: bsh-launchpad-item-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+	animation-delay: calc(var(--i, 0) * 22ms);
 }
 
 .bsh-launchpad__icon-wrap {
@@ -2500,6 +2577,30 @@
 
 }
 
+@keyframes bsh-vt-enter-down {
+
+	from { opacity: 0; transform: translateY(8px); }
+
+}
+
+@keyframes bsh-vt-enter-up {
+
+	from { opacity: 0; transform: translateY(-8px); }
+
+}
+
+@keyframes bsh-vt-exit-up {
+
+	to { opacity: 0; transform: translateY(-8px); }
+
+}
+
+@keyframes bsh-vt-exit-down {
+
+	to { opacity: 0; transform: translateY(8px); }
+
+}
+
 /* stylelint-disable rule-empty-line-before -- pseudo-element exception */
 ::view-transition-new(bsh-toolbar-ctx) {
 	animation: bsh-vt-slide-in 0.18s ease;
@@ -2508,9 +2609,53 @@
 ::view-transition-old(bsh-toolbar-ctx) {
 	animation: bsh-vt-slide-in 0.18s ease reverse;
 }
+
+[data-vt-dir="down"] ::view-transition-new(bsh-main) {
+	animation: bsh-vt-enter-down 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-vt-dir="up"] ::view-transition-new(bsh-main) {
+	animation: bsh-vt-enter-up 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-vt-dir="down"] ::view-transition-old(bsh-main) {
+	animation: bsh-vt-exit-up 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-vt-dir="up"] ::view-transition-old(bsh-main) {
+	animation: bsh-vt-exit-down 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
 /* stylelint-enable rule-empty-line-before */
 
 /* nav transition is defined in the .bsh-nav rule with cubic-bezier easing */
+
+/* ─── Reduced-motion kill-switch ────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+
+	/* stylelint-disable rule-empty-line-before -- pseudo-element exception */
+	::view-transition-group(*),
+	::view-transition-image-pair(*),
+	::view-transition-old(*),
+	::view-transition-new(*) { animation: none !important; }
+	/* stylelint-enable rule-empty-line-before */
+
+	.bsh-nav__pill { transition: none; }
+
+	.bsh-badge--pop { animation: none; }
+
+	.bsh-launchpad__item {
+		animation: none;
+		animation-delay: 0s;
+	}
+
+	.bsh-palette__inner { transition: none; }
+
+	.bsh-toolbar__btn:active,
+	.bsh-taskbar__close:hover,
+	.bsh-nav__btn:hover .bsh-nav__icon-wrap { transform: none; }
+
+}
 
 /* ─── Responsive adjustments for new elements ───────────────────────────── */
 

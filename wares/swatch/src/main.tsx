@@ -1,11 +1,28 @@
-import { StrictMode }         from 'react';
-import { createRoot }         from 'react-dom/client';
-import { getBazaarContext }   from '@bazaar/client';
-import { applyAdminColor }    from '@bazaar/design/theme';
+import { StrictMode }                        from 'react';
+import { createRoot }                        from 'react-dom/client';
+import { getBazaarContext, setBazaarContext } from '@bazaar/client';
+import { applyAdminColor }                   from '@bazaar/design/theme';
+import { ErrorBoundary }                     from '@bazaar/design';
 import '@bazaar/design/css';
-import App                    from './App.tsx';
+import App                                   from './App.tsx';
+
+if ( import.meta.env.DEV ) {
+	setBazaarContext( {
+		nonce:   import.meta.env.VITE_WP_NONCE    ?? '',
+		restUrl: import.meta.env.VITE_WP_REST_URL ?? 'http://localhost/wp-json',
+		slug:    'swatch',
+	} );
+}
 
 applyAdminColor( getBazaarContext().adminColor );
 
 const root = document.getElementById( 'root' );
-if ( root ) createRoot( root ).render( <StrictMode><App /></StrictMode> );
+if ( root ) {
+	createRoot( root ).render(
+		<StrictMode>
+			<ErrorBoundary>
+				<App />
+			</ErrorBoundary>
+		</StrictMode>,
+	);
+}

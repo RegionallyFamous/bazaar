@@ -85,25 +85,25 @@ export default function App() {
   if ( ! active ) return null;
 
   return (
-    <div className="cps">
+    <div className="swatch">
       { /* ── Sidebar ──────────────────────────────────────────────────────── */ }
-      <aside className="cps__sidebar">
-        <div className="cps__sidebar-header">
-          <h1 className="cps__app-title">Swatch</h1>
-          <button className="cps__sidebar-add" onClick={ addPalette } title="New palette">+</button>
+      <aside className="swatch__sidebar">
+        <div className="swatch__sidebar-header">
+          <h1 className="swatch__app-title">Swatch</h1>
+          <button className="swatch__sidebar-add" onClick={ addPalette } title="New palette">+</button>
         </div>
 
-        <ul className="cps__palette-list">
+        <ul className="swatch__palette-list">
           { palettes.map( p => (
             <li
               key={ p.id }
-              className={ `cps__palette-item${ p.id === activeId ? ' cps__palette-item--active' : '' }` }
+              className={ `swatch__palette-item${ p.id === activeId ? ' swatch__palette-item--active' : '' }` }
             >
               { renamingPal === p.id ? (
                 <form onSubmit={ e => { e.preventDefault(); renamePalette( p.id, renameVal ); } }
-                  className="cps__rename-form">
+                  className="swatch__rename-form">
                   <input
-                    className="cps__rename-input"
+                    className="swatch__rename-input"
                     value={ renameVal }
                     onChange={ e => setRenameVal( e.target.value ) }
                     onBlur={ () => renamePalette( p.id, renameVal || p.name ) }
@@ -112,23 +112,23 @@ export default function App() {
                 </form>
               ) : (
                 <button
-                  className="cps__palette-btn"
+                  className="swatch__palette-btn"
                   onClick={ () => setActiveId( p.id ) }
                   onDoubleClick={ () => { setRenamingPal( p.id ); setRenameVal( p.name ); } }
                 >
-                  <span className="cps__palette-preview">
+                  <span className="swatch__palette-preview">
                     { p.swatches.slice( 0, 4 ).map( s => (
-                      <span key={ s.id } className="cps__palette-dot" style={ { background: s.hex } } />
+                      <span key={ s.id } className="swatch__palette-dot" style={ { background: s.hex } } />
                     ) ) }
                   </span>
-                  <span className="cps__palette-name">{ p.name }</span>
-                  <span className="cps__palette-count">{ p.swatches.length }</span>
+                  <span className="swatch__palette-name">{ p.name }</span>
+                  <span className="swatch__palette-count">{ p.swatches.length }</span>
                 </button>
               ) }
 
               { p.id === activeId && palettes.length > 1 && (
                 <button
-                  className="cps__palette-delete"
+                  className="swatch__palette-delete"
                   onClick={ () => deletePalette( p.id ) }
                   title="Delete palette"
                 >
@@ -141,26 +141,26 @@ export default function App() {
       </aside>
 
       { /* ── Main ──────────────────────────────────────────────────────────── */ }
-      <main className="cps__main">
-        <div className="cps__palette-header">
-          <h2 className="cps__palette-title">{ active.name }</h2>
-          <span className="cps__palette-meta">{ active.swatches.length } / 12 swatches</span>
+      <main className="swatch__main">
+        <div className="swatch__palette-header">
+          <h2 className="swatch__palette-title">{ active.name }</h2>
+          <span className="swatch__palette-meta">{ active.swatches.length } / 12 swatches</span>
         </div>
 
         { /* Swatch grid */ }
-        <div className="cps__swatches">
+        <div className="swatch__swatches">
           { active.swatches.map( s => (
-            <div key={ s.id } className="cps__swatch-tile">
+            <div key={ s.id } className="swatch__swatch-tile">
               <button
-                className="cps__swatch-color"
+                className="swatch__swatch-color"
                 style={ { background: s.hex } }
                 onClick={ () => setEditSwatch( s ) }
                 title={ `Edit ${ s.hex }` }
               />
-              <span className="cps__swatch-hex">{ s.hex }</span>
-              { s.name && <span className="cps__swatch-name">{ s.name }</span> }
+              <span className="swatch__swatch-hex">{ s.hex }</span>
+              { s.name && <span className="swatch__swatch-name">{ s.name }</span> }
               <button
-                className="cps__swatch-remove"
+                className="swatch__swatch-remove"
                 onClick={ () => deleteSwatch( s.id ) }
                 title="Remove swatch"
               >
@@ -170,18 +170,18 @@ export default function App() {
           ) ) }
 
           { active.swatches.length < 12 && (
-            <button className="cps__swatch-add" onClick={ () => addSwatch() } title="Add swatch">
+            <button className="swatch__swatch-add" onClick={ () => addSwatch() } title="Add swatch">
               +
             </button>
           ) }
         </div>
 
         { /* Panel tabs */ }
-        <div className="cps__panel-tabs">
+        <div className="swatch__panel-tabs">
           { ( [ 'harmony', 'contrast', 'export' ] as Panel[] ).map( t => (
             <button
               key={ t }
-              className={ `cps__panel-tab${ panel === t ? ' cps__panel-tab--active' : '' }` }
+              className={ `swatch__panel-tab${ panel === t ? ' swatch__panel-tab--active' : '' }` }
               onClick={ () => setPanel( t ) }
             >
               { t === 'harmony' ? 'Harmony' : t === 'contrast' ? 'Contrast' : 'Export' }
@@ -189,7 +189,7 @@ export default function App() {
           ) ) }
         </div>
 
-        <div className="cps__panel">
+        <div className="swatch__panel">
           { panel === 'harmony' && (
             <HarmonyPanel swatches={ active.swatches } onAddSwatch={ addSwatch } />
           ) }
@@ -197,7 +197,7 @@ export default function App() {
             <ContrastChecker swatches={ active.swatches } />
           ) }
           { panel === 'contrast' && active.swatches.length < 2 && (
-            <p className="cps__panel-hint">Add at least 2 swatches to check contrast.</p>
+            <p className="swatch__panel-hint">Add at least 2 swatches to check contrast.</p>
           ) }
           { panel === 'export' && <ExportPanel palette={ active } /> }
         </div>

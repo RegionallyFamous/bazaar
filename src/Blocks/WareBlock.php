@@ -21,6 +21,8 @@ namespace Bazaar\Blocks;
 
 defined( 'ABSPATH' ) || exit;
 
+use Bazaar\WareRegistry;
+
 /**
  * Handles block registration and render callback.
  */
@@ -28,6 +30,22 @@ final class WareBlock {
 
 	/** Token TTL in seconds (1 hour). */
 	private const TOKEN_TTL = HOUR_IN_SECONDS;
+
+	/**
+	 * Registry used to verify a ware is installed and enabled.
+	 *
+	 * @var WareRegistry
+	 */
+	private WareRegistry $registry;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param WareRegistry $registry Registry instance.
+	 */
+	public function __construct( WareRegistry $registry ) {
+		$this->registry = $registry;
+	}
 
 	/**
 	 * Register hooks.
@@ -69,13 +87,14 @@ final class WareBlock {
 			return '<p>' . esc_html__( 'No ware selected.', 'bazaar' ) . '</p>';
 		}
 
-		// Verify the ware is installed and enabled.
-		if ( ! file_exists( BAZAAR_WARES_DIR . $slug ) ) {
+		// Verify the ware exists in the registry and is enabled.
+		$ware = $this->registry->get( $slug );
+		if ( null === $ware || empty( $ware['enabled'] ) ) {
 			if ( current_user_can( 'manage_options' ) ) {
 				return '<p>' . esc_html(
 					sprintf(
 					/* translators: %s: ware slug */
-						__( 'Ware "%s" is not installed.', 'bazaar' ),
+						__( 'Ware "%s" is not installed or is disabled.', 'bazaar' ),
 						$slug
 					)
 				) . '</p>';

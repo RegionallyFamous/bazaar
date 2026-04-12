@@ -142,8 +142,8 @@ final class RemoteRegistryTest extends TestCase {
 	public function test_get_returns_ware_from_cached_registry(): void {
 		$cached_index = array(
 			array(
-				'slug'    => 'kanban',
-				'name'    => 'Kanban Board',
+				'slug'    => 'board',
+				'name'    => 'Board',
 				'version' => '3.1.0',
 			),
 		);
@@ -158,10 +158,10 @@ final class RemoteRegistryTest extends TestCase {
 		Functions\when( 'sprintf' )->alias( 'sprintf' );
 
 		$registry = new RemoteRegistry();
-		$result   = $registry->get( 'kanban' );
+		$result   = $registry->get( 'board' );
 
 		$this->assertIsArray( $result );
-		$this->assertSame( 'kanban', $result['slug'] );
+		$this->assertSame( 'board', $result['slug'] );
 	}
 
 	public function test_get_returns_wp_error_for_unknown_slug(): void {
@@ -200,8 +200,8 @@ final class RemoteRegistryTest extends TestCase {
 				'description' => '',
 			),
 			array(
-				'slug'        => 'kanban',
-				'name'        => 'Kanban Board',
+				'slug'        => 'board',
+				'name'        => 'Board',
 				'version'     => '1.0.0',
 				'description' => '',
 			),
@@ -268,8 +268,8 @@ final class RemoteRegistryTest extends TestCase {
 				'description' => '',
 			),
 			array(
-				'slug'        => 'kanban',
-				'name'        => 'Kanban',
+				'slug'        => 'board',
+				'name'        => 'Board',
 				'version'     => '1.0.0',
 				'description' => '',
 			),

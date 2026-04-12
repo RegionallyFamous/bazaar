@@ -19,7 +19,7 @@ export interface BazaarContext {
   restUrl: string;
   /** Base URL of this ware's file-serve endpoint (without trailing slash). */
   serveUrl: string;
-  /** This ware's slug, e.g. "invoice-generator". */
+  /** This ware's slug, e.g. "ledger". */
   slug: string;
   /**
    * WordPress admin colour scheme name (e.g. "fresh", "midnight", "ectoplasm").

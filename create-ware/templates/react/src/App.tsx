@@ -3,7 +3,7 @@ import { Spinner }                    from '@bazaar/design';
 import './App.css';
 
 export default function App() {
-  const user              = useCurrentUser();
+  const { user }          = useCurrentUser();
   const { posts, loading, error } = useWpPosts( { per_page: 5, status: 'publish' } );
 
   return (

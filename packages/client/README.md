@@ -39,7 +39,7 @@ const posts = await wpJson<WpPost[]>('/wp/v2/posts?per_page=5');
 import { useCurrentUser, useWpPosts } from '@bazaar/client/react';
 
 function App() {
-  const user  = useCurrentUser();
+  const { user } = useCurrentUser();
   const { posts, loading } = useWpPosts({ per_page: 10, status: 'publish' });
 
   if (loading) return <p>Loading…</p>;
@@ -102,9 +102,9 @@ Authenticated `fetch` wrapper. Adds `X-WP-Nonce` header and resolves paths relat
 
 Like `wpFetch` but parses JSON and throws `WpApiError` on non-2xx responses.
 
-### `useCurrentUser(): WpUser | null`
+### `useCurrentUser(): UseCurrentUserResult`
 
-React hook. Returns the logged-in user or null while loading.
+React hook. Returns `{ user, loading, error }` for the logged-in WordPress user. `user` is `null` while loading or when unauthenticated. Use `loading` and `error` to distinguish an in-flight request from an auth failure.
 
 ### `useWpFetch<T>(path): UseQueryResult<T>`
 

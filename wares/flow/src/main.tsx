@@ -1,7 +1,9 @@
 import { StrictMode }       from 'react';
 import { createRoot }       from 'react-dom/client';
 import { setBazaarContext } from '@bazaar/client';
+import { ErrorBoundary }    from '@bazaar/design';
 import '@bazaar/design/css';
+import './index.css';
 import App                  from './App.tsx';
 
 if ( import.meta.env.DEV ) {
@@ -12,12 +14,14 @@ if ( import.meta.env.DEV ) {
 	} );
 }
 
-// Focus uses a warm-dark CRT aesthetic — activate design-system dark tokens.
+// Flow uses a warm-dark CRT aesthetic — activate design-system dark tokens.
 document.documentElement.setAttribute( 'data-theme', 'dark' );
 
 createRoot( document.getElementById( 'root' )! ).render(
 	<StrictMode>
-		<App />
+		<ErrorBoundary>
+			<App />
+		</ErrorBoundary>
 	</StrictMode>,
 );
 

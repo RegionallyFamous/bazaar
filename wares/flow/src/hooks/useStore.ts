@@ -1,5 +1,5 @@
-import { getBazaarContext, createStore } from '@bazaar/client';
-import type { Settings, DayRecord, Task } from '../types.ts';
+import { getBazaarContext, createStore, bzr } from '@bazaar/client';
+import type { Settings, DayRecord, Task }     from '../types.ts';
 import { DEFAULT_SETTINGS }               from '../types.ts';
 
 let _store: ReturnType<typeof createStore> | null = null;
@@ -16,15 +16,26 @@ function getStore() {
 	return _store;
 }
 
+const LS_PREFIX     = 'bzr-flow-';
+const LS_PREFIX_OLD = 'bzr-focus-';
+
 function lsGet<T>( key: string ): T | undefined {
 	try {
-		const v = localStorage.getItem( `bzr-focus-${ key }` );
-		return v ? ( JSON.parse( v ) as T ) : undefined;
-	} catch { return undefined; }
+		const cur = localStorage.getItem( `${ LS_PREFIX }${ key }` );
+		if ( cur ) return JSON.parse( cur ) as T;
+		// Transparent migration: read from old key once and promote.
+		const old = localStorage.getItem( `${ LS_PREFIX_OLD }${ key }` );
+		if ( old ) {
+			localStorage.setItem( `${ LS_PREFIX }${ key }`, old );
+			localStorage.removeItem( `${ LS_PREFIX_OLD }${ key }` );
+			return JSON.parse( old ) as T;
+		}
+	} catch { /* ignore */ }
+	return undefined;
 }
 
 function lsSet( key: string, val: unknown ): void {
-	try { localStorage.setItem( `bzr-focus-${ key }`, JSON.stringify( val ) ); } catch { /* noop */ }
+	try { localStorage.setItem( `${ LS_PREFIX }${ key }`, JSON.stringify( val ) ); } catch { /* noop */ }
 }
 
 async function load<T>( key: string ): Promise<T | undefined> {
@@ -35,7 +46,11 @@ async function load<T>( key: string ): Promise<T | undefined> {
 
 async function save( key: string, val: unknown ): Promise<void> {
 	const store = getStore();
-	if ( store ) { await store.set( key, val as never ); return; }
+	if ( store ) {
+		try { await store.set( key, val as never ); return; } catch {
+			bzr.toast( 'Saved locally — server unreachable', 'warning' );
+		}
+	}
 	lsSet( key, val );
 }
 

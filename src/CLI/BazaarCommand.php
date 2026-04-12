@@ -33,10 +33,10 @@ use Bazaar\WareLicense;
  *     $ wp bazaar list
  *
  *     # Install a ware from a .wp file
- *     $ wp bazaar install invoice-generator.wp
+ *     $ wp bazaar install ledger.wp
  *
  *     # Enable a disabled ware
- *     $ wp bazaar enable invoice-generator
+ *     $ wp bazaar enable ledger
  *
  *     # Run the health-check suite
  *     $ wp bazaar doctor

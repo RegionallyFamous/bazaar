@@ -146,16 +146,21 @@ export function patchNavBadges( navList, badgeMap ) {
 		if ( count > 0 ) {
 			const text = count > 99 ? '99+' : String( count );
 			if ( badge ) {
-				badge.textContent = text;
-				// translators: %d: number of notifications
-				badge.setAttribute( 'aria-label', sprintf( __( '%d notifications', 'bazaar' ), count ) );
+				if ( badge.textContent !== text ) {
+					badge.textContent = text;
+					// translators: %d: number of notifications
+					badge.setAttribute( 'aria-label', sprintf( __( '%d notifications', 'bazaar' ), count ) );
+					badge.classList.add( 'bsh-badge--pop' );
+					badge.addEventListener( 'animationend', () => badge.classList.remove( 'bsh-badge--pop' ), { once: true } );
+				}
 			} else {
 				badge = Object.assign( document.createElement( 'span' ), {
-					className: 'bsh-nav__badge',
+					className: 'bsh-nav__badge bsh-badge--pop',
 					textContent: text,
 				} );
 				// translators: %d: number of notifications
 				badge.setAttribute( 'aria-label', sprintf( __( '%d notifications', 'bazaar' ), count ) );
+				badge.addEventListener( 'animationend', () => badge.classList.remove( 'bsh-badge--pop' ), { once: true } );
 				btn.appendChild( badge );
 			}
 		} else if ( badge ) {
@@ -498,12 +503,21 @@ export function attachDragHandlers( navList ) {
 
 // ─── Alt+1-9 shortcut binding ────────────────────────────────────────────────
 
+/** Prevents duplicate keydown listeners across multiple registerShortcuts calls. */
+let _shortcutsRegistered = false;
+
 /**
  * Register Alt+1-9 to navigate to the nth enabled ware.
+ * Safe to call multiple times — the document listener is installed only once.
+ *
  * @param {Map<string, Object>}    wareMap
  * @param {(slug: string) => void} navigateTo
  */
 export function registerShortcuts( wareMap, navigateTo ) {
+	if ( _shortcutsRegistered ) {
+		return;
+	}
+	_shortcutsRegistered = true;
 	document.addEventListener( 'keydown', ( e ) => {
 		if ( ! e.altKey || e.metaKey || e.ctrlKey || e.shiftKey ) {
 			return;

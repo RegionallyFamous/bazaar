@@ -135,6 +135,9 @@ final class ConfigController extends BazaarController {
 
 		$schema = is_array( $ware['settings'] ?? null ) ? $ware['settings'] : array();
 		$stored = $this->load( $slug );
+		if ( is_wp_error( $stored ) ) {
+			return $stored;
+		}
 		$values = array();
 
 		foreach ( $schema as $field ) {
@@ -176,6 +179,9 @@ final class ConfigController extends BazaarController {
 		$schema  = array_column( $ware['settings'] ?? array(), null, 'key' );
 		$updates = (array) $request->get_param( 'values' );
 		$stored  = $this->load( $slug );
+		if ( is_wp_error( $stored ) ) {
+			return $stored;
+		}
 
 		foreach ( $updates as $key => $val ) {
 			$key = sanitize_text_field( (string) $key );
@@ -217,6 +223,9 @@ final class ConfigController extends BazaarController {
 		}
 		$key    = sanitize_text_field( $request->get_param( 'key' ) );
 		$stored = $this->load( $slug );
+		if ( is_wp_error( $stored ) ) {
+			return $stored;
+		}
 		unset( $stored[ $key ] );
 		$this->save( $slug, $stored );
 		return new WP_REST_Response(
@@ -234,11 +243,18 @@ final class ConfigController extends BazaarController {
 	 * Load the persisted config for a ware.
 	 *
 	 * @param string $slug Ware slug.
-	 * @return array<string, mixed>
+	 * @return array<string, mixed>|WP_Error WP_Error when stored JSON is corrupt.
 	 */
-	private function load( string $slug ): array {
+	private function load( string $slug ): array|WP_Error {
 		$raw = get_option( "bazaar_config_{$slug}", '{}' );
 		$dec = json_decode( (string) $raw, true );
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			return new WP_Error(
+				'decode_error',
+				__( 'Stored config is corrupt and could not be decoded.', 'bazaar' ),
+				array( 'status' => 500 )
+			);
+		}
 		return is_array( $dec ) ? $dec : array();
 	}
 

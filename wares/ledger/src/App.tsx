@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Invoice, Client, InvoiceStatus, View } from './types.ts';
 import { loadClients, saveClients, loadInvoices, saveInvoices, loadNextNumber, saveNextNumber } from './store.ts';
 import Dashboard   from './views/Dashboard.tsx';
@@ -38,17 +38,31 @@ export default function App() {
 	const [ clients, setClients ]     = useState<Client[]>( [] );
 	const [ nextNum, setNextNum ]     = useState( 1 );
 	const [ loading, setLoading ]     = useState( true );
+	const [ loadError, setLoadError ] = useState( false );
+	const loadAttempt                 = useRef( 0 );
 
-	useEffect( () => {
+	const loadData = useCallback( () => {
+		setLoading( true );
+		setLoadError( false );
+		const attempt = ++loadAttempt.current;
 		Promise.all( [ loadClients(), loadInvoices(), loadNextNumber() ] )
 			.then( ( [ c, i, n ] ) => {
+				if ( attempt !== loadAttempt.current ) return;
 				setClients( c );
 				setInvoices( i );
 				setNextNum( n );
 			} )
-			.catch( () => {} )
-			.finally( () => setLoading( false ) );
+			.catch( () => {
+				if ( attempt === loadAttempt.current ) setLoadError( true );
+			} )
+			.finally( () => {
+				if ( attempt === loadAttempt.current ) setLoading( false );
+			} );
 	}, [] );
+
+	useEffect( () => {
+		loadData();
+	}, [ loadData ] );
 
 	const navigate = useCallback( ( v: View, id?: string ) => {
 		setView( v );
@@ -104,6 +118,21 @@ export default function App() {
 		return (
 			<div className="app">
 				<div className="loading">Loading…</div>
+			</div>
+		);
+	}
+
+	if ( loadError ) {
+		return (
+			<div className="app">
+				<div className="loading">
+					<p style={ { marginBottom: '12px', color: 'var(--bw-danger)' } }>
+						Failed to load data. Check your connection and try again.
+					</p>
+					<button className="btn btn--primary" onClick={ loadData }>
+						Retry
+					</button>
+				</div>
 			</div>
 		);
 	}

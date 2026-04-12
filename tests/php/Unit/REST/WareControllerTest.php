@@ -127,7 +127,7 @@ final class WareControllerTest extends TestCase {
 
 	public function test_get_index_returns_200_with_index_entries(): void {
 		$this->seed_ware( 'crm' );
-		$this->seed_ware( 'kanban' );
+		$this->seed_ware( 'board' );
 
 		$controller = new WareController( new WareRegistry() );
 		$response   = $controller->get_index();
@@ -141,7 +141,7 @@ final class WareControllerTest extends TestCase {
 
 	public function test_list_wares_returns_all_wares_by_default(): void {
 		$this->seed_ware( 'crm', true );
-		$this->seed_ware( 'kanban', false );
+		$this->seed_ware( 'board', false );
 
 		$request = new WP_REST_Request();
 		$request->set_param( 'status', 'all' );
@@ -155,7 +155,7 @@ final class WareControllerTest extends TestCase {
 
 	public function test_list_wares_filters_enabled(): void {
 		$this->seed_ware( 'crm', true );
-		$this->seed_ware( 'kanban', false );
+		$this->seed_ware( 'board', false );
 
 		$request = new WP_REST_Request();
 		$request->set_param( 'status', 'enabled' );
@@ -170,7 +170,7 @@ final class WareControllerTest extends TestCase {
 
 	public function test_list_wares_filters_disabled(): void {
 		$this->seed_ware( 'crm', true );
-		$this->seed_ware( 'kanban', false );
+		$this->seed_ware( 'board', false );
 
 		$request = new WP_REST_Request();
 		$request->set_param( 'status', 'disabled' );
@@ -180,7 +180,7 @@ final class WareControllerTest extends TestCase {
 
 		$data = $response->get_data();
 		$this->assertCount( 1, $data );
-		$this->assertSame( 'kanban', $data[0]['slug'] );
+		$this->assertSame( 'board', $data[0]['slug'] );
 	}
 
 	// ─── get_ware ────────────────────────────────────────────────────────────

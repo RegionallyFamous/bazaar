@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Mode, Settings, DayRecord }            from '../types.ts';
 import { DEFAULT_SETTINGS }                          from '../types.ts';
 import { loadSettings, saveSettings, loadHistory, saveHistory } from './useStore.ts';
+import { bzr } from '@bazaar/client';
 
 function todayKey(): string {
 	return new Date().toISOString().split( 'T' )[ 0 ]!;
@@ -41,7 +42,9 @@ export function useTimer() {
 			const today = h.find( d => d.date === todayKey() );
 			setSessionsToday( today?.sessions ?? 0 );
 			setTotalSessions( h.reduce( ( sum, d ) => sum + d.sessions, 0 ) );
-		} ).catch( () => {} );
+		} ).catch( () => {
+			bzr.toast( 'Could not load saved data — using defaults', 'warning' );
+		} );
 	}, [] );
 
 	const recordSession = useCallback( async ( currentHistory: DayRecord[] ) => {

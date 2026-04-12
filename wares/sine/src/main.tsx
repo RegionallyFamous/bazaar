@@ -1,11 +1,21 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { StrictMode }                        from 'react';
+import { createRoot }                        from 'react-dom/client';
+import { getBazaarContext, setBazaarContext } from '@bazaar/client';
+import { ErrorBoundary }                     from '@bazaar/design';
 import '@bazaar/design/css';
-import App            from './App.tsx';
+import App                                   from './App.tsx';
+
+if ( import.meta.env.DEV ) {
+	setBazaarContext( {
+		nonce:   import.meta.env.VITE_WP_NONCE    ?? '',
+		restUrl: import.meta.env.VITE_WP_REST_URL ?? 'http://localhost/wp-json',
+		slug:    'sine',
+	} );
+}
 
 /*
  * CRT / phosphor-green theme.
- * Override --bw-* tokens to match the retro terminal aesthetic, then activate
+ * Override --bw-* tokens to match the dark synth aesthetic, then activate
  * the dark token layer so the design system resets apply.
  */
 const root = document.documentElement;
@@ -32,9 +42,19 @@ document.body.style.backgroundImage = `repeating-linear-gradient(
   rgba(0,0,0,.08) 4px
 )`;
 
-/* Retro synth uses a monospace font globally */
+/* Sine uses a monospace font globally */
 document.documentElement.style.fontFamily = "'Courier New', 'Lucida Console', monospace";
 document.documentElement.style.fontSize   = '12px';
 
+getBazaarContext(); // ensure context is available before rendering
+
 const rootEl = document.getElementById( 'root' );
-if ( rootEl ) createRoot( rootEl ).render( <StrictMode><App /></StrictMode> );
+if ( rootEl ) {
+	createRoot( rootEl ).render(
+		<StrictMode>
+			<ErrorBoundary>
+				<App />
+			</ErrorBoundary>
+		</StrictMode>,
+	);
+}

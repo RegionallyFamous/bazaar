@@ -1,5 +1,5 @@
 /*
- * Invoice Generator — ware-specific styles.
+ * Ledger — ware-specific styles.
  * Tokens and base reset are provided by @bazaar/design/css (imported in main.tsx).
  * Accent: cyan — overrides the default indigo.
  */
@@ -37,8 +37,8 @@
   gap: 24px;
   padding: 0 24px;
   height: 52px;
-  background: #0f172a;
-  color: #f1f5f9;
+  background: var(--bw-text);
+  color: var(--bw-surface);
   flex-shrink: 0;
 }
 
@@ -57,7 +57,7 @@
 .app-nav__title {
   font-weight: 600;
   font-size: 15px;
-  color: #f1f5f9;
+  color: var(--bw-surface);
 }
 
 .app-nav__links {
@@ -69,18 +69,18 @@
   padding: 6px 14px;
   border-radius: 6px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--bw-text-dim);
   transition: background .12s, color .12s;
 }
 
 .nav-link:hover {
   background: rgba(255,255,255,.08);
-  color: #f1f5f9;
+  color: var(--bw-surface);
 }
 
 .nav-link--active {
   background: rgba(var(--bw-accent-rgb), 0.22);
-  color: #7dd3fc;
+  color: var(--bw-accent-bg);
 }
 
 /* ── Main ── */
@@ -175,7 +175,7 @@
 
 .btn--ghost:hover {
   background: var(--bw-surface-2);
-  border-color: #cbd5e1;
+  border-color: var(--bw-text-dim);
 }
 
 .btn--sm {
@@ -305,9 +305,9 @@
 
 .status-badge--draft   { background: var(--bw-surface-2); color: var(--bw-text-muted); }
 
-.status-badge--sent    { background: #dbeafe; color: #1d4ed8; }
+.status-badge--sent    { background: var(--bw-info-bg); color: var(--bw-info); }
 
-.status-badge--paid    { background: #dcfce7; color: #15803d; }
+.status-badge--paid    { background: var(--bw-success-bg); color: var(--bw-success); }
 
 .status-badge--overdue { background: var(--bw-danger-bg); color: var(--bw-danger-hi); }
 
@@ -322,9 +322,9 @@
 
 .status-select--draft   { background: var(--bw-surface-2); color: var(--bw-text-muted); }
 
-.status-select--sent    { background: #dbeafe; color: #1d4ed8; }
+.status-select--sent    { background: var(--bw-info-bg); color: var(--bw-info); }
 
-.status-select--paid    { background: #dcfce7; color: #15803d; }
+.status-select--paid    { background: var(--bw-success-bg); color: var(--bw-success); }
 
 .status-select--overdue { background: var(--bw-danger-bg); color: var(--bw-danger-hi); }
 
@@ -352,7 +352,7 @@
 .action-btn--danger:hover {
   background: var(--bw-danger-bg);
   color: var(--bw-danger-hi);
-  border-color: #fecaca;
+  border-color: var(--bw-danger-bg);
 }
 
 /* ── Dashboard stats ── */

@@ -67,16 +67,26 @@ export function useWpFetch<T>( path: string ): UseQueryResult<T> {
 // Current user
 // ---------------------------------------------------------------------------
 
+export interface UseCurrentUserResult {
+  user:    WpUser | null;
+  loading: boolean;
+  error:   Error | null;
+}
+
 /**
- * Return the currently logged-in WordPress user, or null while loading.
+ * Return the currently logged-in WordPress user plus reactive loading/error state.
+ *
+ * Exposes `loading` and `error` so callers can distinguish an auth failure or
+ * network error from a still-in-flight request — previously both looked like
+ * `null` to the caller.
  *
  * @example
- * const user = useCurrentUser();
+ * const { user, loading, error } = useCurrentUser();
  * return <p>Hello, {user?.name ?? '…'}</p>;
  */
-export function useCurrentUser(): WpUser | null {
-  const { data } = useWpFetch<WpUser>( '/wp/v2/users/me' );
-  return data;
+export function useCurrentUser(): UseCurrentUserResult {
+  const { data: user, loading, error } = useWpFetch<WpUser>( '/wp/v2/users/me' );
+  return { user, loading, error };
 }
 
 // ---------------------------------------------------------------------------

@@ -113,12 +113,12 @@ bazaar/
 │   └── ware-container.php
 └── wares/                           Built-in core wares (source + registry)
     ├── registry.json                Remote registry source
-    ├── pixel-art/
-    ├── invoice-generator/
+    ├── mosaic/
+    ├── ledger/
     ├── focus/
-    ├── kanban/
-    ├── color-palette/
-    └── retro-synth/
+    ├── board/
+    ├── swatch/
+    └── sine/
 ```
 
 ---

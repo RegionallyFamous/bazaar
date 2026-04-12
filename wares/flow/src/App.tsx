@@ -35,20 +35,20 @@ export default function App() {
 	const color = MODE_COLOR[ timer.mode ];
 
 	return (
-		<div className="focus-app" style={ { '--mode-color': color } as React.CSSProperties }>
+		<div className="flow-app" style={ { '--mode-color': color } as React.CSSProperties }>
 			{ /* ── Header ── */ }
-			<header className="focus-header">
-				<span className="focus-header__title">Flow</span>
-				<div className="focus-header__stats">
-					<span className="focus-stat">
+			<header className="flow-header">
+				<span className="flow-header__title">Flow</span>
+				<div className="flow-header__stats">
+					<span className="flow-stat">
 						<strong>{ timer.sessionsToday }</strong> today
 					</span>
-					<span className="focus-stat">
+					<span className="flow-stat">
 						<strong>{ timer.totalSessions }</strong> total
 					</span>
 				</div>
 				<button
-					className="focus-header__settings-btn"
+					className="flow-header__settings-btn"
 					onClick={ () => timer.setShowSettings( s => ! s ) }
 					title="Settings"
 				>
@@ -85,7 +85,7 @@ export default function App() {
 				</div>
 			) }
 
-			<main className="focus-main">
+			<main className="flow-main">
 				{ /* ── Left panel: timer ── */ }
 				<section className="timer-section">
 					{ /* Mode tabs */ }
@@ -146,7 +146,7 @@ export default function App() {
 				</aside>
 			</main>
 
-			<footer className="focus-footer">
+			<footer className="flow-footer">
 				<Heatmap history={ timer.history } />
 			</footer>
 		</div>

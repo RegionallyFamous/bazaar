@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Palette } from '../types.ts';
 import { toCssVars, toTailwind, toHexList, toSvg, download } from '../utils/export.ts';
+import { bzr } from '@bazaar/client';
 
 interface Props { palette: Palette; }
 
@@ -27,10 +28,12 @@ export default function ExportPanel( { palette }: Props ) {
   }
 
   function handleCopy() {
-    navigator.clipboard.writeText( getContent() ).then( () => {
-      setCopied( true );
-      setTimeout( () => setCopied( false ), 1800 );
-    } ).catch( () => undefined );
+    navigator.clipboard.writeText( getContent() )
+      .then( () => {
+        setCopied( true );
+        setTimeout( () => setCopied( false ), 1800 );
+      } )
+      .catch( () => bzr.toast( 'Copy failed — try copying manually', 'error' ) );
   }
 
   function handleDownload() {

@@ -1,12 +1,12 @@
 /*
- * Focus Timer — ware-specific styles.
+ * Flow — ware-specific styles.
  * Tokens: @bazaar/design/css + warm-dark overrides in index.css.
  * --mode-color is injected inline per timer mode (amber/green/blue).
  */
 
 /* ── Root ── */
 
-.focus-app {
+.flow-app {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -16,7 +16,7 @@
 
 /* ── Header ── */
 
-.focus-header {
+.flow-header {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -27,29 +27,29 @@
   flex-shrink: 0;
 }
 
-.focus-header__title {
+.flow-header__title {
   font-weight: 700;
   font-size: 15px;
   color: var( --mode-color, var(--bw-accent) );
   transition: color 0.18s ease;
 }
 
-.focus-header__stats {
+.flow-header__stats {
   display: flex;
   gap: 16px;
   margin-left: auto;
 }
 
-.focus-stat {
+.flow-stat {
   font-size: 12px;
   color: var(--bw-text-dim);
 }
 
-.focus-stat strong {
+.flow-stat strong {
   color: var(--bw-text);
 }
 
-.focus-header__settings-btn {
+.flow-header__settings-btn {
   font-size: 16px;
   width: 32px;
   height: 32px;
@@ -61,7 +61,7 @@
   transition: background .12s, color .12s;
 }
 
-.focus-header__settings-btn:hover {
+.flow-header__settings-btn:hover {
   background: rgba(255,255,255,.06);
   color: var(--bw-text);
 }
@@ -114,7 +114,7 @@
 
 /* ── Main layout ── */
 
-.focus-main {
+.flow-main {
   flex: 1;
   display: flex;
   padding: 24px;
@@ -456,7 +456,7 @@
 
 /* ── Footer / Heatmap ── */
 
-.focus-footer {
+.flow-footer {
   padding: 0 24px 20px;
   flex-shrink: 0;
 }
@@ -541,7 +541,7 @@
 
 @media (max-width: 640px) {
 
-  .focus-header {
+  .flow-header {
     padding: 0 12px;
     gap: 8px;
     flex-wrap: wrap;
@@ -549,20 +549,20 @@
     min-height: 48px;
   }
 
-  .focus-header__stats {
+  .flow-header__stats {
     gap: 8px;
   }
 
-  .focus-stat {
+  .flow-stat {
     font-size: 11px;
   }
 
-  .focus-header__settings-btn {
+  .flow-header__settings-btn {
     width: 44px;
     height: 44px;
   }
 
-  .focus-main {
+  .flow-main {
     flex-direction: column;
     padding: 16px;
     gap: 16px;
@@ -609,7 +609,7 @@
     padding: 4px 8px;
   }
 
-  .focus-footer {
+  .flow-footer {
     padding: 0 16px 20px;
   }
 }

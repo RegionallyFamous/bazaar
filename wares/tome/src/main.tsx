@@ -2,6 +2,7 @@ import { StrictMode }      from 'react';
 import { createRoot }      from 'react-dom/client';
 import { setBazaarContext, getBazaarContext } from '@bazaar/client';
 import { applyAdminColor } from '@bazaar/design/theme';
+import { ErrorBoundary }   from '@bazaar/design';
 import '@bazaar/design/css';
 import App                 from './App.tsx';
 
@@ -17,6 +18,8 @@ applyAdminColor( getBazaarContext().adminColor );
 
 createRoot( document.getElementById( 'root' )! ).render(
 	<StrictMode>
-		<App />
+		<ErrorBoundary>
+			<App />
+		</ErrorBoundary>
 	</StrictMode>,
 );

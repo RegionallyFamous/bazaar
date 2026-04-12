@@ -32,8 +32,8 @@
 
 ```json
 {
-  "name": "Invoice Generator",
-  "slug": "invoice-generator",
+  "name": "Ledger",
+  "slug": "ledger",
   "version": "1.0.0"
 }
 ```
@@ -46,8 +46,8 @@ That's all you need. Bazaar fills in sensible defaults for everything else.
 
 ```json
 {
-  "name": "Invoice Generator",
-  "slug": "invoice-generator",
+  "name": "Ledger",
+  "slug": "ledger",
   "version": "1.2.0",
   "author": "Nick",
   "description": "Generate and manage invoices directly from wp-admin.",
@@ -73,7 +73,7 @@ That's all you need. Bazaar fills in sensible defaults for everything else.
       "id":       "sync_invoices",
       "label":    "Sync invoices from payment provider",
       "interval": "hourly",
-      "endpoint": "/wp-json/bazaar/v1/jobs/invoice-generator/sync_invoices"
+      "endpoint": "/wp-json/bazaar/v1/jobs/ledger/sync_invoices"
     }
   ],
   "license": {
@@ -82,8 +82,8 @@ That's all you need. Bazaar fills in sensible defaults for everything else.
     "required": true
   },
   "registry": {
-    "updateUrl": "https://registry.example.com/wares/invoice-generator.json",
-    "homepage":  "https://example.com/wares/invoice-generator"
+    "updateUrl": "https://registry.example.com/wares/ledger.json",
+    "homepage":  "https://example.com/wares/ledger"
   }
 }
 ```
@@ -98,7 +98,7 @@ That's all you need. Bazaar fills in sensible defaults for everything else.
 |:---|:---|
 | Type | `string` |
 | Required | **Yes** |
-| Example | `"Invoice Generator"` |
+| Example | `"Ledger"` |
 
 Human-readable display name. Shown in the Bazaar gallery card and as the browser tab title when the ware is open.
 
@@ -111,12 +111,12 @@ Human-readable display name. Shown in the Bazaar gallery card and as the browser
 | Type | `string` |
 | Required | **Yes** |
 | Pattern | `[a-z0-9-]+` |
-| Example | `"invoice-generator"` |
+| Example | `"ledger"` |
 
 Unique identifier for the ware. Used as:
 - the directory name under `wp-content/bazaar/`
-- the path segment in all REST API URLs (`/bazaar/v1/serve/invoice-generator/…`)
-- the WordPress menu slug (`bazaar-ware-invoice-generator`)
+- the path segment in all REST API URLs (`/bazaar/v1/serve/ledger/…`)
+- the WordPress menu slug (`bazaar-ware-ledger`)
 
 > [!CAUTION]
 > **The slug is permanent.** Changing it after installation requires deleting and re-installing the ware. Choose it carefully — lowercase letters, numbers, and hyphens only.
@@ -517,7 +517,7 @@ If your ware declares a `registry.updateUrl`, Bazaar can check for and apply upd
 
 ```bash
 wp bazaar outdated                          # list wares with newer versions available
-wp bazaar update invoice-generator          # update to the latest version
+wp bazaar update ledger          # update to the latest version
 wp bazaar update --all                      # update everything
 ```
 
@@ -526,7 +526,7 @@ The URL should serve a JSON file like:
 ```json
 {
   "version":   "1.3.0",
-  "downloadUrl": "https://registry.example.com/wares/invoice-generator-1.3.0.wp",
+  "downloadUrl": "https://registry.example.com/wares/ledger-1.3.0.wp",
   "changelog": "Fixed date formatting on generated PDFs."
 }
 ```

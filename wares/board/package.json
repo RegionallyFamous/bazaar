@@ -1,7 +1,7 @@
 {
   "name": "board",
   "version": "1.1.0",
-  "description": "Kanban board ware for Bazaar",
+  "description": "Drag-and-drop project board ware for Bazaar",
   "private": true,
   "type": "module",
   "scripts": {

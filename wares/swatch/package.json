@@ -1,7 +1,7 @@
 {
   "name": "swatch",
   "version": "1.1.0",
-  "description": "Color Palette Studio ware for Bazaar",
+  "description": "Colour palette builder ware for Bazaar",
   "private": true,
   "type": "module",
   "scripts": {

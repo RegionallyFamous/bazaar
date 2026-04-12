@@ -63,8 +63,8 @@ List all installed wares. Optional `?status=enabled|disabled` filter.
 ```json
 [
   {
-    "slug": "invoice-generator",
-    "name": "Invoice Generator",
+    "slug": "ledger",
+    "name": "Ledger",
     "version": "1.0.0",
     "enabled": true,
     "installed": "2026-04-10T12:00:00Z"
@@ -106,7 +106,7 @@ const result = await apiFetch({
 ```bash
 curl -X POST https://your-site.com/wp-json/bazaar/v1/wares \
   -H "X-WP-Nonce: $(wp eval 'echo wp_create_nonce("wp_rest");')" \
-  -F "file=@invoice-generator.wp"
+  -F "file=@ledger.wp"
 ```
 
 </details>
@@ -115,8 +115,8 @@ curl -X POST https://your-site.com/wp-json/bazaar/v1/wares \
 ```json
 {
   "success": true,
-  "message": "\"Invoice Generator\" installed successfully.",
-  "ware": { "slug": "invoice-generator", "name": "Invoice Generator", "..." }
+  "message": "\"Ledger\" installed successfully.",
+  "ware": { "slug": "ledger", "name": "Ledger", "..." }
 }
 ```
 
@@ -166,7 +166,7 @@ Enable or disable an installed ware.
 
 **Response — `200 OK`**
 ```json
-{ "success": true, "slug": "invoice-generator", "enabled": false }
+{ "success": true, "slug": "ledger", "enabled": false }
 ```
 
 ---
@@ -182,7 +182,7 @@ Remove a ware from the registry and permanently delete its files.
 
 **Response — `200 OK`**
 ```json
-{ "success": true, "slug": "invoice-generator" }
+{ "success": true, "slug": "ledger" }
 ```
 
 ---
@@ -207,7 +207,7 @@ Serve any static file from an installed ware's directory.
 
 | Parameter | Description |
 |:---|:---|
-| `slug` | Ware slug, e.g. `invoice-generator` |
+| `slug` | Ware slug, e.g. `ledger` |
 | `file` | Path within the ware, e.g. `index.html` or `assets/app.js` |
 
 **Response:** Raw file contents with the correct `Content-Type` header.
@@ -278,7 +278,7 @@ Aggregated health status for all wares that declare a `health_check` URL in thei
 **Response — `200 OK`**
 ```json
 [
-  { "slug": "invoice-generator", "status": "ok" },
+  { "slug": "ledger", "status": "ok" },
   { "slug": "crm", "status": "warn" }
 ]
 ```
@@ -306,7 +306,7 @@ Record an analytics event (view, click, duration) from inside a ware.
 **Auth:** login · `Content-Type: application/json`
 
 ```json
-{ "slug": "invoice-generator", "event_type": "view", "duration_ms": 4200 }
+{ "slug": "ledger", "event_type": "view", "duration_ms": 4200 }
 ```
 
 ---
@@ -352,7 +352,7 @@ Append a custom audit entry (for ware-initiated events).
 **Auth:** login · `Content-Type: application/json`
 
 ```json
-{ "slug": "invoice-generator", "event": "export", "context": { "format": "pdf" } }
+{ "slug": "ledger", "event": "export", "context": { "format": "pdf" } }
 ```
 
 ---
@@ -377,7 +377,7 @@ All badge counts for the current user.
 
 **Response — `200 OK`**
 ```json
-{ "invoice-generator": 3, "crm": 0 }
+{ "ledger": 3, "crm": 0 }
 ```
 
 ---
@@ -456,7 +456,7 @@ Paginated error log, most recent first.
 
 **Auth:** admin
 
-**Query params:** `?per_page=50&slug=invoice-generator`
+**Query params:** `?per_page=50&slug=ledger`
 
 ---
 
@@ -468,7 +468,7 @@ Record a client-side error from inside a ware.
 
 ```json
 {
-  "slug":    "invoice-generator",
+  "slug":    "ledger",
   "message": "TypeError: Cannot read property 'id' of undefined",
   "stack":   "…",
   "context": { "route": "/invoices/new" }
@@ -479,7 +479,7 @@ Record a client-side error from inside a ware.
 
 #### `DELETE /errors`
 
-Clear all errors, or all errors for a specific ware (`?slug=invoice-generator`).
+Clear all errors, or all errors for a specific ware (`?slug=ledger`).
 
 **Auth:** admin
 
@@ -608,7 +608,7 @@ Server-Sent Events stream. The shell subscribes on load and receives real-time e
 
 ```
 event: health
-data: {"slug":"invoice-generator","status":"ok"}
+data: {"slug":"ledger","status":"ok"}
 
 event: badge
 data: {"slug":"crm","count":7}

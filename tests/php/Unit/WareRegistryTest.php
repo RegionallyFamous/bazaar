@@ -207,13 +207,13 @@ final class WareRegistryTest extends TestCase {
 
 	public function test_get_index_returns_all_slugs(): void {
 		$this->seed_ware( 'crm' );
-		$this->seed_ware( 'kanban' );
+		$this->seed_ware( 'board' );
 		$registry = new WareRegistry();
 
 		$index = $registry->get_index();
 
 		$this->assertArrayHasKey( 'crm', $index );
-		$this->assertArrayHasKey( 'kanban', $index );
+		$this->assertArrayHasKey( 'board', $index );
 	}
 
 	public function test_get_all_returns_full_manifests(): void {
@@ -368,7 +368,7 @@ final class WareRegistryTest extends TestCase {
 		$this->store['bazaar_registry'] = json_encode(
 			array(
 				'crm'    => array( 'name' => 'CRM',    'version' => '1.0', 'slug' => 'crm' ),
-				'kanban' => array( 'name' => 'Kanban', 'version' => '1.0', 'slug' => 'kanban' ),
+				'board' => array( 'name' => 'Board', 'version' => '1.0', 'slug' => 'board' ),
 			)
 		);
 

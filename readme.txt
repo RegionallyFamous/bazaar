@@ -4,7 +4,7 @@ Tags: admin, apps, marketplace, tools, dashboard
 Requires at least: 6.6
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.0.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -44,11 +44,11 @@ my-app.wp
 
 `
 {
-  "name": "Invoice Generator",
-  "slug": "invoice-generator",
+  "name": "Ledger",
+  "slug": "ledger",
   "version": "1.0.0",
-  "author": "Nick",
-  "description": "Generate and manage invoices from wp-admin.",
+  "author": "Regionally Famous",
+  "description": "Send invoices, track clients, and log payments.",
   "icon": "icon.svg",
   "entry": "index.html",
   "menu": {

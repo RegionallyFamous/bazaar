@@ -1,6 +1,6 @@
 {
   "name": "bazaar",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Bazaar WordPress Plugin admin UI",
   "private": true,
   "workspaces": [

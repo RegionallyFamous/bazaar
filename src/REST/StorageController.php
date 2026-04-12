@@ -8,6 +8,11 @@
  * Storage backend: wp_usermeta — key pattern: bazaar_store_{slug}_{key}
  * (Meta values are JSON-encoded so any scalar / array can be stored.)
  *
+ * Authorization model: any logged-in user may read and write their own storage.
+ * Each operation is scoped to get_current_user_id() so one user can never
+ * access another user's data.  Routes use require_login() (not manage_options)
+ * because wares legitimately need storage for non-admin users.
+ *
  * Routes
  * ──────
  *   GET    /bazaar/v1/store/{slug}         List all keys for this ware.
@@ -129,11 +134,6 @@ final class StorageController extends BazaarController {
 		);
 	}
 
-	/**
-	 * Permission callback — requires manage_options capability.
-	 *
-	 * @return bool
-	 */
 	// ─── Handlers ─────────────────────────────────────────────────────────
 
 	/**
@@ -185,6 +185,14 @@ final class StorageController extends BazaarController {
 		}
 
 		$value = json_decode( (string) $raw, true );
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			return new WP_Error(
+				'decode_error',
+				__( 'Stored value is corrupt and could not be decoded.', 'bazaar' ),
+				array( 'status' => 500 )
+			);
+		}
+
 		return new WP_REST_Response(
 			array(
 				'key'   => $key,
@@ -226,7 +234,10 @@ final class StorageController extends BazaarController {
 			return new WP_Error( 'too_large', __( 'Value exceeds 1 MB storage limit.', 'bazaar' ), array( 'status' => 413 ) );
 		}
 
-		update_user_meta( $uid, $meta, $encoded );
+		$result = update_user_meta( $uid, $meta, $encoded );
+		if ( false === $result ) {
+			return new WP_Error( 'write_error', __( 'Could not save value to database.', 'bazaar' ), array( 'status' => 500 ) );
+		}
 		return new WP_REST_Response(
 			array(
 				'key'   => $key,
@@ -240,7 +251,7 @@ final class StorageController extends BazaarController {
 	 * Delete value.
 	 *
 	 * @param WP_REST_Request $request Description.
-	 * @return WP_REST_Response
+	 * @return WP_REST_Response|WP_Error
 	 */
 	public function delete_value( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$slug = sanitize_key( $request->get_param( 'slug' ) );
@@ -256,7 +267,7 @@ final class StorageController extends BazaarController {
 	 * Clear all.
 	 *
 	 * @param WP_REST_Request $request Description.
-	 * @return WP_REST_Response
+	 * @return WP_REST_Response|WP_Error
 	 */
 	public function clear_all( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$slug = sanitize_key( $request->get_param( 'slug' ) );

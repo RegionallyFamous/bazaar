@@ -52,11 +52,11 @@ describe( 'LruIframeManager', () => {
 		test( 'hides all other iframes when re-activating', () => {
 			const mgr = new LruIframeManager( container, 3 );
 			mgr.activate( 'crm', 'http://localhost/crm' );
-			mgr.activate( 'kanban', 'http://localhost/kanban' );
-			// Activate crm again — kanban should become hidden.
+			mgr.activate( 'board', 'http://localhost/board' );
+			// Activate crm again — board should become hidden.
 			mgr.activate( 'crm', 'http://localhost/crm' );
-			const kanban = container.querySelector( '#bsh-frame-kanban' );
-			expect( kanban.classList.contains( 'bsh-iframe--visible' ) ).toBe(
+			const board = container.querySelector( '#bsh-frame-board' );
+			expect( board.classList.contains( 'bsh-iframe--visible' ) ).toBe(
 				false
 			);
 		} );

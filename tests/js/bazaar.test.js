@@ -24,7 +24,7 @@ describe( 'Bazaar admin escaping helpers', () => {
 	} );
 
 	test( 'passes through safe strings untouched', () => {
-		expect( escHtml( 'Invoice Generator' ) ).toBe( 'Invoice Generator' );
+		expect( escHtml( 'Ledger' ) ).toBe( 'Ledger' );
 	} );
 } );
 
@@ -34,7 +34,7 @@ describe( 'Bazaar file extension check', () => {
 	}
 
 	test( 'accepts .wp extension', () => {
-		expect( isWpFile( 'invoice-generator.wp' ) ).toBe( true );
+		expect( isWpFile( 'ledger.wp' ) ).toBe( true );
 	} );
 
 	test( 'rejects .zip extension', () => {

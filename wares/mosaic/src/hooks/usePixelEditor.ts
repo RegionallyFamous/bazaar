@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { getBazaarContext, createStore }             from '@bazaar/client';
+import { getBazaarContext, createStore, bzr }        from '@bazaar/client';
 import type { Tool, CanvasSize, ZoomLevel, SaveSlot } from '../types.ts';
 
 const MAX_HISTORY = 40;
@@ -233,7 +233,9 @@ export function usePixelEditor() {
 		].slice( 0, 10 );
 		setSaveSlots( updated );
 		if ( storeRef.current ) {
-			await storeRef.current.set( 'slots', updated as never ).catch( () => {} );
+			await storeRef.current.set( 'slots', updated as never ).catch( () => {
+				bzr.toast( 'Saved locally — server unreachable', 'warning' );
+			} );
 		}
 	}, [ pixels, size, saveSlots ] );
 

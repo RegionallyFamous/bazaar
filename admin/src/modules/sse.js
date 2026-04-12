@@ -13,6 +13,12 @@ const SSE_MAX_DELAY = 5 * 60_000;
 
 let _sseDelay = SSE_INITIAL_DELAY;
 
+/** Active EventSource instance — null when disconnected. */
+let _es = null;
+
+/** Pending reconnect timer id — cleared before scheduling a new one. */
+let _reconnectTimer = null;
+
 /**
  * True while an SSE connection is open and delivering events.
  * Exported as a live binding so shell.js can skip redundant poll requests
@@ -38,11 +44,17 @@ export let sseConnected = false;
  * }} deps
  */
 export function connectSSE( deps ) {
+	// Singleton guard — do not open a second connection while one is alive.
+	if ( _es && _es.readyState !== EventSource.CLOSED ) {
+		return;
+	}
+
 	const { restUrl, nonce, onBadge, onToast, onWareInstalled, onWareDeleted, onWareToggled, onHealthUpdate } = deps;
 
 	const u = new URL( `${ restUrl }/stream` );
 	u.searchParams.set( '_wpnonce', nonce );
 	const src = new EventSource( u.toString(), { withCredentials: true } );
+	_es = src;
 
 	src.addEventListener( 'open', () => {
 		_sseDelay = SSE_INITIAL_DELAY; // Reset backoff after a clean connection.
@@ -92,7 +104,11 @@ export function connectSSE( deps ) {
 	src.onerror = () => {
 		sseConnected = false;
 		src.close();
-		setTimeout( () => connectSSE( deps ), _sseDelay );
+		_es = null;
+		// Clear any existing reconnect timer before scheduling a new one to
+		// prevent stacked timers from rapid error events.
+		clearTimeout( _reconnectTimer );
+		_reconnectTimer = setTimeout( () => connectSSE( deps ), _sseDelay );
 		_sseDelay = Math.min( _sseDelay * 2, SSE_MAX_DELAY );
 	};
 }
@@ -107,7 +123,13 @@ export function connectSSE( deps ) {
  *   onDirty:   () => void,
  * }} deps
  */
+let _badgePollInFlight = false;
+
 export async function pollBadges( { restUrl, nonce, badgeMap, onDirty } ) {
+	if ( _badgePollInFlight ) {
+		return;
+	}
+	_badgePollInFlight = true;
 	try {
 		const r = await fetch( `${ restUrl }/badges`, {
 			headers: { 'X-WP-Nonce': nonce },
@@ -131,6 +153,8 @@ export async function pollBadges( { restUrl, nonce, badgeMap, onDirty } ) {
 		}
 	} catch {
 		/* non-fatal */
+	} finally {
+		_badgePollInFlight = false;
 	}
 }
 
@@ -144,7 +168,13 @@ export async function pollBadges( { restUrl, nonce, badgeMap, onDirty } ) {
  *   onDirty:   () => void,
  * }} deps
  */
+let _healthPollInFlight = false;
+
 export async function pollHealth( { restUrl, nonce, healthMap, onDirty } ) {
+	if ( _healthPollInFlight ) {
+		return;
+	}
+	_healthPollInFlight = true;
 	try {
 		const r = await fetch( `${ restUrl }/health`, {
 			headers: { 'X-WP-Nonce': nonce },
@@ -168,5 +198,7 @@ export async function pollHealth( { restUrl, nonce, healthMap, onDirty } ) {
 		}
 	} catch {
 		/* non-fatal */
+	} finally {
+		_healthPollInFlight = false;
 	}
 }

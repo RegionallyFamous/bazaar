@@ -220,7 +220,7 @@ final class Plugin {
 	 * Register the bazaar/ware Gutenberg block.
 	 */
 	public function register_block(): void {
-		( new WareBlock() )->register_hooks();
+		( new WareBlock( $this->registry ) )->register_hooks();
 	}
 
 	// ─── SSE dispatch hooks ───────────────────────────────────────────────────

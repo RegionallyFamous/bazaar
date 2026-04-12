@@ -30,7 +30,7 @@ describe( 'sortedEnabled', () => {
 	test( 'returns only enabled wares', () => {
 		const map = makeMap( [
 			{ slug: 'crm', name: 'CRM', enabled: true },
-			{ slug: 'kanban', name: 'Kanban', enabled: false },
+			{ slug: 'board', name: 'Board', enabled: false },
 		] );
 		const result = sortedEnabled( map );
 		expect( result ).toHaveLength( 1 );
@@ -63,16 +63,16 @@ describe( 'sortedEnabled', () => {
 	} );
 
 	test( 'respects navOrder within unpinned group', () => {
-		navOrder.push( 'crm', 'kanban', 'billing' );
+		navOrder.push( 'crm', 'board', 'billing' );
 		const map = makeMap( [
 			{ slug: 'billing', name: 'Billing', enabled: true },
 			{ slug: 'crm', name: 'CRM', enabled: true },
-			{ slug: 'kanban', name: 'Kanban', enabled: true },
+			{ slug: 'board', name: 'Board', enabled: true },
 		] );
 		const result = sortedEnabled( map );
 		expect( result.map( ( w ) => w.slug ) ).toEqual( [
 			'crm',
-			'kanban',
+			'board',
 			'billing',
 		] );
 	} );
@@ -157,7 +157,7 @@ describe( 'buildItem', () => {
 	} );
 
 	test( 'inactive slug does not get aria-current', () => {
-		const li = buildItem( 'kanban', { label: 'Kanban' }, 'crm', badgeMap );
+		const li = buildItem( 'board', { label: 'Board' }, 'crm', badgeMap );
 		const btn = li.querySelector( 'button.bsh-nav__btn' );
 		expect( btn.getAttribute( 'aria-current' ) ).toBeNull();
 	} );
@@ -265,7 +265,7 @@ describe( 'sortedEnabled with missing name fields', () => {
 	test( 'does not throw when ware name is undefined', () => {
 		const map = new Map( [
 			[ 'crm', { slug: 'crm', enabled: true } ],           // name missing
-			[ 'kanban', { slug: 'kanban', name: null, enabled: true } ], // name null
+			[ 'board', { slug: 'board', name: null, enabled: true } ], // name null
 			[ 'billing', { slug: 'billing', name: 'Billing', enabled: true } ],
 		] );
 

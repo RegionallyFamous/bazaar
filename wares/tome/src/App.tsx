@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Sidebar    from './components/Sidebar.tsx';
 import PageView   from './components/PageView.tsx';
 import PageEditor from './components/PageEditor.tsx';
@@ -9,18 +9,28 @@ import './App.css';
 type Mode = 'view' | 'edit';
 
 export default function App() {
-	const [ pages,    setPages    ] = useState<Page[]>( [] );
-	const [ activeId, setActiveId ] = useState<string | null>( null );
-	const [ mode,     setMode     ] = useState<Mode>( 'view' );
-	const [ loading,  setLoading  ] = useState( true );
+	const [ pages,     setPages     ] = useState<Page[]>( [] );
+	const [ activeId,  setActiveId  ] = useState<string | null>( null );
+	const [ mode,      setMode      ] = useState<Mode>( 'view' );
+	const [ loading,   setLoading   ] = useState( true );
+	const [ loadError, setLoadError ] = useState( false );
+	const loadAttempt = useRef( 0 );
 
-	useEffect( () => {
-		loadPages().then( loaded => {
-			setPages( loaded );
-			if ( loaded.length > 0 ) setActiveId( loaded[ 0 ].id );
-			setLoading( false );
-		} );
+	const loadData = useCallback( () => {
+		setLoading( true );
+		setLoadError( false );
+		const attempt = ++loadAttempt.current;
+		loadPages()
+			.then( loaded => {
+				if ( attempt !== loadAttempt.current ) return;
+				setPages( loaded );
+				if ( loaded.length > 0 ) setActiveId( loaded[ 0 ].id );
+			} )
+			.catch( () => { if ( attempt === loadAttempt.current ) setLoadError( true ); } )
+			.finally( () => { if ( attempt === loadAttempt.current ) setLoading( false ); } );
 	}, [] );
+
+	useEffect( () => { loadData(); }, [ loadData ] );
 
 	const activePage = pages.find( p => p.id === activeId ) ?? null;
 
@@ -73,6 +83,15 @@ export default function App() {
 		window.addEventListener( 'keydown', handler );
 		return () => window.removeEventListener( 'keydown', handler );
 	}, [ activePage, mode, handleNew ] );
+
+	if ( loadError ) {
+		return (
+			<div className="tome-loading">
+				<span>Could not load pages.</span>
+				<button onClick={ loadData }>Retry</button>
+			</div>
+		);
+	}
 
 	if ( loading ) {
 		return (

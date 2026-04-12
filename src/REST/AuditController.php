@@ -195,9 +195,10 @@ final class AuditController extends BazaarController {
 			$total = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $table ) );
 		}
 
-		// Decode meta for API consumers.
+		// Decode meta for API consumers; skip corrupt rows rather than surfacing raw JSON.
 		foreach ( $rows as &$row ) {
-			$row['meta'] = json_decode( $row['meta'] ?? '{}', true );
+			$decoded     = json_decode( $row['meta'] ?? '{}', true );
+			$row['meta'] = json_last_error() === JSON_ERROR_NONE && is_array( $decoded ) ? $decoded : array();
 		}
 
 		return array(
