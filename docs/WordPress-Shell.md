@@ -432,4 +432,4 @@ alias wpsh='wp shell'
 - [WP-CLI official docs](https://wp-cli.org/)
 - [WP-CLI command reference](https://developer.wordpress.org/cli/commands/)
 - [WP-CLI packages on Packagist](https://packagist.org/?tags=wp-cli-package)
-- [Bazaar WP-CLI commands](WP-CLI.md)
+- [Bazaar WP-CLI commands](WP-CLI)

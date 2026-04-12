@@ -12,6 +12,7 @@ A **ware** is any web app packaged as a `.wp` file (a renamed ZIP archive) with 
 - [Building with a Framework](#building-with-a-framework)
 - [Shared Libraries](#shared-libraries)
 - [Communicating with WordPress](#communicating-with-wordpress)
+- [Using @bazaar/client](#using-bazaarclient)
 - [iframe Sandbox Capabilities](#iframe-sandbox-capabilities)
 - [Updating a Ware](#updating-a-ware)
 - [Debugging Tips](#debugging-tips)
@@ -20,7 +21,7 @@ A **ware** is any web app packaged as a `.wp` file (a renamed ZIP archive) with 
 
 ## The Mental Model
 
-The name comes from Eric S. Raymond's essay *[The Cathedral and the Bazaar](http://www.catb.org/~esr/writings/cathedral-bazaar/)*. The cathedral is `wp-admin` as it exists today — monolithic, controlled, extended only through its own architecture. Bazaar makes the admin a platform where anyone can contribute an app without understanding WordPress internals.
+Bazaar makes the admin a platform where anyone can contribute an app without understanding WordPress internals.
 
 **Your ware is just a website.** It runs in a sandboxed `<iframe>` inside `wp-admin`. You have full control over HTML, CSS, and JS. The only WordPress knowledge you need is writing `manifest.json`.
 
@@ -359,8 +360,47 @@ Or from the admin UI: delete the old ware, then upload the new one.
 
 ---
 
+## Using @bazaar/client
+
+`@bazaar/client` is a TypeScript library that handles WordPress plumbing so you can focus on your app.
+
+```bash
+npm install @bazaar/client
+```
+
+**Framework-agnostic core:**
+
+```ts
+import { getBazaarContext, wpJson } from '@bazaar/client';
+
+const ctx = getBazaarContext();
+// { nonce, restUrl, serveUrl, slug, adminColor }
+
+// Authenticated fetch — nonce added automatically
+const posts = await wpJson('/wp/v2/posts?per_page=5');
+```
+
+**React hooks:**
+
+```tsx
+import { useCurrentUser, useWpPosts } from '@bazaar/client/react';
+
+function App() {
+  const user = useCurrentUser();
+  const { posts, loading } = useWpPosts({ per_page: 10 });
+
+  if (loading) return <p>Loading…</p>;
+  return <div>{posts.map(p => <h2 key={p.id}>{p.title.rendered}</h2>)}</div>;
+}
+```
+
+See the [`packages/client` README](https://github.com/RegionallyFamous/bazaar/blob/main/packages/client/README.md) for the full API reference.
+
+---
+
 ## Next Steps
 
-- [Manifest Reference](Manifest-Reference.md) — every `manifest.json` field explained
-- [REST API](REST-API.md) — full endpoint docs and ware-to-WordPress patterns
-- [WP-CLI](WP-CLI.md) — install and manage wares from the terminal
+- [Manifest Reference](Manifest-Reference) — every `manifest.json` field explained
+- [REST API](REST-API) — full endpoint docs and ware-to-WordPress patterns
+- [WP-CLI](WP-CLI) — install and manage wares from the terminal
+- [Architecture](Architecture) — how shared libraries and the service worker cache work

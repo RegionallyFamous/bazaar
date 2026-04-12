@@ -529,4 +529,4 @@ wp @local      bazaar delete  old-ware --yes
 ```
 
 > [!TIP]
-> See [WordPress Shell](WordPress-Shell.md) for advanced automation patterns including environment sync scripts and GitHub Actions CI integration.
+> See [WordPress Shell](WordPress-Shell) for advanced automation patterns including environment sync scripts and GitHub Actions CI integration.
