@@ -70,9 +70,9 @@ rsync -a --delete \
   "${TARGET}/"
 
 # ---------------------------------------------------------------------------
-# 3. Sync only the autoloader shims (not the 60 MB of dev packages)
+# 3. Sync autoloader shims + packages needed at runtime
 # ---------------------------------------------------------------------------
-echo "  [3/3] Syncing autoloader shims…"
+echo "  [3/3] Syncing autoloader shims and runtime packages…"
 rsync -a \
   "${REPO_ROOT}/vendor/autoload.php" \
   "${TARGET}/vendor/"
@@ -80,5 +80,12 @@ rsync -a \
 rsync -a --delete \
   "${REPO_ROOT}/vendor/composer/" \
   "${TARGET}/vendor/composer/"
+
+# packages/updater-mcupdateface is excluded by the main rsync (packages/ is a
+# dev workspace) but github-updater.php requires it at runtime.
+mkdir -p "${TARGET}/packages/updater-mcupdateface/src"
+rsync -a \
+  "${REPO_ROOT}/packages/updater-mcupdateface/src/UpdaterMcUpdateface.php" \
+  "${TARGET}/packages/updater-mcupdateface/src/"
 
 echo "  ✓ Done."

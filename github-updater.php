@@ -30,6 +30,7 @@ if ( ! class_exists( \RegionallyFamous\UpdaterMcUpdateface\UpdaterMcUpdateface::
 	unset( $bazaar_ghu_paths, $bazaar_ghu_file );
 }
 
-if ( ! class_exists( 'GitHub_Plugin_Updater', false ) ) {
+if ( class_exists( \RegionallyFamous\UpdaterMcUpdateface\UpdaterMcUpdateface::class, false )
+	&& ! class_exists( 'GitHub_Plugin_Updater', false ) ) {
 	class_alias( \RegionallyFamous\UpdaterMcUpdateface\UpdaterMcUpdateface::class, 'GitHub_Plugin_Updater' );
 }
