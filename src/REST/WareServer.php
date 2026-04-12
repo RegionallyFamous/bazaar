@@ -138,15 +138,19 @@ final class WareServer {
 	 *
 	 * @param WP_REST_Request $request The incoming REST request.
 	 */
-	public function check_permission( WP_REST_Request $request ): bool|WP_Error {
-		if ( ! is_user_logged_in() ) {
-			return new WP_Error(
-				'rest_forbidden',
-				esc_html__( 'You must be logged in to access ware files.', 'bazaar' ),
-				array( 'status' => 401 )
-			);
-		}
+	/**
+	 * Public image extensions that browsers load via <img> tags — these cannot
+	 * carry an X-WP-Nonce header, so they are served without authentication.
+	 * None of these types can contain executable ware logic.
+	 */
+	private const PUBLIC_IMAGE_EXTS = array( 'svg', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'ico', 'avif' );
 
+	/**
+	 * Permission callback: image assets are public; all other files require login + capability.
+	 *
+	 * @param WP_REST_Request $request The incoming REST request.
+	 */
+	public function check_permission( WP_REST_Request $request ): bool|WP_Error {
 		$slug = sanitize_key( $request->get_param( 'slug' ) );
 		$ware = $this->registry->get( $slug );
 
@@ -163,6 +167,24 @@ final class WareServer {
 				'ware_disabled',
 				esc_html__( 'This ware is currently disabled.', 'bazaar' ),
 				array( 'status' => 403 )
+			);
+		}
+
+		// Static image assets are decorative and carry no executable logic.
+		// They are loaded by <img> tags which cannot send X-WP-Nonce, so we
+		// allow them without authentication rather than forcing every icon to
+		// include a nonce in its URL.
+		$file = (string) $request->get_param( 'file' );
+		$ext  = strtolower( pathinfo( $file, PATHINFO_EXTENSION ) );
+		if ( in_array( $ext, self::PUBLIC_IMAGE_EXTS, true ) ) {
+			return true;
+		}
+
+		if ( ! is_user_logged_in() ) {
+			return new WP_Error(
+				'rest_forbidden',
+				esc_html__( 'You must be logged in to access ware files.', 'bazaar' ),
+				array( 'status' => 401 )
 			);
 		}
 
@@ -247,7 +269,20 @@ final class WareServer {
 		$mtime     = (int) filemtime( $full_path );
 
 		// Build cache validators.
-		$etag          = '"' . md5( $full_path . $mtime . $file_size ) . '"';
+		// For HTML files, mix the shared-registry mtime, the Vite manifest mtime
+		// (so that a rebuild with new content-hashed filenames busts the cache),
+		// and the ware's stored shared-lib list (so that adding react/jsx-runtime
+		// or any shared dep to the DB registration busts the cached importmap).
+		$etag_seed = $full_path . $mtime . $file_size;
+		if ( $is_html ) {
+			$reg_path    = BAZAAR_DIR . 'admin/src/shared/registry.json';
+			$man_path    = BAZAAR_DIR . 'admin/dist/.vite/manifest.json';
+			$etag_seed  .= file_exists( $reg_path ) ? (string) filemtime( $reg_path ) : '';
+			$etag_seed  .= file_exists( $man_path ) ? (string) filemtime( $man_path ) : '';
+			$ware_record = $this->registry->get( $slug );
+			$etag_seed  .= wp_json_encode( $ware_record['shared'] ?? array() );
+		}
+		$etag          = '"' . md5( $etag_seed ) . '"';
 		$last_modified = gmdate( 'D, d M Y H:i:s', $mtime ) . ' GMT';
 
 		// Check conditional request headers — serve 304 without reading the file.

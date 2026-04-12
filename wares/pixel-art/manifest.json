@@ -11,5 +11,5 @@
     "position": 5,
     "capability": "manage_options"
   },
-  "shared": ["react", "react-dom"]
+  "shared": ["react", "react-dom", "react/jsx-runtime"]
 }

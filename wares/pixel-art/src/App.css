@@ -169,84 +169,114 @@
 /* ── Palette sidebar ── */
 
 .palette {
-	width: 180px;
+	width: 168px;
 	background: #181825;
 	border-left: 1px solid #313244;
 	overflow-y: auto;
-	padding: 12px;
+	padding: 10px;
 	display: flex;
 	flex-direction: column;
-	gap: 16px;
+	gap: 12px;
 	flex-shrink: 0;
 }
 
 .palette__section {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 6px;
 }
 
 .palette__heading {
 	margin: 0;
-	font-size: 10px;
-	font-weight: 600;
+	font-size: 9px;
+	font-weight: 700;
 	text-transform: uppercase;
-	letter-spacing: .08em;
-	color: #6c7086;
+	letter-spacing: .1em;
+	color: #585b70;
 }
 
 .palette__swatches {
 	display: grid;
 	grid-template-columns: repeat(4, 1fr);
-	gap: 4px;
+	gap: 3px;
 }
 
 .palette__swatch {
+	/* Reset browser button defaults */
+	appearance: none;
+	-webkit-appearance: none;
+	padding: 0;
+	border: 2px solid transparent;
+	outline: none;
+	/* Sizing */
 	aspect-ratio: 1;
 	border-radius: 4px;
-	border: 2px solid transparent;
 	cursor: pointer;
-	transition: transform .1s;
+	transition: transform .1s, border-color .1s;
+	display: block;
 }
 
 .palette__swatch:hover {
-	transform: scale(1.15);
+	transform: scale(1.12);
+	z-index: 1;
+	position: relative;
 }
 
 .palette__swatch--active {
 	border-color: #cba6f7;
-	transform: scale(1.1);
+	box-shadow: 0 0 0 1px #1e1e2e inset;
 }
 
-.palette__custom-label {
+/* Current-colour row: swatch + hex label */
+.palette__colour-row {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	font-size: 11px;
-	color: #a6adc8;
-	cursor: pointer;
-}
-
-.palette__custom-input {
-	width: 28px;
-	height: 22px;
-	border-radius: 4px;
-	cursor: pointer;
+	gap: 8px;
 }
 
 .palette__current {
+	width: 28px;
 	height: 28px;
-	border-radius: 6px;
-	border: 1px solid rgba(255,255,255,.1);
+	border-radius: 5px;
+	border: 2px solid rgba(255,255,255,.12);
+	flex-shrink: 0;
+	cursor: pointer;
+	appearance: none;
+	-webkit-appearance: none;
+	padding: 0;
+	outline: none;
+}
+
+.palette__hex {
+	font-size: 11px;
+	font-family: ui-monospace, 'SFMono-Regular', monospace;
+	color: #a6adc8;
+	flex: 1;
+	background: #313244;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	padding: 4px 6px;
+	width: 0;
+}
+
+.palette__hex:focus {
+	outline: none;
+	border-color: #cba6f7;
+	color: #cdd6f4;
 }
 
 .palette__action-btn {
+	appearance: none;
+	-webkit-appearance: none;
+	border: none;
 	background: #313244;
 	color: #cdd6f4;
 	border-radius: 6px;
-	padding: 6px 10px;
-	font-size: 12px;
+	padding: 5px 10px;
+	font-size: 11px;
 	text-align: center;
+	cursor: pointer;
+	width: 100%;
 	transition: background .12s;
 }
 
@@ -260,8 +290,9 @@
 	color: #cdd6f4;
 	border-radius: 4px;
 	padding: 4px 8px;
-	font-size: 12px;
+	font-size: 11px;
 	width: 100%;
+	box-sizing: border-box;
 }
 
 .palette__name-input:focus {
@@ -279,13 +310,17 @@
 }
 
 .palette__slot-btn {
+	appearance: none;
+	-webkit-appearance: none;
+	border: none;
 	width: 100%;
 	text-align: left;
-	padding: 5px 8px;
+	padding: 4px 8px;
 	background: #313244;
 	color: #a6adc8;
 	border-radius: 4px;
 	font-size: 11px;
+	cursor: pointer;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;

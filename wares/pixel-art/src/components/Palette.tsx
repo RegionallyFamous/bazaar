@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { DEFAULT_PALETTE } from '../types.ts';
 
 interface Props {
@@ -15,6 +16,20 @@ export default function Palette( {
 	primaryColor, onColorChange,
 	saveSlots, saveName, onSaveNameChange, onSave, onLoad, onExport,
 }: Props ) {
+	const [ hexInput, setHexInput ] = useState( primaryColor );
+
+	const handleHexCommit = ( raw: string ) => {
+		const hex = raw.startsWith( '#' ) ? raw : '#' + raw;
+		if ( /^#[0-9a-fA-F]{6}$/.test( hex ) ) {
+			onColorChange( hex );
+			setHexInput( hex );
+		} else {
+			setHexInput( primaryColor );
+		}
+	};
+
+	const syncedHex = hexInput !== primaryColor ? hexInput : primaryColor;
+
 	return (
 		<aside className="palette">
 			<section className="palette__section">
@@ -26,24 +41,29 @@ export default function Palette( {
 							className={ `palette__swatch${ hex === primaryColor ? ' palette__swatch--active' : '' }` }
 							style={ { background: hex } }
 							title={ hex }
-							onClick={ () => onColorChange( hex ) }
+							onClick={ () => { onColorChange( hex ); setHexInput( hex ); } }
 						/>
 					) ) }
 				</div>
-				<label className="palette__custom-label">
-					Custom
+				<div className="palette__colour-row">
 					<input
 						type="color"
-						className="palette__custom-input"
+						className="palette__current"
 						value={ primaryColor }
-						onChange={ e => onColorChange( e.target.value ) }
+						onChange={ e => { onColorChange( e.target.value ); setHexInput( e.target.value ); } }
+						title="Pick custom colour"
 					/>
-				</label>
-				<div
-					className="palette__current"
-					style={ { background: primaryColor } }
-					title={ primaryColor }
-				/>
+					<input
+						type="text"
+						className="palette__hex"
+						value={ syncedHex }
+						maxLength={ 7 }
+						spellCheck={ false }
+						onChange={ e => setHexInput( e.target.value ) }
+						onBlur={ e => handleHexCommit( e.target.value ) }
+						onKeyDown={ e => e.key === 'Enter' && handleHexCommit( ( e.target as HTMLInputElement ).value ) }
+					/>
+				</div>
 			</section>
 
 			<section className="palette__section">
