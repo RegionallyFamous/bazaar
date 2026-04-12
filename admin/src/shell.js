@@ -224,8 +224,8 @@ class ToastManager {
 		const ICONS = {
 			success: 'dashicons-yes-alt',
 			warning: 'dashicons-warning',
-			error:   'dashicons-dismiss',
-			info:    'dashicons-info',
+			error: 'dashicons-dismiss',
+			info: 'dashicons-info',
 		};
 		const t = document.createElement( 'div' );
 		t.className = `bsh-toast bsh-toast--${ level }`;
