@@ -101,6 +101,7 @@ final class Plugin {
 	 */
 	public static function boot(): void {
 		if ( null === self::$instance ) {
+			WareMigration::run();
 			self::$instance = new self();
 			self::$instance->register_hooks();
 		}
