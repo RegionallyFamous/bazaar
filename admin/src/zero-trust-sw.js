@@ -25,7 +25,7 @@
 
 // ── Asset cache ──────────────────────────────────────────────────────────────
 
-const ASSET_CACHE_NAME = 'bazaar-ware-assets-v1';
+const ASSET_CACHE_NAME = 'bazaar-ware-assets-v3';
 
 /**
  * Matches both ware static files (wp-content/bazaar/**) and the shell's
@@ -51,13 +51,32 @@ self.addEventListener( 'message', ( event ) => {
 		return;
 	}
 
-	const { type, permissions } = event.data ?? {};
+	const { type, permissions, slug } = event.data ?? {};
+
 	if ( type === 'bazaar:zt-init' ) {
 		// Trust the verified event.origin, not the untrusted payload 'origin' field.
 		siteOrigin = event.origin;
-		for ( const [ slug, allowed ] of Object.entries( permissions ?? {} ) ) {
-			permissionsMap.set( slug, allowed );
+		for ( const [ s, allowed ] of Object.entries( permissions ?? {} ) ) {
+			permissionsMap.set( s, allowed );
 		}
+	}
+
+	// Shell sends this after a ware is installed or updated.  Evict every
+	// cached entry whose URL contains `/wp-content/bazaar/{slug}/` so the
+	// next load fetches the freshly-deployed assets from the network.
+	if ( type === 'bazaar:cache-clear' && typeof slug === 'string' ) {
+		const pattern = `/wp-content/bazaar/${ slug }/`;
+		event.waitUntil(
+			caches.open( ASSET_CACHE_NAME ).then( ( cache ) =>
+				cache.keys().then( ( keys ) =>
+					Promise.all(
+						keys
+							.filter( ( r ) => r.url.includes( pattern ) )
+							.map( ( r ) => cache.delete( r ) )
+					)
+				)
+			)
+		);
 	}
 } );
 
@@ -145,4 +164,23 @@ self.addEventListener( 'fetch', ( event ) => {
 // ── Install / activate — skip waiting for immediate control ─────────────────
 
 self.addEventListener( 'install', () => self.skipWaiting() );
-self.addEventListener( 'activate', ( e ) => e.waitUntil( self.clients.claim() ) );
+
+// On activate, claim clients immediately AND delete every cache bucket that
+// no longer matches ASSET_CACHE_NAME. This ensures that when the version
+// constant is bumped (v2 → v3 etc.) the old bucket — which may contain
+// stale JS pointing at removed or renamed REST routes — is evicted right away
+// rather than lingering until the next browser cache-storage sweep.
+self.addEventListener( 'activate', ( e ) => {
+	e.waitUntil(
+		Promise.all( [
+			self.clients.claim(),
+			caches.keys().then( ( names ) =>
+				Promise.all(
+					names
+						.filter( ( n ) => n !== ASSET_CACHE_NAME )
+						.map( ( n ) => caches.delete( n ) )
+				)
+			),
+		] )
+	);
+} );

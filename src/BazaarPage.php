@@ -28,9 +28,9 @@ final class BazaarPage {
 	/**
 	 * Provides installed-ware data for the page.
 	 *
-	 * @var WareRegistry
+	 * @var WareRegistryInterface
 	 */
-	private WareRegistry $registry;
+	private WareRegistryInterface $registry;
 
 	/**
 	 * Screen ID returned by add_menu_page(), populated after admin_menu fires.
@@ -51,9 +51,9 @@ final class BazaarPage {
 	/**
 	 * Constructor.
 	 *
-	 * @param WareRegistry $registry Registry instance.
+	 * @param WareRegistryInterface $registry Registry instance.
 	 */
-	public function __construct( WareRegistry $registry ) {
+	public function __construct( WareRegistryInterface $registry ) {
 		$this->registry = $registry;
 	}
 

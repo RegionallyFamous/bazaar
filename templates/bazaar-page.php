@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
 			<span class="dashicons dashicons-store" aria-hidden="true"></span>
 			<?php esc_html_e( 'Bazaar', 'bazaar' ); ?>
 		</h1>
-		<p class="bazaar-tagline"><?php esc_html_e( 'Your WordPress app marketplace. Install a ware and it appears instantly in your sidebar.', 'bazaar' ); ?></p>
+		<p class="bazaar-tagline"><?php esc_html_e( 'Your WordPress dashboard is an operating system you didn\'t know you had. Bazaar unlocks it.', 'bazaar' ); ?></p>
 	</header>
 
 	<!-- Core Apps discovery -->

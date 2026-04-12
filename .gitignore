@@ -12,6 +12,7 @@ composer.phar
 /dist/
 /packages/client/dist/
 /wares/*/dist/
+/wares/*/ware-dist/
 *.wp
 
 # Composer lock (committed in libraries, not plugins)

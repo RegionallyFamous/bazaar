@@ -3,7 +3,7 @@
 
 :root {
   --bg:        #f0f4f8;
-  --surface:   #ffffff;
+  --surface:   #fff;
   --border:    #e2e8f0;
   --text:      #1e293b;
   --text-dim:  #64748b;
@@ -147,6 +147,7 @@ body { background: var(--bg); min-height: 100dvh; }
 }
 
 .column__menu-btn:hover { background: var(--bg); color: var(--text); }
+
 .column__menu-btn--danger:hover { color: var(--danger); }
 
 .column__cards {
@@ -466,6 +467,7 @@ body { background: var(--bg); min-height: 100dvh; }
 }
 
 .modal__btn--primary:hover { background: var(--accent-hi); }
+
 .modal__btn--primary:disabled { opacity: .5; cursor: default; }
 
 .modal__btn--danger {

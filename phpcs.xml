@@ -11,8 +11,8 @@
     <arg name="parallel" value="8"/>
     <arg value="sp"/>
 
-    <!-- Target PHP 8.1+ -->
-    <config name="testVersion" value="8.1-"/>
+    <!-- Target PHP 8.2+ (matches composer.json require) -->
+    <config name="testVersion" value="8.2-"/>
 
     <!-- WordPress text domain -->
     <config name="text_domain" value="bazaar"/>

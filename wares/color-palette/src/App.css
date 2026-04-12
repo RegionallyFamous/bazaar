@@ -3,7 +3,7 @@
 
 :root {
   --bg:        #fdf2f8;
-  --surface:   #ffffff;
+  --surface:   #fff;
   --border:    #fce7f3;
   --text:      #1e1b2e;
   --text-dim:  #6b7280;
@@ -148,9 +148,11 @@ body { background: var(--bg); min-height: 100dvh; }
 }
 
 .cps__palette-item:hover .cps__palette-delete { opacity: 1; }
+
 .cps__palette-delete:hover { color: #ef4444; }
 
 .cps__rename-form { flex: 1; padding: 4px 8px; }
+
 .cps__rename-input {
   width: 100%;
   border: 1px solid var(--accent);
@@ -389,6 +391,7 @@ body { background: var(--bg); min-height: 100dvh; }
 }
 
 .contrast__sample-lg { font-size: 36px; font-weight: 700; }
+
 .contrast__sample-sm { font-size: 14px; }
 
 .contrast__controls {
@@ -439,8 +442,11 @@ body { background: var(--bg); min-height: 100dvh; }
 }
 
 .contrast__badge--aaa      { background: #dcfce7; color: #15803d; }
+
 .contrast__badge--aa       { background: #dbeafe; color: #1d4ed8; }
+
 .contrast__badge--aa-large { background: #fef9c3; color: #a16207; }
+
 .contrast__badge--fail     { background: #fee2e2; color: #b91c1c; }
 
 .contrast__breakdown {
@@ -551,6 +557,7 @@ body { background: var(--bg); min-height: 100dvh; }
 }
 
 .swatch-editor__input:focus { border-color: var(--accent); }
+
 .swatch-editor__input--hex { font-family: monospace; letter-spacing: .05em; }
 
 .swatch-editor__hex-row { display: flex; gap: 6px; }

@@ -5,19 +5,9 @@
  * These unit tests cover pure JS logic only.
  */
 
+import { escHtml } from '../../admin/src/shared/escape.js';
+
 describe( 'Bazaar admin escaping helpers', () => {
-	/**
-	 * Inline copies of the escHtml/escAttr helpers from main.js.
-	 * In a full setup these would be imported from a shared module.
-	 */
-	function escHtml( str ) {
-		return String( str )
-			.replace( /&/g, '&amp;' )
-			.replace( /</g, '&lt;' )
-			.replace( />/g, '&gt;' )
-			.replace( /"/g, '&quot;' )
-			.replace( /'/g, '&#39;' );
-	}
 
 	test( 'escapes HTML special characters', () => {
 		expect( escHtml( '<script>alert("xss")</script>' ) ).toBe(

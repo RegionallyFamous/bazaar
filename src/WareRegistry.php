@@ -607,7 +607,7 @@ final class WareRegistry implements WareRegistryInterface {
 			'health_check', 'search_endpoint'
 				=> sanitize_text_field( (string) $value ),
 			'icon'
-				=> esc_url_raw( (string) $value ),
+				=> sanitize_file_name( (string) $value ),
 			'trust'
 				=> sanitize_key( (string) $value ),
 			'jobs', 'settings', 'permissions'

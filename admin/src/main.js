@@ -4,7 +4,11 @@
 
 import './main.css';
 import apiFetch from '@wordpress/api-fetch';
-import { __, _n, sprintf } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
+import { escHtml, escAttr } from './shared/escape.js';
+import { SEARCH_DEBOUNCE_MS, DELETE_CONFIRM_COUNTDOWN_S } from './shared/constants.js';
+import { initUpload } from './modules/upload.js';
+import { initCoreApps } from './modules/core-apps.js';
 
 // Bootstrapped from wp_localize_script in BazaarPage::enqueue_assets().
 const { restUrl, nonce, inShell } = window.bazaarData ?? {};
@@ -69,13 +73,6 @@ if (
 // Module-level state
 // ---------------------------------------------------------------------------
 
-/** @type {XMLHttpRequest|null} */
-let currentUploadXhr = null;
-
-/** @type {ReturnType<typeof setTimeout>|null} */
-let successTimer = null;
-let errorTimer = null;
-
 /** Current status-filter selection: 'all' | 'enabled' | 'disabled'. */
 let currentFilter = 'all';
 
@@ -86,203 +83,24 @@ let currentFilter = 'all';
 let confirmState = null;
 
 // ---------------------------------------------------------------------------
-// Upload notices
+// Upload
 // ---------------------------------------------------------------------------
 
-/** @param {string} msg */
-function showError( msg ) {
-	errorBox.textContent = msg;
-	errorBox.hidden = false;
-	successBox.hidden = true;
-	clearTimeout( successTimer );
-	clearTimeout( errorTimer );
-	errorTimer = setTimeout( () => {
-		errorBox.hidden = true;
-	}, 8000 );
-}
-
-/** @param {string} msg */
-function showSuccess( msg ) {
-	successBox.textContent = msg;
-	successBox.hidden = false;
-	errorBox.hidden = true;
-	clearTimeout( successTimer );
-	successTimer = setTimeout( () => {
-		successBox.hidden = true;
-	}, 5000 );
-}
-
-// ---------------------------------------------------------------------------
-// Progress bar
-// ---------------------------------------------------------------------------
-
-/** @param {number} pct 0–100 */
-function setProgress( pct ) {
-	progress.hidden = false;
-	progressBar.classList.remove( 'bazaar-upload-progress__bar--indeterminate' );
-	progressBar.style.width = `${ Math.min( 100, pct ) }%`;
-}
-
-/** Switch to a shimmer animation while the server processes the archive. */
-function setProgressIndeterminate() {
-	progress.hidden = false;
-	progressBar.classList.add( 'bazaar-upload-progress__bar--indeterminate' );
-}
-
-function resetProgress() {
-	progress.hidden = true;
-	progressBar.classList.remove( 'bazaar-upload-progress__bar--indeterminate' );
-	progressBar.style.width = '0%';
-	progressLabel.textContent = __( 'Uploading…', 'bazaar' );
-}
-
-// ---------------------------------------------------------------------------
-// Upload — XHR for real upload-progress events
-// ---------------------------------------------------------------------------
-
-/**
- * Upload a .wp file via XHR so we get genuine upload-progress events.
- * Resolves with the parsed JSON response on HTTP 2xx; rejects otherwise.
- *
- * @param {File} file
- * @return {Promise<{message: string, ware: Object}>} Parsed response with a user-facing message and the new ware object.
- */
-function xhrUpload( file ) {
-	return new Promise( ( resolve, reject ) => {
-		const xhr = new XMLHttpRequest();
-		const url = ( restUrl || '' ) + '/wares';
-
-		xhr.upload.addEventListener( 'progress', ( e ) => {
-			if ( e.lengthComputable ) {
-				// Scale to 0–80 %; the remaining 20 % covers server-side install.
-				setProgress( Math.round( ( e.loaded / e.total ) * 80 ) );
-			}
-		} );
-
-		// File fully transferred — switch to indeterminate while server unpacks.
-		xhr.upload.addEventListener( 'load', () => {
-			setProgressIndeterminate();
-			progressLabel.textContent = __( 'Installing…', 'bazaar' );
-		} );
-
-		xhr.addEventListener( 'load', () => {
-			let data;
-			try {
-				data = JSON.parse( xhr.responseText );
-			} catch {
-				reject( new Error( __( 'Invalid server response.', 'bazaar' ) ) );
-				return;
-			}
-			if ( xhr.status >= 200 && xhr.status < 300 ) {
-				resolve( data );
-			} else {
-				reject( new Error( data?.message ?? `HTTP ${ xhr.status }` ) );
-			}
-		} );
-
-		xhr.addEventListener( 'error', () =>
-			reject( new Error( __( 'Network error. Please try again.', 'bazaar' ) ) )
-		);
-
-		// 'abort' is a sentinel we handle quietly; no user-visible error needed.
-		xhr.addEventListener( 'abort', () => reject( new Error( 'abort' ) ) );
-
-		xhr.open( 'POST', url );
-		xhr.setRequestHeader( 'X-WP-Nonce', nonce || '' );
-
-		const formData = new FormData();
-		formData.append( 'file', file );
-		xhr.send( formData );
-
-		currentUploadXhr = xhr;
-	} );
-}
-
-/**
- * Validate extension, show progress, upload, and handle response.
- *
- * @param {File} file
- */
-async function handleUpload( file ) {
-	if ( ! file.name.endsWith( '.wp' ) ) {
-		showError( __( 'Please select a file with a .wp extension.', 'bazaar' ) );
-		return;
-	}
-
-	errorBox.hidden = true;
-	successBox.hidden = true;
-	setProgress( 1 );
-	dropzone.classList.add( 'bazaar-dropzone--uploading' );
-
-	try {
-		const response = await xhrUpload( file );
-		setProgress( 100 );
-		showSuccess( response.message );
-		if ( response?.ware ) {
-			insertWareCard( response.ware );
-			updateWareCount( 1 );
-			notifyShell( 'bazaar:ware-installed', { ware: response.ware } );
-		}
-	} catch ( err ) {
-		if ( err.message !== 'abort' ) {
-			showError(
-				err.message || __( 'Upload failed. Please try again.', 'bazaar' )
-			);
-		}
-	} finally {
-		resetProgress();
-		dropzone.classList.remove( 'bazaar-dropzone--uploading' );
-		fileInput.value = '';
-		currentUploadXhr = null;
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Drag and drop
-// ---------------------------------------------------------------------------
-
-dropzone.addEventListener( 'click', () => fileInput.click() );
-
-dropzone.addEventListener( 'keydown', ( e ) => {
-	if ( e.key === 'Enter' || e.key === ' ' ) {
-		e.preventDefault();
-		fileInput.click();
-	}
-	if ( e.key === 'Escape' && currentUploadXhr ) {
-		currentUploadXhr.abort();
-	}
-} );
-
-fileInput.addEventListener( 'change', () => {
-	const file = fileInput.files?.[ 0 ];
-	if ( file ) {
-		handleUpload( file );
-	}
-	// Return focus to the dropzone so keyboard users don't lose their place.
-	dropzone.focus();
-} );
-
-dropzone.addEventListener( 'dragover', ( e ) => {
-	e.preventDefault();
-	dropzone.classList.add( 'bazaar-dropzone--hover' );
-} );
-
-dropzone.addEventListener( 'dragleave', ( e ) => {
-	// Only remove the hover style when leaving the dropzone itself,
-	// not when the pointer moves over a child element inside it.
-	if ( dropzone.contains( e.relatedTarget ) ) {
-		return;
-	}
-	dropzone.classList.remove( 'bazaar-dropzone--hover' );
-} );
-
-dropzone.addEventListener( 'drop', ( e ) => {
-	e.preventDefault();
-	dropzone.classList.remove( 'bazaar-dropzone--hover' );
-	const file = e.dataTransfer?.files?.[ 0 ];
-	if ( file ) {
-		handleUpload( file );
-	}
+const { showError } = initUpload( {
+	dropzone,
+	fileInput,
+	progress,
+	progressBar,
+	progressLabel,
+	errorBox,
+	successBox,
+	restUrl,
+	nonce,
+	onSuccess: ( ware ) => {
+		insertWareCard( ware );
+		updateWareCount( 1 );
+		notifyShell( 'bazaar:ware-installed', { ware } );
+	},
 } );
 
 // ---------------------------------------------------------------------------
@@ -330,7 +148,7 @@ function startConfirm( card, slug, btn ) {
 	strip.append( text, countdown, cancelBtn, deleteBtn );
 	card.append( strip );
 
-	let secondsLeft = 5;
+	let secondsLeft = DELETE_CONFIRM_COUNTDOWN_S;
 	countdown.textContent = `(${ secondsLeft })`;
 
 	const tickInterval = setInterval( () => {
@@ -341,7 +159,7 @@ function startConfirm( card, slug, btn ) {
 	const autoCancel = setTimeout( () => {
 		clearInterval( tickInterval );
 		cancelConfirm();
-	}, 5000 );
+	}, DELETE_CONFIRM_COUNTDOWN_S * 1000 );
 
 	confirmState = { card, slug, btn, strip, autoCancel, tickInterval };
 	cancelBtn.focus();
@@ -506,7 +324,7 @@ function applyFilters() {
 let _searchTimer;
 searchInput?.addEventListener( 'input', () => {
 	clearTimeout( _searchTimer );
-	_searchTimer = setTimeout( applyFilters, 80 );
+	_searchTimer = setTimeout( applyFilters, SEARCH_DEBOUNCE_MS );
 } );
 
 filterTabs?.addEventListener( 'click', ( e ) => {
@@ -645,256 +463,16 @@ function updateWareCount( delta ) {
 }
 
 // ---------------------------------------------------------------------------
-// Escape utilities
-// ---------------------------------------------------------------------------
-
-/**
- * Minimal HTML-escape for dynamic content injected via innerHTML.
- * @param {string} str Raw string to escape.
- */
-function escHtml( str ) {
-	return String( str )
-		.replace( /&/g, '&amp;' )
-		.replace( /</g, '&lt;' )
-		.replace( />/g, '&gt;' )
-		.replace( /"/g, '&quot;' )
-		.replace( /'/g, '&#39;' );
-}
-
-/**
- * Attribute-context escape (same rules as HTML escape in practice).
- * @param {string} str Raw string to escape.
- */
-function escAttr( str ) {
-	return escHtml( str );
-}
-
-// ---------------------------------------------------------------------------
 // Core Apps discovery
 // ---------------------------------------------------------------------------
 
-const coreGrid = document.getElementById( 'bazaar-core-grid' );
-
-/**
- * Build the set of installed ware slugs from the current gallery.
- *
- * @return {Set<string>} Set of installed ware slugs.
- */
-function getInstalledSlugs() {
-	const slugs = new Set();
-	gallery.querySelectorAll( '[data-slug]' ).forEach( ( el ) => {
-		const s = el.dataset.slug;
-		if ( s ) {
-			slugs.add( s );
-		}
-	} );
-	return slugs;
-}
-
-/**
- * Map a tag to the card accent colour.
- * Each category family shares a palette that distinguishes apps at a glance.
- *
- * @param {string[]} tags App tags from the registry.
- * @return {string} CSS hex colour for the card accent.
- */
-function tagToAccent( tags ) {
-	/** @type {Record<string, string>} */
-	const MAP = {
-		creative: '#f59e0b', art: '#f59e0b', editor: '#f59e0b', fun: '#ef4444',
-		business: '#2563eb', invoicing: '#2563eb', billing: '#2563eb', pdf: '#2563eb',
-		productivity: '#7c3aed', timer: '#7c3aed', focus: '#7c3aed', pomodoro: '#7c3aed',
-	};
-	for ( const tag of ( tags ?? [] ) ) {
-		if ( MAP[ tag ] ) {
-			return MAP[ tag ];
-		}
-	}
-	return '#6b7280';
-}
-
-/**
- * Render a single core app card inside the core grid.
- *
- * @param {Object}  app         Catalog entry from /bazaar/v1/core-apps.
- * @param {boolean} isInstalled Whether this slug is already installed.
- * @return {HTMLElement} The rendered card element.
- */
-function renderCoreCard( app, isInstalled ) {
-	const card = document.createElement( 'div' );
-	card.className = 'bazaar-core-card';
-	card.setAttribute( 'role', 'listitem' );
-	card.dataset.slug = app.slug;
-
-	const accent = tagToAccent( app.tags );
-	card.style.setProperty( '--card-accent', accent );
-
-	const initial = ( app.name || '?' ).charAt( 0 ).toUpperCase();
-
-	// For installed wares use the local serve endpoint so the icon loads without
-	// needing a published GitHub release. Remote icon_url is kept as the fallback.
-	const resolvedIconUrl = isInstalled
-		? `${ window.bazaarData?.restUrl ?? '' }/serve/${ encodeURIComponent( app.slug ) }/icon.svg`
-		: app.icon_url;
-
-	const tagsHtml = ( app.tags ?? [] )
-		.map( ( t ) => `<span class="bazaar-core-tag">${ escHtml( t ) }</span>` )
-		.join( '' );
-
-	const installedBadge = isInstalled
-		? '<span class="bazaar-core-card__installed-badge">' + escHtml( __( '✓ Installed', 'bazaar' ) ) + '</span>'
-		: '';
-
-	// Installed apps get an "Open" button; uninstalled get an "Install" button.
-	const ctaHtml = isInstalled
-		? `<button
-			type="button"
-			class="button bazaar-core-card__cta bazaar-core-card__cta--open"
-			data-core-slug="${ escAttr( app.slug ) }"
-			aria-label="${ escAttr( sprintf( /* translators: %s: app name */ __( 'Open %s', 'bazaar' ), app.name ) ) }"
-		>${ escHtml( __( 'Open', 'bazaar' ) ) }</button>`
-		: `<button
-			type="button"
-			class="button bazaar-core-card__cta bazaar-core-card__cta--install"
-			data-core-slug="${ escAttr( app.slug ) }"
-			data-download-url="${ escAttr( app.download_url ) }"
-			aria-label="${ escAttr( sprintf( /* translators: %s: app name */ __( 'Install %s', 'bazaar' ), app.name ) ) }"
-		>${ escHtml( __( 'Install', 'bazaar' ) ) }</button>`;
-
-	card.innerHTML = `
-		${ installedBadge }
-		<div class="bazaar-core-card__top">
-			<div class="bazaar-core-card__icon-wrap">
-				<span class="bazaar-core-card__initial" aria-hidden="true">${ escHtml( initial ) }</span>
-				<img
-					src="${ escAttr( resolvedIconUrl ) }"
-					alt=""
-					class="bazaar-core-card__icon"
-					loading="lazy"
-					onerror="this.style.display='none'"
-				>
-			</div>
-			<div class="bazaar-core-card__info">
-				<h3 class="bazaar-core-card__name">${ escHtml( app.name ) }</h3>
-				<span class="bazaar-core-card__byline">v${ escHtml( app.version ) } &middot; ${ escHtml( app.author ?? 'Bazaar' ) }</span>
-			</div>
-		</div>
-		<p class="bazaar-core-card__desc">${ escHtml( app.description ) }</p>
-		<div class="bazaar-core-card__tags">${ tagsHtml }</div>
-		${ ctaHtml }
-	`;
-
-	return card;
-}
-
-/**
- * Fetch the core apps catalog and render cards.
- */
-async function loadCoreApps() {
-	if ( ! coreGrid ) {
-		return;
-	}
-
-	let apps;
-	try {
-		apps = await apiFetch( { path: '/core-apps' } );
-	} catch ( err ) {
-		coreGrid.classList.remove( 'bazaar-core-grid--loading' );
-		const msg = err?.message || __( 'Could not load the app catalog.', 'bazaar' );
-		coreGrid.innerHTML = `<p class="bazaar-core-error">${ escHtml( msg ) }</p>`;
-		return;
-	}
-
-	coreGrid.classList.remove( 'bazaar-core-grid--loading' );
-	coreGrid.innerHTML = '';
-
-	if ( ! Array.isArray( apps ) || apps.length === 0 ) {
-		return;
-	}
-
-	// Populate the count badge in the section heading.
-	const countBadge = document.getElementById( 'bazaar-core-count' );
-	if ( countBadge ) {
-		countBadge.textContent = sprintf(
-			/* translators: %d: number of apps */
-			_n( '%d app', '%d apps', apps.length, 'bazaar' ),
-			apps.length
-		);
-	}
-
-	const installed = getInstalledSlugs();
-	apps.forEach( ( app ) => {
-		coreGrid.appendChild( renderCoreCard( app, installed.has( app.slug ) ) );
-	} );
-}
-
-/**
- * Handle a click on a core app "Install" button.
- *
- * @param {HTMLButtonElement} btn
- */
-async function handleCoreInstall( btn ) {
-	const slug = btn.dataset.coreSlug;
-	const downloadUrl = btn.dataset.downloadUrl;
-
-	if ( ! slug || ! downloadUrl ) {
-		return;
-	}
-
-	btn.disabled = true;
-	btn.textContent = __( 'Installing…', 'bazaar' );
-
-	try {
-		const response = await apiFetch( {
-			path: '/core-apps/install',
-			method: 'POST',
-			data: { url: downloadUrl },
-		} );
-
-		// Swap the "Install" button out for an "Open" button.
-		btn.textContent = __( 'Open', 'bazaar' );
-		btn.classList.remove( 'bazaar-core-card__cta--install' );
-		btn.classList.add( 'bazaar-core-card__cta--open' );
-		btn.disabled = false;
-		btn.removeAttribute( 'data-download-url' );
-
-		// Inject the installed corner badge if not already present.
-		const cardEl = btn.closest( '.bazaar-core-card' );
-		if ( cardEl && ! cardEl.querySelector( '.bazaar-core-card__installed-badge' ) ) {
-			const badge = document.createElement( 'span' );
-			badge.className = 'bazaar-core-card__installed-badge';
-			badge.textContent = __( '✓ Installed', 'bazaar' );
-			cardEl.prepend( badge );
-		}
-
-		if ( response?.ware ) {
-			insertWareCard( response.ware );
-			updateWareCount( 1 );
-			notifyShell( 'bazaar:ware-installed', { ware: response.ware } );
-		}
-	} catch ( err ) {
-		btn.disabled = false;
-		btn.textContent = __( 'Install', 'bazaar' );
-		showError(
-			err?.message ?? __( 'Installation failed. Please try again.', 'bazaar' )
-		);
-	}
-}
-
-if ( coreGrid ) {
-	coreGrid.addEventListener( 'click', ( e ) => {
-		const installBtn = e.target.closest( '.bazaar-core-card__cta--install' );
-		if ( installBtn ) {
-			handleCoreInstall( /** @type {HTMLButtonElement} */ ( installBtn ) );
-			return;
-		}
-
-		// "Open" button on already-installed apps: navigate in the shell.
-		const openBtn = e.target.closest( '.bazaar-core-card__cta--open' );
-		if ( openBtn?.dataset.coreSlug ) {
-			notifyShell( 'bazaar:navigate', { ware: openBtn.dataset.coreSlug } );
-		}
-	} );
-
-	loadCoreApps();
-}
+initCoreApps( {
+	coreGrid: document.getElementById( 'bazaar-core-grid' ),
+	gallery,
+	apiFetch,
+	restUrl,
+	showError,
+	insertWareCard,
+	updateWareCount,
+	notifyShell,
+} );

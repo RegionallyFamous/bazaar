@@ -60,6 +60,14 @@
 	overflow: hidden;
 }
 
+/* stylelint-disable rule-empty-line-before -- WP config requires blank before first nested rule; @supports exception not configured */
+@supports (height: 100dvh) {
+	.bsh { height: calc(100dvh - 32px); }
+
+	.bsh--fullscreen { height: 100dvh !important; }
+}
+/* stylelint-enable rule-empty-line-before */
+
 /* ─── Nav Rail ─────────────────────────────────────────────────────────── */
 
 .bsh-nav {
@@ -279,6 +287,16 @@
 .bsh--collapsed .bsh-nav__label {
 	opacity: 0;
 	pointer-events: none;
+	flex: 0;
+	width: 0;
+	overflow: hidden;
+}
+
+/* Center the icon in the collapsed rail */
+.bsh--collapsed .bsh-nav__btn {
+	justify-content: center;
+	padding: 9px 0;
+	gap: 0;
 }
 
 /* Dev mode pulse */
@@ -422,7 +440,7 @@
 
 .bsh-nav__item--grouped .bsh-nav__btn { padding-left: 22px; }
 
-.bsh--collapsed .bsh-nav__item--grouped .bsh-nav__btn { padding-left: 12px; }
+.bsh--collapsed .bsh-nav__item--grouped .bsh-nav__btn { padding-left: 0; }
 
 /* Footer hover + collapsed active icon — must follow grouped rules */
 .bsh-nav__footer .bsh-nav__btn:hover {
@@ -1203,8 +1221,6 @@
 
 @media (max-width: 782px) {
 
-	.bsh-mobile-menu { display: flex; }
-
 	.bsh-nav-backdrop { display: block; }
 
 	.bsh-nav {
@@ -1232,4 +1248,84 @@
 	.bsh-nav .bsh-nav__filter-wrap--active { display: flex !important; }
 
 	.bsh-nav__resize-handle { display: none !important; }
+
+	/* Hamburger button: visible and meet 44×44 touch target */
+	.bsh-mobile-menu {
+		display: flex;
+		min-width: 44px;
+		min-height: 44px;
+		justify-content: center;
+		padding: 0;
+	}
+
+	/* Toolbar buttons: larger touch target */
+	.bsh-toolbar__btn {
+		min-width: 44px;
+		min-height: 44px;
+		padding: 0;
+		justify-content: center;
+	}
+
+	/* Split view: stack panels vertically on mobile */
+	.bsh-main--split {
+		flex-direction: column;
+	}
+
+	.bsh-split__panel--a,
+	.bsh-split__panel--b {
+		flex: 1 1 50%;
+		min-height: 120px;
+	}
+
+	.bsh-split__divider {
+		width: 100%;
+		height: 4px;
+		cursor: row-resize;
+	}
+
+	/* Inspector: full-width overlay instead of pushing content */
+	.bsh-inspector {
+		width: 100% !important;
+		max-width: 100%;
+		top: auto;
+		bottom: 0;
+		height: 55vh;
+		border-left: none;
+		border-top: 1px solid var(--bsh-border);
+		border-radius: 16px 16px 0 0;
+		box-shadow: 0 -4px 24px rgba(0,0,0,.15);
+	}
+
+	.bsh-inspector-open .bsh-content {
+		margin-right: 0 !important;
+		padding-bottom: 55vh;
+	}
+
+	/* Toast: keep within viewport width */
+	.bsh-toast {
+		min-width: 0;
+		width: calc(100vw - 32px);
+		max-width: 420px;
+	}
+
+	.bsh-toasts {
+		bottom: 16px;
+		right: 16px;
+		left: 16px;
+	}
+}
+
+/* ─── Phone-only refinements (≤ 480px) ──────────────────────────────────── */
+
+@media (max-width: 480px) {
+
+	/* Collapse button is rarely needed on phone; keep but shrink */
+	.bsh-nav__collapse { display: none; }
+
+	/* Palette: narrow screen, ensure it doesn't overflow */
+	.bsh-palette__inner {
+		padding: 12px;
+		gap: 12px;
+	}
+
 }

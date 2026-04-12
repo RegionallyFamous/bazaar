@@ -202,12 +202,14 @@
 }
 
 .palette__swatch {
+
 	/* Reset browser button defaults */
 	appearance: none;
 	-webkit-appearance: none;
 	padding: 0;
 	border: 2px solid transparent;
 	outline: none;
+
 	/* Sizing */
 	aspect-ratio: 1;
 	border-radius: 4px;
@@ -249,7 +251,7 @@
 
 .palette__hex {
 	font-size: 11px;
-	font-family: ui-monospace, 'SFMono-Regular', monospace;
+	font-family: ui-monospace, SFMono-Regular, monospace;
 	color: #a6adc8;
 	flex: 1;
 	background: #313244;
@@ -330,4 +332,120 @@
 .palette__slot-btn:hover {
 	background: #45475a;
 	color: #cdd6f4;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 640px) {
+
+  /* Header: allow wrap and auto height */
+  .editor__header {
+    height: auto;
+    min-height: 44px;
+    padding: 6px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .editor__controls {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Workspace: stack canvas above controls */
+  .editor__workspace {
+    flex-direction: column;
+  }
+
+  /* Canvas area: fills the available space first */
+  .editor__canvas-area {
+    order: 1;
+    flex: 1 1 auto;
+    min-height: 200px;
+    overflow: auto;
+  }
+
+  /* Toolbar: horizontal strip below the canvas */
+  .toolbar {
+    order: 2;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 6px 8px;
+    border-right: none;
+    border-top: 1px solid #313244;
+    gap: 4px;
+  }
+
+  .toolbar__section {
+    flex-direction: row;
+    gap: 4px;
+  }
+
+  .toolbar__divider {
+    width: 1px;
+    height: 28px;
+    margin: 0 4px;
+  }
+
+  /* Toolbar buttons: meet 44×44 touch target */
+  .toolbar__btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* Palette: compact horizontal strip at the very bottom */
+  .palette {
+    order: 3;
+    width: 100%;
+    height: auto;
+    max-height: 180px;
+    overflow-y: auto;
+    border-left: none;
+    border-top: 1px solid #313244;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .palette__section {
+    flex: 0 0 auto;
+  }
+
+  /* More swatch columns when horizontal */
+  .palette__swatches {
+    grid-template-columns: repeat(8, 1fr);
+  }
+
+  /* Slightly larger palette heading so it's readable */
+  .palette__heading {
+    font-size: 10px;
+  }
+
+  /* Current-colour row takes more space */
+  .palette__colour-row {
+    min-width: 120px;
+  }
+
+  /* Action buttons: full tap target */
+  .palette__action-btn {
+    min-height: 36px;
+    font-size: 12px;
+  }
+
+  .palette__slot-btn {
+    min-height: 36px;
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  /* Select controls: taller */
+  .editor__select {
+    padding: 6px 8px;
+    min-height: 36px;
+  }
 }

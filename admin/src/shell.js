@@ -7,11 +7,20 @@
 import { __, sprintf } from '@wordpress/i18n';
 import './shell.css';
 
+import { esc } from './shared/escape.js';
+import {
+	SEARCH_DEBOUNCE_MS,
+	BADGE_POLL_INTERVAL_MS,
+	HEALTH_POLL_INTERVAL_MS,
+	DATA_CACHE_TTL_MS,
+	DATA_CACHE_MAX,
+	TOAST_DEFAULT_MS,
+} from './shared/constants.js';
+
 import { connectHmr } from './modules/hmr-bridge.js';
 
 import { TrustAwareLruManager } from './modules/lru.js';
-import { SplitView, toggleFullscreen, popOut } from './modules/views.js';
-import { WareInspector } from './modules/inspector.js';
+import { toggleFullscreen, popOut } from './modules/views.js';
 import { showError, dismissError } from './modules/errors.js';
 import {
 	sortedEnabled,
@@ -25,7 +34,12 @@ import {
 	recentList,
 	pushRecent,
 	healthMap,
+	invalidateSortCache,
+	patchNavBadges,
+	patchNavHealth,
 } from './modules/nav.js';
+import { CommandPalette } from './modules/palette.js';
+import { connectSSE, pollBadges, pollHealth, sseConnected } from './modules/sse.js';
 
 // ===========================================================================
 // Bootstrap
@@ -39,7 +53,6 @@ const {
 	manageUrl,
 	wares: initialWares,
 	branding = {},
-	devMode: globalDevMode = false,
 	outdatedCount = 0,
 	swUrl = null,
 } = D;
@@ -112,7 +125,7 @@ let _navFilterTimer;
 filterInput.addEventListener( 'input', () => {
 	navFilterQuery = filterInput.value.trim().toLowerCase();
 	clearTimeout( _navFilterTimer );
-	_navFilterTimer = setTimeout( applyNavFilter, 80 );
+	_navFilterTimer = setTimeout( applyNavFilter, SEARCH_DEBOUNCE_MS );
 } );
 
 filterInput.addEventListener( 'keydown', ( e ) => {
@@ -166,8 +179,6 @@ navBackdrop.addEventListener( 'click', closeMobileNav );
 // ===========================================================================
 
 const iframes = new TrustAwareLruManager( main, LRU_CAP, wareMap );
-const splitView = new SplitView( main, Math.max( 2, Math.floor( LRU_CAP / 2 ) ) );
-const inspector = new WareInspector();
 
 // ===========================================================================
 // White-label branding
@@ -200,245 +211,6 @@ const inspector = new WareInspector();
 		}
 	}
 }() );
-
-// ===========================================================================
-// Command Palette  (with federated search)
-// ===========================================================================
-
-class CommandPalette {
-	constructor( onSelect ) {
-		this.onSelect = onSelect;
-		this.visible = false;
-		this.items = [];
-		this.sel = 0;
-		this._searchTimer = null;
-
-		this.overlay = Object.assign( document.createElement( 'div' ), {
-			className: 'bsh-palette',
-		} );
-		this.overlay.setAttribute( 'role', 'dialog' );
-		this.overlay.setAttribute(
-			'aria-label',
-			__( 'Command palette', 'bazaar' )
-		);
-		this.overlay.setAttribute( 'aria-modal', 'true' );
-		this.overlay.hidden = true;
-
-		this.input = Object.assign( document.createElement( 'input' ), {
-			type: 'text',
-			className: 'bsh-palette__input',
-			placeholder: __(
-				'Search wares, content, actions… (↑↓ navigate · Enter open · Esc close)',
-				'bazaar'
-			),
-			autocomplete: 'off',
-			spellcheck: false,
-		} );
-
-		this.list = Object.assign( document.createElement( 'ul' ), {
-			className: 'bsh-palette__list',
-		} );
-		this.list.setAttribute( 'role', 'listbox' );
-
-		const inner = document.createElement( 'div' );
-		inner.className = 'bsh-palette__inner';
-		inner.append( this.input, this.list );
-		this.overlay.appendChild( inner );
-		document.body.appendChild( this.overlay );
-
-		this.input.addEventListener( 'input', () => {
-			clearTimeout( this._searchTimer );
-			this._searchTimer = setTimeout( () => {
-				void this._render().catch( ( err ) => {
-					// eslint-disable-next-line no-console
-					console.error( '[Bazaar] Palette render failed:', err );
-				} );
-			}, 150 );
-		} );
-		this.input.addEventListener( 'keydown', ( e ) => this._key( e ) );
-		this.overlay.addEventListener( 'click', ( e ) => {
-			if ( e.target === this.overlay ) {
-				this.close();
-			}
-		} );
-	}
-
-	open() {
-		this.visible = true;
-		this.overlay.hidden = false;
-		this.input.value = '';
-		void this._render().catch( ( err ) => {
-			// eslint-disable-next-line no-console
-			console.error( '[Bazaar] Palette render failed:', err );
-		} );
-		this.input.focus();
-		document.body.classList.add( 'bsh-palette-open' );
-	}
-	close() {
-		this.visible = false;
-		this.overlay.hidden = true;
-		document.body.classList.remove( 'bsh-palette-open' );
-	}
-
-	async _render() {
-		const q = this.input.value.trim();
-		const ql = q.toLowerCase();
-
-		const all = [
-			{
-				slug: 'manage',
-				label: __( 'Manage Wares', 'bazaar' ),
-				meta: 'settings',
-				type: 'ware',
-			},
-			...sortedEnabled( wareMap ).map( ( w ) => ( {
-				slug: w.slug,
-				label: w.menu_title ?? w.name,
-				meta: w.enabled
-					? __( 'ware', 'bazaar' )
-					: __( 'disabled', 'bazaar' ),
-				type: 'ware',
-			} ) ),
-		];
-
-		const wareItems = q
-			? all.filter(
-				( i ) =>
-					String( i.label ?? '' ).toLowerCase().includes( ql ) ||
-						String( i.slug ?? '' ).includes( ql )
-			)
-			: all;
-
-		let items = wareItems;
-
-		// Federated search: query registered ware search endpoints.
-		if ( q.length >= 2 ) {
-			const fedResults = await this._fedSearch( q );
-			items = [ ...wareItems, ...fedResults ];
-		}
-
-		this.items = items;
-		this.sel = 0;
-		this.list.innerHTML = '';
-
-		if ( ! items.length ) {
-			const li = document.createElement( 'li' );
-			li.className = 'bsh-palette__empty';
-			li.textContent = __( 'No results.', 'bazaar' );
-			this.list.appendChild( li );
-			return;
-		}
-
-		items.forEach( ( item, i ) => {
-			const li = document.createElement( 'li' );
-			li.className =
-				'bsh-palette__item' +
-				( i === 0 ? ' bsh-palette__item--sel' : '' );
-			li.setAttribute( 'role', 'option' );
-			li.setAttribute( 'aria-selected', i === 0 ? 'true' : 'false' );
-			li.dataset.slug = item.slug ?? '';
-			li.innerHTML =
-				`<span class="bsh-palette__lbl">${ esc( item.label ) }</span>` +
-				`<span class="bsh-palette__meta bsh-palette__meta--${ item.type ?? 'ware' }">${ esc( item.meta ?? '' ) }</span>`;
-			li.addEventListener( 'click', () => {
-				if ( item.url ) {
-					openExternal( item.url );
-				} else {
-					this.onSelect( item.slug );
-				}
-				this.close();
-			} );
-			li.addEventListener( 'mouseenter', () => this._sel( i ) );
-			this.list.appendChild( li );
-		} );
-	}
-
-	async _fedSearch( query ) {
-		const tasks = [ ...wareMap.entries() ]
-			.filter( ( [ , ware ] ) => ware.search_endpoint )
-			.map( async ( [ slug, ware ] ) => {
-				let signal;
-				if ( AbortSignal.timeout ) {
-					signal = AbortSignal.timeout( 2000 );
-				} else {
-					const c = new AbortController();
-					setTimeout( () => c.abort(), 2000 );
-					signal = c.signal;
-				}
-				try {
-					const r = await fetch(
-						`${ restUrl }/${ ware.search_endpoint }?q=${ encodeURIComponent( query ) }`,
-						{ headers: { 'X-WP-Nonce': nonce }, signal }
-					);
-					if ( ! r.ok ) {
-						return [];
-					}
-					const items = await r.json();
-					if ( ! Array.isArray( items ) ) {
-						return [];
-					}
-					return items.map( ( item ) => ( {
-						slug: item.slug ?? slug,
-						label: item.label ?? item.title ?? item.name,
-						meta: `${ ware.menu_title ?? ware.name } › ${ item.type ?? 'result' }`,
-						url: item.url,
-						type: 'search',
-						ware: slug,
-					} ) );
-				} catch {
-					return [];
-				}
-			} );
-
-		const settled = await Promise.allSettled( tasks );
-		const results = [];
-		for ( const r of settled ) {
-			if ( r.status === 'fulfilled' ) {
-				results.push( ...r.value );
-			}
-		}
-		return results;
-	}
-
-	_sel( i ) {
-		this.list.querySelectorAll( '.bsh-palette__item' ).forEach( ( el, j ) => {
-			const a = j === i;
-			el.classList.toggle( 'bsh-palette__item--sel', a );
-			el.setAttribute( 'aria-selected', a ? 'true' : 'false' );
-		} );
-		this.sel = i;
-	}
-
-	_key( e ) {
-		const n = this.items.length;
-		if ( ! n ) {
-			return;
-		}
-		if ( e.key === 'ArrowDown' ) {
-			e.preventDefault();
-			this._sel( ( this.sel + 1 ) % n );
-		}
-		if ( e.key === 'ArrowUp' ) {
-			e.preventDefault();
-			this._sel( ( this.sel - 1 + n ) % n );
-		}
-		if ( e.key === 'Enter' ) {
-			e.preventDefault();
-			const item = this.items[ this.sel ];
-			if ( item ) {
-				if ( item.url ) {
-					openExternal( item.url );
-				} else {
-					this.onSelect( item.slug );
-				}
-				this.close();
-			}
-		}
-		if ( e.key === 'Escape' ) {
-			this.close();
-		}
-	}
-}
 
 // ===========================================================================
 // Toast Manager
@@ -532,15 +304,14 @@ const clipboard = new ShellClipboard();
 
 const toasts = new ToastManager( toastEl );
 const bus = new EventBus();
-const palette = new CommandPalette( navigateTo );
-
-function esc( s ) {
-	return String( s )
-		.replace( /&/g, '&amp;' )
-		.replace( /</g, '&lt;' )
-		.replace( />/g, '&gt;' )
-		.replace( /"/g, '&quot;' );
-}
+const palette = new CommandPalette( {
+	wareMap,
+	restUrl,
+	nonce,
+	sortedEnabled,
+	onSelect: navigateTo,
+	openExternal,
+} );
 
 /**
  * Open a URL in a new tab only if it has an http/https scheme.
@@ -571,11 +342,9 @@ function iconUrl( ware ) {
 	return `${ restUrl }/serve/${ encodeURIComponent( ware.slug ) }/${ encodeURIComponent( ware.icon ?? 'icon.svg' ) }?_wpnonce=${ nonce }`;
 }
 
-/** Return all active LRU managers (primary + secondary if split). */
+/** Return all active LRU managers. */
 function activeLrus() {
-	return splitView.active
-		? [ iframes, splitView.secondLru ].filter( Boolean )
-		: [ iframes ];
+	return [ iframes ];
 }
 
 /**
@@ -656,6 +425,10 @@ function applyNavFilter() {
 // ===========================================================================
 
 function renderNav() {
+	// Structural change — discard the cached sorted list so registerShortcuts
+	// rebuilds it on the next Alt+N keypress.
+	invalidateSortCache();
+
 	const hadNoWares = root.classList.contains( 'bsh--no-wares' );
 
 	navList.innerHTML = '';
@@ -933,7 +706,7 @@ function renderToolbarContext( slug ) {
 // Navigation
 // ===========================================================================
 
-function navigateTo( slug, route, toSecondary = false ) {
+function navigateTo( slug, route ) {
 	if ( ! slug ) {
 		return;
 	}
@@ -945,13 +718,6 @@ function navigateTo( slug, route, toSecondary = false ) {
 
 	// Close the mobile drawer on navigation.
 	closeMobileNav();
-
-	if ( toSecondary && splitView.active ) {
-		const url =
-			slug === 'manage' ? manageUrl : serveUrl( wareMap.get( slug ) );
-		splitView.activateSecondary( slug, url );
-		return;
-	}
 
 	activeSlug = slug;
 	updateUrl( slug, route );
@@ -1006,150 +772,108 @@ function navigateTo( slug, route, toSecondary = false ) {
 }
 
 // ===========================================================================
-// Health checks
+// Ware lifecycle helpers — shared by both SSE and postMessage handlers
 // ===========================================================================
 
-async function pollHealth() {
-	try {
-		const r = await fetch( `${ restUrl }/health`, {
-			headers: { 'X-WP-Nonce': nonce },
-		} );
-		if ( ! r.ok ) {
-			return;
-		}
-		const list = await r.json();
-		if ( ! Array.isArray( list ) ) {
-			return;
-		}
-		let dirty = false;
-		for ( const { slug, status } of list ) {
-			if ( healthMap.get( slug ) !== status ) {
-				healthMap.set( slug, status );
-				dirty = true;
-			}
-		}
-		if ( dirty ) {
-			renderNav();
-		}
-	} catch {
-		/* non-fatal */
+/**
+ * Apply a ware-installed event: register the ware, refresh the nav, navigate to
+ * it, show a success toast, and clear any stale SW-cached assets.
+ *
+ * @param {Object} ware Ware descriptor from the server.
+ */
+function applyWareInstalled( ware ) {
+	wareMap.set( ware.slug, ware );
+	renderNav();
+	navigateTo( ware.slug );
+	toasts.show(
+		sprintf( /* translators: %s: ware name */ __( '%s is ready', 'bazaar' ), ware.name ?? ware.slug ),
+		'success',
+		TOAST_DEFAULT_MS
+	);
+	// Flush stale SW-cached assets so the next load always fetches the
+	// freshly-deployed build rather than a stale one that may reference
+	// removed REST routes.
+	navigator.serviceWorker?.controller?.postMessage( {
+		type: 'bazaar:cache-clear',
+		slug: ware.slug,
+	} );
+}
+
+/**
+ * Apply a ware-deleted event: remove from registry, destroy iframe, redirect
+ * away if it was active, and refresh the nav.
+ *
+ * @param {string} slug
+ */
+function applyWareDeleted( slug ) {
+	wareMap.delete( slug );
+	iframes.destroy( slug );
+	if ( activeSlug === slug ) {
+		navigateTo( 'manage' );
 	}
+	renderNav();
 }
 
-// ===========================================================================
-// Badge polling + SSE
-// ===========================================================================
-
-async function pollBadges() {
-	try {
-		const r = await fetch( `${ restUrl }/badges`, {
-			headers: { 'X-WP-Nonce': nonce },
-		} );
-		if ( ! r.ok ) {
-			return;
+/**
+ * Apply a ware-toggled (enable/disable) event.
+ *
+ * @param {string}  slug
+ * @param {boolean} enabled
+ */
+function applyWareToggled( slug, enabled ) {
+	const w = wareMap.get( slug );
+	if ( w ) {
+		w.enabled = enabled;
+		if ( ! enabled && activeSlug === slug ) {
+			navigateTo( 'manage' );
 		}
-		const badges = await r.json();
-		if ( ! Array.isArray( badges ) ) {
-			return;
-		}
-		let dirty = false;
-		for ( const { slug, count } of badges ) {
-			if ( badgeMap.get( slug ) !== count ) {
-				badgeMap.set( slug, count );
-				dirty = true;
-			}
-		}
-		if ( dirty ) {
-			renderNav();
-		}
-	} catch {
-		/* non-fatal */
 	}
+	renderNav();
 }
 
-let _sseDelay = 5_000;
-const SSE_MAX_DELAY = 5 * 60_000;
+// ===========================================================================
+// SSE / badge + health polling — wired via shared sse.js module
+// ===========================================================================
 
-function connectSSE() {
-	const u = new URL( `${ restUrl }/stream` );
-	u.searchParams.set( '_wpnonce', nonce );
-	const src = new EventSource( u.toString(), { withCredentials: true } );
+const sseDeps = {
+	restUrl,
+	nonce,
+	// SSE-delivered badge/health events patch in-place — no full nav rebuild.
+	onBadge: ( slug, count ) => {
+		badgeMap.set( slug, count );
+		patchNavBadges( navList, badgeMap );
+	},
+	onToast: ( message, level ) => toasts.show( message, level ),
+	onWareInstalled: applyWareInstalled,
+	onWareDeleted: applyWareDeleted,
+	onWareToggled: applyWareToggled,
+	onHealthUpdate: ( slug, status ) => {
+		healthMap.set( slug, status );
+		patchNavHealth( navList, healthMap );
+	},
+};
 
-	src.addEventListener( 'open', () => {
-		_sseDelay = 5_000; // Reset backoff after a clean connection.
-	} );
+// Separate deps for the fallback pollers — each has its own onDirty so
+// badge and health updates trigger the correct targeted patch, not a full rebuild.
+const badgePollDeps = {
+	restUrl,
+	nonce,
+	badgeMap,
+	onDirty: () => patchNavBadges( navList, badgeMap ),
+};
 
-	src.addEventListener( 'badge', ( e ) => {
-		try {
-			const { slug, count } = JSON.parse( e.data );
-			badgeMap.set( slug, count );
-			renderNav();
-		} catch { /* malformed SSE payload — skip */ }
-	} );
-	src.addEventListener( 'toast', ( e ) => {
-		try {
-			const { message, level } = JSON.parse( e.data );
-			toasts.show( message, level );
-		} catch { /* malformed SSE payload — skip */ }
-	} );
-	src.addEventListener( 'ware-installed', ( e ) => {
-		try {
-			const d = JSON.parse( e.data );
-			wareMap.set( d.slug, d );
-			renderNav();
-			navigateTo( d.slug );
-			toasts.show(
-				sprintf( /* translators: %s: ware name */ __( '%s is ready', 'bazaar' ), d.name ?? d.slug ),
-				'success',
-				3000
-			);
-		} catch { /* malformed SSE payload — skip */ }
-	} );
-	src.addEventListener( 'ware-deleted', ( e ) => {
-		try {
-			const { slug } = JSON.parse( e.data );
-			wareMap.delete( slug );
-			iframes.destroy( slug );
-			if ( activeSlug === slug ) {
-				navigateTo( 'manage' );
-			}
-			renderNav();
-		} catch { /* malformed SSE payload — skip */ }
-	} );
-	src.addEventListener( 'ware-toggled', ( e ) => {
-		try {
-			const { slug, enabled } = JSON.parse( e.data );
-			const w = wareMap.get( slug );
-			if ( w ) {
-				w.enabled = enabled;
-				if ( ! enabled && activeSlug === slug ) {
-					navigateTo( 'manage' );
-				}
-			}
-			renderNav();
-		} catch { /* malformed SSE payload — skip */ }
-	} );
-	src.addEventListener( 'health', ( e ) => {
-		try {
-			const { slug, status } = JSON.parse( e.data );
-			healthMap.set( slug, status );
-			renderNav();
-		} catch { /* malformed SSE payload — skip */ }
-	} );
-
-	src.onerror = () => {
-		src.close();
-		setTimeout( connectSSE, _sseDelay );
-		_sseDelay = Math.min( _sseDelay * 2, SSE_MAX_DELAY );
-	};
-}
+const healthPollDeps = {
+	restUrl,
+	nonce,
+	healthMap,
+	onDirty: () => patchNavHealth( navList, healthMap ),
+};
 
 // ===========================================================================
 // Shared data cache proxy
 // ===========================================================================
 
 const _dataCache = new Map();
-const DATA_CACHE_MAX = 200;
 
 async function cacheQuery( id, path, targetWindow ) {
 	// Only proxy paths within the Bazaar namespace — prevents a ware from
@@ -1159,7 +883,7 @@ async function cacheQuery( id, path, targetWindow ) {
 	}
 
 	const cached = _dataCache.get( path );
-	if ( cached && Date.now() - cached.ts < 60_000 ) {
+	if ( cached && Date.now() - cached.ts < DATA_CACHE_TTL_MS ) {
 		try {
 			targetWindow.postMessage(
 				{ type: 'bazaar:query-response', id, data: cached.data },
@@ -1222,37 +946,16 @@ window.addEventListener( 'message', ( event ) => {
 		// Lifecycle
 		case 'bazaar:ware-installed':
 			if ( p.ware?.slug ) {
-				wareMap.set( p.ware.slug, p.ware );
-				renderNav();
-				navigateTo( p.ware.slug );
-				toasts.show(
-					sprintf( /* translators: %s: ware name */ __( '%s is ready', 'bazaar' ), p.ware.name ?? p.ware.slug ),
-					'success',
-					3000
-				);
+				applyWareInstalled( p.ware );
 			}
 			break;
 		case 'bazaar:ware-deleted':
 			if ( p.slug ) {
-				wareMap.delete( p.slug );
-				iframes.destroy( p.slug );
-				if ( activeSlug === p.slug ) {
-					navigateTo( 'manage' );
-				}
-				renderNav();
+				applyWareDeleted( p.slug );
 			}
 			break;
 		case 'bazaar:ware-toggled':
-			{
-				const w = wareMap.get( p.slug );
-				if ( w ) {
-					w.enabled = p.enabled;
-					if ( ! p.enabled && activeSlug === p.slug ) {
-						navigateTo( 'manage' );
-					}
-				}
-				renderNav();
-			}
+			applyWareToggled( p.slug, p.enabled );
 			break;
 
 		// Event bus
@@ -1264,12 +967,6 @@ window.addEventListener( 'message', ( event ) => {
 		case 'bazaar:emit':
 			if ( fromSlug ) {
 				bus.broadcast( p.event, p.data, fromSlug );
-				inspector.onBusLog( {
-					ts: Date.now(),
-					dir: 'emit',
-					event: p.event,
-					data: p.data,
-				} );
 			}
 			break;
 		case 'bazaar:unsubscribe-all':
@@ -1337,18 +1034,6 @@ window.addEventListener( 'message', ( event ) => {
 				} ).catch( () => {} );
 			}
 			break;
-
-		// Inspector telemetry
-		case 'bazaar:api-call':
-			if ( fromSlug ) {
-				inspector.onApiCall( { ...p, ts: Date.now() } );
-			}
-			break;
-		case 'bazaar:bus-log':
-			if ( fromSlug ) {
-				inspector.onBusLog( { ...p, ts: Date.now() } );
-			}
-			break;
 	}
 } );
 
@@ -1388,9 +1073,6 @@ window.addEventListener( 'message', ( event ) => {
 			}
 		}
 	} );
-
-	if ( globalDevMode ) {
-	}
 }() );
 
 // ===========================================================================
@@ -1552,11 +1234,44 @@ if ( ! sortedEnabled( wareMap ).length ) {
 }
 
 renderNav();
-pollBadges();
-pollHealth();
-connectSSE();
-setInterval( pollBadges, 30_000 );
-setInterval( pollHealth, 60_000 );
+
+// Prime badge and health data on initial load, then open the SSE stream.
+void pollBadges( badgePollDeps );
+void pollHealth( healthPollDeps );
+connectSSE( sseDeps );
+
+// Fallback polling — only fires when SSE is not delivering events.
+// Intervals are paused when the tab is hidden to avoid background traffic.
+let _badgeTimer;
+let _healthTimer;
+
+function startPolling() {
+	_badgeTimer = setInterval( () => {
+		if ( ! sseConnected ) {
+			void pollBadges( badgePollDeps );
+		}
+	}, BADGE_POLL_INTERVAL_MS );
+	_healthTimer = setInterval( () => {
+		if ( ! sseConnected ) {
+			void pollHealth( healthPollDeps );
+		}
+	}, HEALTH_POLL_INTERVAL_MS );
+}
+
+function stopPolling() {
+	clearInterval( _badgeTimer );
+	clearInterval( _healthTimer );
+}
+
+document.addEventListener( 'visibilitychange', () => {
+	if ( document.hidden ) {
+		stopPolling();
+	} else {
+		startPolling();
+	}
+} );
+
+startPolling();
 
 // HMR bridge — connect to Vite dev servers for all dev-mode wares.
 for ( const ware of wareMap.values() ) {

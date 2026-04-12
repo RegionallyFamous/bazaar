@@ -60,12 +60,6 @@ final class NonceController extends BazaarController {
 	}
 
 	/**
-	 * Permission callback — any logged-in user may refresh their nonce.
-	 *
-	 * @return bool
-	 */
-
-	/**
 	 * GET /bazaar/v1/nonce
 	 *
 	 * @param WP_REST_Request $request REST request.

@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Bazaar\WareLoader;
 use Bazaar\WareRegistry;
+use Bazaar\WareRegistryInterface;
 use Bazaar\REST\JobsController;
 use WP_Error;
 use WP_REST_Request;
@@ -31,9 +32,9 @@ final class UploadController extends BazaarController {
 	/**
 	 * Registry used to store the installed ware.
 	 *
-	 * @var WareRegistry
+	 * @var WareRegistryInterface
 	 */
-	private WareRegistry $registry;
+	private WareRegistryInterface $registry;
 
 	/**
 	 * Loader used to validate and extract the archive.
@@ -45,9 +46,9 @@ final class UploadController extends BazaarController {
 	/**
 	 * Constructor.
 	 *
-	 * @param WareRegistry $registry Registry instance.
+	 * @param WareRegistryInterface $registry Registry instance.
 	 */
-	public function __construct( WareRegistry $registry ) {
+	public function __construct( WareRegistryInterface $registry ) {
 		$this->registry = $registry;
 		$this->loader   = new WareLoader( $registry );
 	}

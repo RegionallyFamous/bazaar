@@ -30,9 +30,9 @@ final class BazaarShell {
 	/**
 	 * Provides the ware index for the nav rail.
 	 *
-	 * @var WareRegistry
+	 * @var WareRegistryInterface
 	 */
-	private WareRegistry $registry;
+	private WareRegistryInterface $registry;
 
 	/**
 	 * Screen ID returned by add_menu_page(). Populated after admin_menu.
@@ -44,9 +44,9 @@ final class BazaarShell {
 	/**
 	 * Constructor.
 	 *
-	 * @param WareRegistry $registry Registry instance.
+	 * @param WareRegistryInterface $registry Registry instance.
 	 */
-	public function __construct( WareRegistry $registry ) {
+	public function __construct( WareRegistryInterface $registry ) {
 		$this->registry = $registry;
 	}
 

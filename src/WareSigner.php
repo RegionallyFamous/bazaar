@@ -12,7 +12,7 @@
  *    → Writes signature to manifest.json as { "signature": "..." }
  *    → Re-packages the .wp
  *
- * 2. At install time, WareLoader calls WareGigner::verify() if the manifest
+ * 2. At install time, WareLoader calls WareSigner::verify() if the manifest
  *    contains a `signature` field. If verification fails, install is aborted
  *    unless the admin has disabled signature enforcement.
  *

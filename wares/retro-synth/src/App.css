@@ -22,10 +22,11 @@
 body {
   background: var(--bg);
   min-height: 100dvh;
+
   /* Subtle scanline overlay */
   background-image: repeating-linear-gradient(
     to bottom,
-    transparent 0px,
+    transparent 0,
     transparent 3px,
     rgba(0,0,0,.08) 3px,
     rgba(0,0,0,.08) 4px
@@ -83,7 +84,9 @@ body {
 }
 
 .synth__module--osc    { flex: 2; min-width: 200px; }
+
 .synth__module--adsr   { flex: 3; min-width: 260px; }
+
 .synth__module--filter { flex: 1; min-width: 140px; }
 
 .synth__module-title {
@@ -157,6 +160,7 @@ body {
 }
 
 .knob__dial:hover   { filter: drop-shadow( 0 0 5px rgba(16,185,129,.6) ); }
+
 .knob__dial:focus   { outline: none; filter: drop-shadow( 0 0 6px rgba(16,185,129,.8) ); }
 
 .knob__value {
@@ -268,6 +272,7 @@ body {
 }
 
 .sequencer__play:hover        { border-color: var(--accent); }
+
 .sequencer__play--active      { border-color: var(--accent); color: var(--accent); background: rgba(16,185,129,.1); }
 
 .sequencer__bpm-label {

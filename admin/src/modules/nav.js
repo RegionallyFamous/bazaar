@@ -11,6 +11,7 @@
  */
 
 import { __, sprintf } from '@wordpress/i18n';
+import { esc } from '../shared/escape.js';
 
 // ─── Persistence helpers ───────────────────────────────────────────────────
 
@@ -111,16 +112,98 @@ export function sortedEnabled( wareMap ) {
 /** @type {Map<string, 'ok'|'warn'|'error'|'unknown'>} */
 export const healthMap = new Map();
 
-// ─── DOM builders ───────────────────────────────────────────────────────────
+// ─── Sort cache ─────────────────────────────────────────────────────────────
 
-/** @param {string} s */
-function esc( s ) {
-	return String( s )
-		.replace( /&/g, '&amp;' )
-		.replace( /</g, '&lt;' )
-		.replace( />/g, '&gt;' )
-		.replace( /"/g, '&quot;' );
+/** Cached result of sortedEnabled(); null means stale and must be rebuilt. */
+let _sortCache = null;
+
+/**
+ * Invalidate the sortedEnabled cache.
+ * Call whenever wareMap, pinnedSet, or navOrder change structurally.
+ */
+export function invalidateSortCache() {
+	_sortCache = null;
 }
+
+// ─── Targeted nav patching ───────────────────────────────────────────────────
+
+/**
+ * Update only the badge `<span>` elements on existing nav items.
+ * Avoids a full nav rebuild when only notification counts change.
+ *
+ * @param {HTMLUListElement}   navList
+ * @param {Map<string,number>} badgeMap
+ */
+export function patchNavBadges( navList, badgeMap ) {
+	navList.querySelectorAll( '.bsh-nav__item[data-slug]' ).forEach( ( li ) => {
+		const slug = li.dataset.slug;
+		const count = badgeMap.get( slug ) ?? 0;
+		const btn = li.querySelector( '.bsh-nav__btn' );
+		if ( ! btn ) {
+			return;
+		}
+		let badge = btn.querySelector( '.bsh-nav__badge' );
+		if ( count > 0 ) {
+			const text = count > 99 ? '99+' : String( count );
+			if ( badge ) {
+				badge.textContent = text;
+				// translators: %d: number of notifications
+				badge.setAttribute( 'aria-label', sprintf( __( '%d notifications', 'bazaar' ), count ) );
+			} else {
+				badge = Object.assign( document.createElement( 'span' ), {
+					className: 'bsh-nav__badge',
+					textContent: text,
+				} );
+				// translators: %d: number of notifications
+				badge.setAttribute( 'aria-label', sprintf( __( '%d notifications', 'bazaar' ), count ) );
+				btn.appendChild( badge );
+			}
+		} else if ( badge ) {
+			badge.remove();
+		}
+	} );
+}
+
+/**
+ * Update only the health-dot `<span>` elements on existing nav items.
+ * Avoids a full nav rebuild when only health statuses change.
+ *
+ * @param {HTMLUListElement}   navList
+ * @param {Map<string,string>} patchHealthMap
+ */
+export function patchNavHealth( navList, patchHealthMap ) {
+	const labels = {
+		ok: __( 'Healthy', 'bazaar' ),
+		warn: __( 'Degraded', 'bazaar' ),
+		error: __( 'Unhealthy', 'bazaar' ),
+	};
+	navList.querySelectorAll( '.bsh-nav__item[data-slug]' ).forEach( ( li ) => {
+		const btn = li.querySelector( '.bsh-nav__btn' );
+		if ( ! btn ) {
+			return;
+		}
+		const slug = li.dataset.slug;
+		const status = patchHealthMap.get( slug );
+		let hd = btn.querySelector( '.bsh-nav__health' );
+		if ( status && status !== 'unknown' ) {
+			if ( hd ) {
+				hd.className = `bsh-nav__health bsh-nav__health--${ status }`;
+				hd.title = labels[ status ] ?? '';
+			} else {
+				hd = Object.assign( document.createElement( 'span' ), {
+					className: `bsh-nav__health bsh-nav__health--${ status }`,
+				} );
+				hd.title = labels[ status ] ?? '';
+				hd.setAttribute( 'aria-hidden', 'true' );
+				btn.appendChild( hd );
+			}
+		} else if ( hd ) {
+			hd.remove();
+		}
+	} );
+}
+
+// ─── DOM builders ───────────────────────────────────────────────────────────
 
 function dashicon( cls ) {
 	return Object.assign( document.createElement( 'span' ), {
@@ -262,7 +345,12 @@ export function buildItem(
 		document.dispatchEvent( new CustomEvent( 'bazaar:nav-refresh' ) );
 	} );
 
-	li.append( btn, pinBtn );
+	// Manage Wares is pinned to the footer permanently — no pin button needed.
+	if ( slug !== 'manage' ) {
+		li.append( btn, pinBtn );
+	} else {
+		li.appendChild( btn );
+	}
 	return li;
 }
 
@@ -424,8 +512,9 @@ export function registerShortcuts( wareMap, navigateTo ) {
 		if ( isNaN( n ) || n < 1 || n > 9 ) {
 			return;
 		}
-		const wares = sortedEnabled( wareMap );
-		const target = wares[ n - 1 ];
+		// Use cached sort result — only rebuilt when wareMap/pins/order change.
+		_sortCache ??= sortedEnabled( wareMap );
+		const target = _sortCache[ n - 1 ];
 		if ( target ) {
 			e.preventDefault();
 			navigateTo( target.slug );

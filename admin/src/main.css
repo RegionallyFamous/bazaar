@@ -11,9 +11,11 @@
 :root {
 	--bz-accent:        #2271b1;
 	--bz-accent-hover:  #135e96;
+	--bz-accent-dark:   #1a5fa0;
 	--bz-accent-light:  #dbeafe;
 	--bz-surface:       #fff;
 	--bz-bg:            #f8fafc;
+	--bz-bg-muted:      #f0f0f1;
 	--bz-border:        #e2e8f0;
 	--bz-border-focus:  #2271b1;
 	--bz-text:          #1e293b;
@@ -23,6 +25,7 @@
 	--bz-red-bg:        #fef2f2;
 	--bz-green:         #16a34a;
 	--bz-green-bg:      #f0fdf4;
+	--bz-ok:            #46b450;
 	--bz-radius-sm:     4px;
 	--bz-radius:        8px;
 	--bz-radius-lg:     12px;
@@ -200,11 +203,11 @@
 		var(--bz-accent) 100%
 	);
 	background-size: 200% 100%;
-	animation: bazaar-shimmer 1.4s linear infinite;
+	animation: bz-shimmer-pct 1.4s linear infinite;
 	transition: none;
 }
 
-@keyframes bazaar-shimmer {
+@keyframes bz-shimmer-pct {
 
 	0%   { background-position: 200% center; }
 
@@ -761,6 +764,12 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 		grid-template-columns: 1fr;
 	}
 
+	/* Also override the higher-specificity shell gallery rule so it doesn't
+	   re-introduce a 320px minimum track on narrow viewports. */
+	html.bazaar-in-shell .bazaar-gallery {
+		grid-template-columns: 1fr;
+	}
+
 	.bazaar-card__content {
 		flex-wrap: wrap;
 	}
@@ -773,6 +782,32 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 	.bazaar-search {
 		max-width: 100%;
 		width: 100%;
+		height: 44px;           /* meet touch-target minimum */
+		padding: 8px 14px;
+	}
+
+	/* Filter tabs: taller touch targets */
+	.bazaar-filter-tab {
+		padding: 8px 16px;
+		min-height: 36px;
+	}
+
+	/* Delete button: larger tap area */
+	.bazaar-card__delete {
+		width: 36px;
+		height: 36px;
+	}
+
+	/* Shell-context horizontal padding: give back some screen width on phones */
+	html.bazaar-in-shell .bazaar-page {
+		padding-left: 16px;
+		padding-right: 16px;
+	}
+
+	html.bazaar-in-shell .bazaar-empty,
+	html.bazaar-in-shell .bazaar-notice {
+		padding-left: 16px;
+		padding-right: 16px;
 	}
 }
 
@@ -878,10 +913,6 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 	pointer-events: none;
 }
 
-.bazaar-core-card__installed-badge::before {
-	content: '✓';
-}
-
 /* Top row: icon + name */
 .bazaar-core-card__top {
 	display: flex;
@@ -943,6 +974,9 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 	font-size: 11.5px;
 	color: var(--bz-text-muted);
 	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 100%;
 }
 
 /* Description — 3-line clamp */
@@ -958,26 +992,6 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 	overflow: hidden;
 }
 
-/* Tag pills — themed via --card-accent */
-.bazaar-core-card__tags {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 5px;
-}
-
-.bazaar-core-tag {
-	display: inline-flex;
-	align-items: center;
-	padding: 2px 9px;
-	background: color-mix( in srgb, var(--card-accent) 10%, var(--bz-bg) );
-	border: 1px solid color-mix( in srgb, var(--card-accent) 22%, var(--bz-border) );
-	border-radius: 999px;
-	font-size: 10.5px;
-	font-weight: 500;
-	color: color-mix( in srgb, var(--card-accent) 65%, var(--bz-text) );
-	text-transform: lowercase;
-	letter-spacing: 0.01em;
-}
 
 /* Full-width install CTA */
 .bazaar-core-card__cta {
@@ -1005,7 +1019,12 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 	border-color: color-mix( in srgb, var(--card-accent) 70%, #1e293b ) !important;
 }
 
-/* Legacy "Installed" disabled state — kept for any code paths that may still set it */
+/*
+ * --open is the runtime path for installed apps (core-apps.js swaps Install
+ * to Open on success). --installed is intentionally retained as a CSS fallback
+ * in case a server-rendered card arrives with this modifier already applied
+ * (e.g. from a cached page or a direct REST render).
+ */
 .bazaar-core-card__cta--installed {
 	background: var(--bz-green-bg) !important;
 	border-color: color-mix( in srgb, var(--bz-green) 22%, transparent ) !important;
@@ -1031,13 +1050,6 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 
 /* ─── Skeleton loaders ─────────────────────────────────────────────────── */
 
-@keyframes bz-shimmer {
-
-	0%   { background-position: -600px 0; }
-
-	100% { background-position:  600px 0; }
-}
-
 .bazaar-core-skeleton {
 	background: var(--bz-surface);
 	border: 1px solid var(--bz-border);
@@ -1059,8 +1071,8 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 .bazaar-core-skeleton__line,
 .bazaar-core-skeleton__btn {
 	background: linear-gradient( 90deg, #f0f0f1 25%, #e8e8e9 50%, #f0f0f1 75% );
-	background-size: 600px 100%;
-	animation: bz-shimmer 1.4s infinite linear;
+	background-size: 200% 100%;
+	animation: bz-shimmer-pct 1.4s infinite linear;
 	border-radius: 6px;
 }
 

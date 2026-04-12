@@ -64,6 +64,15 @@
             "error"
           ]
         }
+      ],
+      "camelcase": [
+        "error",
+        {
+          "allow": [
+            "unstable_useCacheRefresh",
+            "duration_ms"
+          ]
+        }
       ]
     },
     "overrides": [

@@ -11,7 +11,8 @@ namespace Bazaar\REST;
 
 defined( 'ABSPATH' ) || exit;
 
-use Bazaar\WareRegistry;
+use Bazaar\Blocks\WareBlock;
+use Bazaar\WareRegistryInterface;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -92,16 +93,16 @@ final class WareServer {
 	/**
 	 * Registry used to verify ware existence and permissions.
 	 *
-	 * @var WareRegistry
+	 * @var WareRegistryInterface
 	 */
-	private WareRegistry $registry;
+	private WareRegistryInterface $registry;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param WareRegistry $registry Registry instance.
+	 * @param WareRegistryInterface $registry Registry instance.
 	 */
-	public function __construct( WareRegistry $registry ) {
+	public function __construct( WareRegistryInterface $registry ) {
 		$this->registry = $registry;
 	}
 
@@ -133,11 +134,6 @@ final class WareServer {
 		);
 	}
 
-	/**
-	 * Permission callback: user must be logged in and have the ware's required capability.
-	 *
-	 * @param WP_REST_Request $request The incoming REST request.
-	 */
 	/**
 	 * Public image extensions that browsers load via <img> tags — these cannot
 	 * carry an X-WP-Nonce header, so they are served without authentication.
@@ -178,6 +174,21 @@ final class WareServer {
 		$ext  = strtolower( pathinfo( $file, PATHINFO_EXTENSION ) );
 		if ( in_array( $ext, self::PUBLIC_IMAGE_EXTS, true ) ) {
 			return true;
+		}
+
+		// Block iframe embeds use a short-lived HMAC token instead of a login
+		// session. Accept the token if it is present and valid for this slug.
+		$raw_token = $request->get_param( '_bazaar_block_token' );
+		if ( is_string( $raw_token ) && '' !== $raw_token ) {
+			$token_slug = WareBlock::verify_token( $raw_token );
+			if ( $token_slug === $slug ) {
+				return true;
+			}
+			return new WP_Error(
+				'bazaar_invalid_block_token',
+				esc_html__( 'Block token is invalid or expired.', 'bazaar' ),
+				array( 'status' => 403 )
+			);
 		}
 
 		if ( ! is_user_logged_in() ) {
@@ -317,32 +328,46 @@ final class WareServer {
 			$csp = \Bazaar\CspPolicy::header_for( $slug );
 			header( "Content-Security-Policy: $csp" );
 
-			// Read HTML into memory — we need to inject the <base href> that
-			// makes Vite's relative asset paths resolve to directly-served static
-			// files at wp-content/bazaar/{slug}/, bypassing PHP for all assets.
-			if ( ! function_exists( 'WP_Filesystem' ) ) {
-				require_once ABSPATH . 'wp-admin/includes/file.php';
-			}
-			WP_Filesystem();
-			global $wp_filesystem;
-			if ( empty( $wp_filesystem ) ) {
-				return new WP_Error(
-					'filesystem_error',
-					esc_html__( 'Could not initialize filesystem.', 'bazaar' ),
-					array( 'status' => 500 )
-				);
-			}
-			$content = $wp_filesystem->get_contents( $full_path );
+			$ware = $this->registry->get( $slug );
+
+			// Cache post-injection HTML in a transient keyed on the ETag so
+			// repeated loads skip filesystem reads and string-injection passes.
+			// Dev-mode wares are excluded because inject_vite_client() adds a
+			// Vite HMR <script> that must never be served from a stale cache.
+			$cache_key = 'bazaar_html_' . substr( $etag, 1, -1 );
+			$use_cache = empty( $ware['dev_url'] );
+			$content   = $use_cache ? get_transient( $cache_key ) : false;
+
 			if ( false === $content ) {
-				return new WP_Error( 'file_read_error', esc_html__( 'Could not read file.', 'bazaar' ), array( 'status' => 500 ) );
-			}
-			$ware    = $this->registry->get( $slug );
-			$content = $this->inject_base_href( $content, $slug );
-			$content = $this->inject_importmap( $content, $ware ?? array() );
-			$content = $this->inject_error_reporter( $content );
-			// Inject Vite HMR client only in dev mode.
-			if ( ! empty( $ware['dev_url'] ) ) {
-				$content = $this->inject_vite_client( $content, (string) $ware['dev_url'] );
+				// Read HTML into memory — we need to inject the <base href> that
+				// makes Vite's relative asset paths resolve to directly-served static
+				// files at wp-content/bazaar/{slug}/, bypassing PHP for all assets.
+				if ( ! function_exists( 'WP_Filesystem' ) ) {
+					require_once ABSPATH . 'wp-admin/includes/file.php';
+				}
+				WP_Filesystem();
+				global $wp_filesystem;
+				if ( empty( $wp_filesystem ) ) {
+					return new WP_Error(
+						'filesystem_error',
+						esc_html__( 'Could not initialize filesystem.', 'bazaar' ),
+						array( 'status' => 500 )
+					);
+				}
+				$content = $wp_filesystem->get_contents( $full_path );
+				if ( false === $content ) {
+					return new WP_Error( 'file_read_error', esc_html__( 'Could not read file.', 'bazaar' ), array( 'status' => 500 ) );
+				}
+				$content = $this->inject_base_href( $content, $slug );
+				$content = $this->inject_importmap( $content, $ware ?? array() );
+				$content = $this->inject_error_reporter( $content );
+				// Inject Vite HMR client only in dev mode.
+				if ( ! empty( $ware['dev_url'] ) ) {
+					$content = $this->inject_vite_client( $content, (string) $ware['dev_url'] );
+				}
+				if ( $use_cache ) {
+					set_transient( $cache_key, $content, DAY_IN_SECONDS );
+				}
 			}
 
 			header( 'Content-Type: ' . $mime_type );

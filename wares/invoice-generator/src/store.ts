@@ -35,7 +35,9 @@ export async function loadClients(): Promise<Client[]> {
 
 export async function saveClients( clients: Client[] ): Promise<void> {
 	const store = getStore();
-	if ( store ) { await store.set( 'clients', clients as never ); return; }
+	if ( store ) {
+		try { await store.set( 'clients', clients as never ); return; } catch { /* fall through */ }
+	}
 	lsSet( 'clients', clients );
 }
 
@@ -47,7 +49,9 @@ export async function loadInvoices(): Promise<Invoice[]> {
 
 export async function saveInvoices( invoices: Invoice[] ): Promise<void> {
 	const store = getStore();
-	if ( store ) { await store.set( 'invoices', invoices as never ); return; }
+	if ( store ) {
+		try { await store.set( 'invoices', invoices as never ); return; } catch { /* fall through */ }
+	}
 	lsSet( 'invoices', invoices );
 }
 
@@ -59,6 +63,8 @@ export async function loadNextNumber(): Promise<number> {
 
 export async function saveNextNumber( n: number ): Promise<void> {
 	const store = getStore();
-	if ( store ) { await store.set( 'nextNum', n as never ); return; }
+	if ( store ) {
+		try { await store.set( 'nextNum', n as never ); return; } catch { /* fall through */ }
+	}
 	lsSet( 'nextNum', n );
 }

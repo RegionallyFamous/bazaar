@@ -289,8 +289,11 @@
 }
 
 .status-badge--draft   { background: #f1f5f9; color: #64748b; }
+
 .status-badge--sent    { background: #dbeafe; color: #1d4ed8; }
+
 .status-badge--paid    { background: #dcfce7; color: #15803d; }
+
 .status-badge--overdue { background: #fee2e2; color: #b91c1c; }
 
 .status-select {
@@ -303,8 +306,11 @@
 }
 
 .status-select--draft   { background: #f1f5f9; color: #64748b; }
+
 .status-select--sent    { background: #dbeafe; color: #1d4ed8; }
+
 .status-select--paid    { background: #dcfce7; color: #15803d; }
+
 .status-select--overdue { background: #fee2e2; color: #b91c1c; }
 
 /* ── Action buttons ── */
@@ -354,7 +360,9 @@
 }
 
 .stat-card--green { border-left: 3px solid #16a34a; }
+
 .stat-card--amber { border-left: 3px solid #d97706; }
+
 .stat-card--red   { border-left: 3px solid #dc2626; }
 
 .stat-card__label {
@@ -564,4 +572,217 @@
 
 .client-form {
   margin-bottom: 16px;
+}
+
+/* ── Tables: always scrollable so they never break the page width ── */
+
+.inv-table-wrap,
+.line-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Responsive — tablet (≤ 768px)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+
+  /* Nav: tighter padding; links wrap to a second row if needed */
+  .app-nav {
+    padding: 0 16px;
+    gap: 12px;
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 52px;
+  }
+
+  /* Nav links: taller tap target */
+  .nav-link {
+    padding: 10px 14px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Main: less horizontal padding */
+  .app-main {
+    padding: 16px;
+  }
+
+  /* View header: stack title and actions vertically */
+  .view-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .view-header__actions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .view-header__actions .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  /* Card heading row: stack */
+  .card__heading-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .card__heading-row .search-input,
+  .card__heading-row .search-input--sm {
+    width: 100%;
+    max-width: none;
+  }
+
+  /* Field rows: stack fields vertically */
+  .field-row {
+    flex-direction: column;
+  }
+
+  /* Stats grid: 2 columns on tablet */
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Invoice editor: single-column layout */
+  .editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Totals: remove fixed minimum width so it fits in single column */
+  .totals__row {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* Filters: stack tabs and search input */
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .filter-tabs {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .filter-tab {
+    padding: 8px 14px;
+    min-height: 40px;
+  }
+
+  .search-input {
+    width: 100%;
+    max-width: none;
+  }
+
+  .search-input--sm {
+    width: 100%;
+    max-width: none;
+  }
+
+  /* Tables: make horizontally scrollable */
+  .inv-table,
+  .line-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Action buttons: slightly larger tap area */
+  .action-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* Status select: more padding for touch */
+  .status-select {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  /* Primary buttons: full-width stacked on mobile */
+  .form-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Tip link: tap-friendly padding */
+  .tip__link {
+    display: inline-block;
+    padding: 4px 0;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Responsive — phone (≤ 480px)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+
+  .app-nav {
+    padding: 0 12px;
+    gap: 6px;
+  }
+
+  .app-main {
+    padding: 12px;
+  }
+
+  /* Stats grid: single column on phone */
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* View title: slightly smaller on phone */
+  .view-title {
+    font-size: 18px;
+  }
+
+  /* Buttons: at least 44px tall for primary actions */
+  .btn {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+
+  .btn--sm {
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+
+  /* Action buttons: 40×40 on phone */
+  .action-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 15px;
+  }
+
+  /* Number inputs: touch-friendly height */
+  .field-input--num {
+    width: 100%;
+    max-width: 100px;
+    min-height: 40px;
+  }
+
+  /* Totals percentage input */
+  .totals__pct {
+    min-height: 36px;
+    padding: 4px 8px;
+  }
+
+  .card {
+    padding: 14px;
+  }
 }

@@ -16,6 +16,10 @@ defined( 'ABSPATH' ) || exit;
  *
  * Hooked to admin_menu. Loops through the registry and calls add_menu_page()
  * or add_submenu_page() depending on the ware's manifest configuration.
+ *
+ * @deprecated Not wired in Plugin::register_hooks(). The shell architecture
+ *             (BazaarShell + BazaarPage + iframe nav) is the active UX path.
+ *             This class will be removed in a future release.
  */
 final class MenuManager {
 
