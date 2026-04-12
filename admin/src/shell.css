@@ -130,6 +130,9 @@
 .bsh--collapsed .bsh-nav__title {
 	opacity: 0;
 	pointer-events: none;
+	flex: 0;
+	width: 0;
+	overflow: hidden;
 }
 
 .bsh-nav__collapse {
@@ -155,6 +158,10 @@
 .bsh-nav__icon-wrap .dashicons {
 	font-size: 18px;
 	color: inherit;
+}
+
+.bsh--collapsed .bsh-nav__collapse {
+	margin-left: 0;
 }
 
 .bsh--collapsed .bsh-nav__collapse .dashicons {
