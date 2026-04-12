@@ -1,0 +1,346 @@
+/* ── CRT / Phosphor theme ───────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #060e09;
+  --surface:   #0b1a10;
+  --surface2:  #0f2218;
+  --border:    #1a3a28;
+  --text:      #4ade80;
+  --text-dim:  #2d6b45;
+  --text-hi:   #86efac;
+  --accent:    #10b981;
+  --accent-hi: #34d399;
+  --danger:    #f87171;
+  --radius:    8px;
+  font-family: 'Courier New', 'Lucida Console', monospace;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+body {
+  background: var(--bg);
+  min-height: 100dvh;
+  /* Subtle scanline overlay */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0,0,0,.08) 3px,
+    rgba(0,0,0,.08) 4px
+  );
+}
+
+/* ── App layout ──────────────────────────────────────────────────────────────── */
+.synth {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding: 0 0 20px;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────────── */
+.synth__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.synth__logo {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: .12em;
+  text-shadow: 0 0 12px rgba(16,185,129,.5);
+}
+
+.synth__subtitle {
+  font-size: 9px;
+  letter-spacing: .15em;
+  color: var(--text-dim);
+}
+
+/* ── Module panels ───────────────────────────────────────────────────────────── */
+.synth__top {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  flex-wrap: wrap;
+}
+
+.synth__module {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.synth__module--osc    { flex: 2; min-width: 200px; }
+.synth__module--adsr   { flex: 3; min-width: 260px; }
+.synth__module--filter { flex: 1; min-width: 140px; }
+
+.synth__module-title {
+  font-size: 9px;
+  letter-spacing: .18em;
+  color: var(--text-dim);
+  font-weight: 700;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+/* ── Waveform buttons ────────────────────────────────────────────────────────── */
+.synth__wave-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.synth__wave-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--text-dim);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: border-color .1s, color .1s;
+}
+
+.synth__wave-btn:hover { border-color: var(--accent); color: var(--text); }
+
+.synth__wave-btn--active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(16,185,129,.12);
+  box-shadow: inset 0 0 8px rgba(16,185,129,.15);
+}
+
+.synth__wave-label {
+  font-size: 8px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+/* ── Knob row ────────────────────────────────────────────────────────────────── */
+.synth__knob-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+/* ── Knob widget ─────────────────────────────────────────────────────────────── */
+.knob {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  user-select: none;
+}
+
+.knob__dial {
+  cursor: ns-resize;
+  border-radius: 50%;
+  transition: filter .15s;
+}
+
+.knob__dial:hover   { filter: drop-shadow( 0 0 5px rgba(16,185,129,.6) ); }
+.knob__dial:focus   { outline: none; filter: drop-shadow( 0 0 6px rgba(16,185,129,.8) ); }
+
+.knob__value {
+  font-size: 9px;
+  color: var(--accent);
+  letter-spacing: .04em;
+  min-width: 40px;
+  text-align: center;
+}
+
+.knob__label {
+  font-size: 8px;
+  letter-spacing: .14em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+/* ── Piano keyboard ──────────────────────────────────────────────────────────── */
+.keyboard {
+  padding: 10px 16px 6px;
+}
+
+.keyboard__keys {
+  display: flex;
+  gap: 3px;
+  align-items: flex-start;
+  position: relative;
+}
+
+.keyboard__key {
+  position: relative;
+  border-radius: 0 0 6px 6px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 5px;
+  transition: filter .05s;
+  user-select: none;
+}
+
+.keyboard__key--white {
+  background: linear-gradient( to bottom, #1a3a28, #0f2218 );
+  width: 44px;
+  height: 100px;
+  color: var(--text-dim);
+}
+
+.keyboard__key--black {
+  background: var(--bg);
+  width: 30px;
+  height: 64px;
+  border-color: #2a4a38;
+  color: var(--text-dim);
+}
+
+.keyboard__key--active,
+.keyboard__key:active {
+  filter: drop-shadow( 0 0 8px rgba(16,185,129,.9) );
+  background: rgba(16,185,129,.25) !important;
+  color: var(--accent);
+}
+
+.keyboard__hint {
+  font-size: 9px;
+  letter-spacing: .04em;
+  pointer-events: none;
+}
+
+/* ── Sequencer ───────────────────────────────────────────────────────────────── */
+.sequencer {
+  margin: 8px 16px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px 12px;
+}
+
+.sequencer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sequencer__title {
+  font-size: 9px;
+  letter-spacing: .18em;
+  color: var(--text-dim);
+  font-weight: 700;
+}
+
+.sequencer__transport {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sequencer__play {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  padding: 5px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .1s, border-color .1s;
+}
+
+.sequencer__play:hover        { border-color: var(--accent); }
+.sequencer__play--active      { border-color: var(--accent); color: var(--accent); background: rgba(16,185,129,.1); }
+
+.sequencer__bpm-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  letter-spacing: .12em;
+  color: var(--text-dim);
+}
+
+.sequencer__bpm {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  width: 52px;
+  padding: 3px 6px;
+  text-align: center;
+  outline: none;
+}
+
+.sequencer__bpm:focus { border-color: var(--accent); }
+
+.sequencer__grid {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.sequencer__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.sequencer__step-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 5px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .08s, border-color .08s;
+}
+
+.sequencer__step--on .sequencer__step-btn {
+  background: rgba(16,185,129,.2);
+  border-color: var(--accent);
+  box-shadow: 0 0 6px rgba(16,185,129,.35);
+}
+
+.sequencer__step--current .sequencer__step-btn {
+  background: rgba(16,185,129,.5);
+  border-color: var(--accent-hi);
+  box-shadow: 0 0 10px rgba(52,211,153,.7);
+}
+
+.sequencer__note-select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 8px;
+  padding: 1px 2px;
+  width: 34px;
+  outline: none;
+  cursor: pointer;
+}
+
+.sequencer__note-select:focus { border-color: var(--accent); }

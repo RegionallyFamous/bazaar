@@ -1,0 +1,15 @@
+{
+  "name": "Retro Synthesizer",
+  "slug": "retro-synth",
+  "version": "1.0.0",
+  "author": "Bazaar",
+  "description": "A fully functional synthesizer in your browser — 4 waveforms, ADSR envelope, low-pass filter, rotary knobs, and a step sequencer. Built on the Web Audio API. Zero dependencies.",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "menu": {
+    "title": "Synth",
+    "position": 10,
+    "capability": "manage_options"
+  },
+  "shared": []
+}

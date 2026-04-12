@@ -177,6 +177,18 @@ jobs:
         working-directory: wares/focus
         run: npm run package
 
+      - name: Build kanban
+        working-directory: wares/kanban
+        run: npm run package
+
+      - name: Build color-palette
+        working-directory: wares/color-palette
+        run: npm run package
+
+      - name: Build retro-synth
+        working-directory: wares/retro-synth
+        run: npm run package
+
       - name: Verify .wp files
         run: |
           for f in wares/*.wp; do
@@ -213,9 +225,12 @@ jobs:
 
       - name: Copy ware icons to release assets
         run: |
-          cp wares/pixel-art/public/icon.svg      wares-dist/pixel-art-icon.svg
+          cp wares/pixel-art/public/icon.svg        wares-dist/pixel-art-icon.svg
           cp wares/invoice-generator/public/icon.svg wares-dist/invoice-generator-icon.svg
-          cp wares/focus/public/icon.svg           wares-dist/focus-icon.svg
+          cp wares/focus/public/icon.svg            wares-dist/focus-icon.svg
+          cp wares/kanban/public/icon.svg           wares-dist/kanban-icon.svg
+          cp wares/color-palette/public/icon.svg    wares-dist/color-palette-icon.svg
+          cp wares/retro-synth/public/icon.svg      wares-dist/retro-synth-icon.svg
 
       - name: Attach wares to release
         env:

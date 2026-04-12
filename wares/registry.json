@@ -30,6 +30,36 @@
       "icon_url":     "https://github.com/RegionallyFamous/bazaar/releases/latest/download/focus-icon.svg",
       "download_url": "https://github.com/RegionallyFamous/bazaar/releases/latest/download/focus.wp",
       "tags":         ["productivity", "timer", "focus", "pomodoro"]
+    },
+    {
+      "slug":         "kanban",
+      "name":         "Kanban Board",
+      "description":  "A drag-and-drop Kanban board with customisable columns, card labels, due dates, and local persistence. Replace Trello for simple projects — no server needed.",
+      "version":      "1.0.0",
+      "author":       "Bazaar",
+      "icon_url":     "https://github.com/RegionallyFamous/bazaar/releases/latest/download/kanban-icon.svg",
+      "download_url": "https://github.com/RegionallyFamous/bazaar/releases/latest/download/kanban.wp",
+      "tags":         ["productivity", "tasks", "kanban", "planning"]
+    },
+    {
+      "slug":         "color-palette",
+      "name":         "Color Palette Studio",
+      "description":  "Create and save colour palettes with a full HSL editor, harmony generator (complementary, triadic, analogous), WCAG contrast checker, and one-click export to CSS, Tailwind, or SVG.",
+      "version":      "1.0.0",
+      "author":       "Bazaar",
+      "icon_url":     "https://github.com/RegionallyFamous/bazaar/releases/latest/download/color-palette-icon.svg",
+      "download_url": "https://github.com/RegionallyFamous/bazaar/releases/latest/download/color-palette.wp",
+      "tags":         ["creative", "design", "colors", "palette"]
+    },
+    {
+      "slug":         "retro-synth",
+      "name":         "Retro Synthesizer",
+      "description":  "A fully functional synthesizer — 4 waveforms, ADSR envelope, low-pass filter with resonance, rotary knobs, and a 16-step sequencer. Built on the Web Audio API. Zero runtime dependencies.",
+      "version":      "1.0.0",
+      "author":       "Bazaar",
+      "icon_url":     "https://github.com/RegionallyFamous/bazaar/releases/latest/download/retro-synth-icon.svg",
+      "download_url": "https://github.com/RegionallyFamous/bazaar/releases/latest/download/retro-synth.wp",
+      "tags":         ["music", "audio", "synth", "fun"]
     }
   ]
 }
