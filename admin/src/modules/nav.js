@@ -139,7 +139,7 @@ function dashicon( cls ) {
  */
 export function buildItem(
 	slug,
-	{ label, icon, di, devMode, grouped },
+	{ label, icon, svgIcon, di, devMode, grouped },
 	activeSlug,
 	badgeMap
 ) {
@@ -163,7 +163,11 @@ export function buildItem(
 	const wrap = document.createElement( 'span' );
 	wrap.className = 'bsh-nav__icon-wrap';
 	wrap.setAttribute( 'aria-hidden', 'true' );
-	if ( icon ) {
+	if ( svgIcon ) {
+		const tmp = document.createElement( 'span' );
+		tmp.innerHTML = svgIcon;
+		wrap.appendChild( tmp.firstChild );
+	} else if ( icon ) {
 		const img = Object.assign( document.createElement( 'img' ), {
 			src: icon,
 			alt: '',

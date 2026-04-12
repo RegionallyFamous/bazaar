@@ -82,10 +82,6 @@
 	min-width: var(--bsh-nav-collapsed);
 }
 
-/* No wares: keep nav visible but collapsed to footer + empty CTA only */
-.bsh--no-wares .bsh-nav__list { flex: 0; }
-.bsh--no-wares .bsh-nav__filter-wrap { display: none; }
-
 /* Header row — height must match .bsh-toolbar for the top-band effect */
 .bsh-nav__header {
 	display: flex;
@@ -160,6 +156,9 @@
 	overflow-y: auto;
 	overflow-x: hidden;
 }
+
+/* No wares: shrink list to nothing so only the empty CTA and footer show */
+.bsh--no-wares .bsh-nav__list { flex: 0; }
 
 .bsh-nav__list::-webkit-scrollbar {
 	width: 4px;
@@ -260,6 +259,13 @@
 	height: 18px;
 	object-fit: contain;
 	border-radius: 4px;
+}
+
+.bsh-nav__icon-wrap svg {
+	width: 16px;
+	height: 16px;
+	display: block;
+	color: inherit;
 }
 
 .bsh-nav__label {
@@ -1117,6 +1123,9 @@
 }
 
 .bsh-nav__filter-wrap--active { display: flex; }
+
+/* No wares: filter has nothing to filter — keep it hidden regardless */
+.bsh--no-wares .bsh-nav__filter-wrap { display: none; }
 
 .bsh--collapsed .bsh-nav__filter-wrap { display: none; }
 

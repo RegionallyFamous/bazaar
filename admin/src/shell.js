@@ -657,7 +657,17 @@ function renderNav() {
 	// Manage — pinned in footer, not mixed with ware tabs
 	const manageItem = buildItem(
 		'manage',
-		{ label: __( 'Manage Wares', 'bazaar' ), di: 'dashicons-admin-settings' },
+		{
+			label: __( 'Manage Wares', 'bazaar' ),
+			svgIcon: `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16">
+				<line x1="2" y1="4"  x2="14" y2="4"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+				<line x1="2" y1="8"  x2="14" y2="8"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+				<line x1="2" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+				<circle cx="5"  cy="4"  r="2" fill="currentColor"/>
+				<circle cx="10" cy="8"  r="2" fill="currentColor"/>
+				<circle cx="6"  cy="12" r="2" fill="currentColor"/>
+			</svg>`,
+		},
 		activeSlug,
 		badgeMap
 	);
