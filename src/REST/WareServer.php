@@ -435,6 +435,16 @@ final class WareServer {
 			return $html;
 		}
 
+		// React 18+ JSX transform always emits `import … from "react/jsx-runtime"`.
+		// Wares installed before this was added to their manifest.json would break
+		// unless we add it automatically whenever react or react-dom is requested.
+		$react_pkgs = array( 'react', 'react-dom' );
+		if ( ! empty( array_intersect( (array) $requested, $react_pkgs ) ) ) {
+			if ( ! in_array( 'react/jsx-runtime', (array) $requested, true ) ) {
+				$requested[] = 'react/jsx-runtime';
+			}
+		}
+
 		$imports = array();
 		foreach ( $requested as $pkg ) {
 			$pkg = (string) $pkg;
