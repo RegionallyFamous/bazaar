@@ -145,11 +145,13 @@
 }
 
 .bazaar-dropzone__browse {
+	display: inline; /* WP admin sets label { display: block } globally */
 	color: var(--bz-accent);
 	cursor: pointer;
 	text-decoration: underline;
 	text-underline-offset: 2px;
 	font-weight: 600;
+	vertical-align: baseline;
 }
 
 .bazaar-dropzone__hint {
@@ -684,7 +686,7 @@
 
 /* Delete button */
 
-.bazaar-card__delete {
+.bazaar-card .bazaar-card__delete {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -697,13 +699,22 @@
 	transition: color var(--bz-ease-fast), background var(--bz-ease-fast), border-color var(--bz-ease-fast);
 	width: 28px;
 	height: 28px;
+	min-height: unset;
+	box-shadow: none;
+	text-shadow: none;
+	line-height: 1;
 }
 
-.bazaar-card__delete:hover,
-.bazaar-card__delete:focus-visible {
+.bazaar-card .bazaar-card__delete:hover,
+.bazaar-card .bazaar-card__delete:focus-visible {
 	color: var(--bz-red);
 	background: var(--bz-red-bg);
 	border-color: rgba(220, 38, 38, 0.25);
+	outline: none;
+}
+
+.bazaar-card .bazaar-card__delete:focus:not(:focus-visible) {
+	box-shadow: none;
 	outline: none;
 }
 
@@ -719,6 +730,7 @@
 
 @media ( max-width: 600px ) {
 
+	.bazaar-core-grid,
 	.bazaar-gallery {
 		grid-template-columns: 1fr;
 	}
@@ -736,6 +748,336 @@
 		max-width: 100%;
 		width: 100%;
 	}
+}
+
+/* ---------------------------------------------------------------------------
+ * Core Apps — App Directory
+ * --------------------------------------------------------------------------*/
+
+.bazaar-core-section {
+	margin: 32px 0 40px;
+}
+
+.bazaar-core-header {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-bottom: 16px;
+	padding-bottom: 12px;
+	border-bottom: 2px solid var(--bz-border);
+}
+
+/* Reset the h2's own underline — the row-level border above handles it */
+.bazaar-core-header .bazaar-section-heading {
+	margin: 0;
+	padding-bottom: 0;
+	border-bottom: none;
+}
+
+.bazaar-core-count-badge {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--bz-text-muted);
+	background: var(--bz-bg);
+	border: 1px solid var(--bz-border);
+	border-radius: 999px;
+	padding: 2px 10px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.bazaar-core-description {
+	margin: 0 0 18px;
+	font-size: 13px;
+	color: var(--bz-text-muted);
+}
+
+.bazaar-core-grid {
+	display: grid;
+	grid-template-columns: repeat( auto-fill, minmax( 300px, 1fr ) );
+	gap: 16px;
+}
+
+/* ─── App card ─────────────────────────────────────────────────────────── */
+
+.bazaar-core-card {
+	--card-accent: #6b7280;
+	position: relative;
+	background: var(--bz-surface);
+	border: 1px solid var(--bz-border);
+	border-top: 4px solid var(--card-accent);
+	border-radius: var(--bz-radius-lg);
+	padding: 20px 20px 18px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	box-shadow: var(--bz-shadow-sm);
+	transition: box-shadow .2s, transform .2s;
+	overflow: hidden;
+}
+
+.bazaar-core-card::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: linear-gradient( 135deg, color-mix( in srgb, var(--card-accent) 6%, transparent ) 0%, transparent 55% );
+	pointer-events: none;
+	border-radius: inherit;
+}
+
+.bazaar-core-card:hover {
+	box-shadow: 0 6px 28px color-mix( in srgb, var(--card-accent) 18%, rgba(0, 0, 0, .08) );
+	transform: translateY(-3px);
+}
+
+/* Installed corner badge */
+.bazaar-core-card__installed-badge {
+	position: absolute;
+	top: 12px;
+	right: 14px;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 10px;
+	font-weight: 700;
+	color: var(--bz-green);
+	background: var(--bz-green-bg);
+	border: 1px solid color-mix( in srgb, var(--bz-green) 22%, transparent );
+	border-radius: 999px;
+	padding: 2px 9px;
+	letter-spacing: 0.03em;
+	pointer-events: none;
+}
+
+.bazaar-core-card__installed-badge::before {
+	content: '✓';
+}
+
+/* Top row: icon + name */
+.bazaar-core-card__top {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+}
+
+.bazaar-core-card__icon-wrap {
+	position: relative;
+	width: 56px;
+	height: 56px;
+	border-radius: 14px;
+	flex-shrink: 0;
+	background: color-mix( in srgb, var(--card-accent) 12%, var(--bz-bg) );
+	overflow: hidden;
+}
+
+/* Initial-letter fallback — visible when no image loads */
+.bazaar-core-card__initial {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 26px;
+	font-weight: 800;
+	color: var(--card-accent);
+	line-height: 1;
+	user-select: none;
+}
+
+.bazaar-core-card__icon {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+
+.bazaar-core-card__info {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+}
+
+.bazaar-core-card__name {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 700;
+	color: var(--bz-text);
+	line-height: 1.2;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.bazaar-core-card__byline {
+	font-size: 11.5px;
+	color: var(--bz-text-muted);
+	white-space: nowrap;
+}
+
+/* Description — 3-line clamp */
+.bazaar-core-card__desc {
+	margin: 0;
+	font-size: 12.5px;
+	line-height: 1.6;
+	color: var(--bz-text-dim);
+	flex: 1;
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+/* Tag pills — themed via --card-accent */
+.bazaar-core-card__tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 5px;
+}
+
+.bazaar-core-tag {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 9px;
+	background: color-mix( in srgb, var(--card-accent) 10%, var(--bz-bg) );
+	border: 1px solid color-mix( in srgb, var(--card-accent) 22%, var(--bz-border) );
+	border-radius: 999px;
+	font-size: 10.5px;
+	font-weight: 500;
+	color: color-mix( in srgb, var(--card-accent) 65%, var(--bz-text) );
+	text-transform: lowercase;
+	letter-spacing: 0.01em;
+}
+
+/* Full-width install CTA */
+.bazaar-core-card__cta {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	font-size: 13px;
+	font-weight: 600;
+	padding: 8px 16px;
+	border-radius: var(--bz-radius-sm);
+	margin-top: 2px;
+	transition: background var(--bz-ease), border-color var(--bz-ease);
+}
+
+.bazaar-core-card__cta--install {
+	background: var(--card-accent) !important;
+	border-color: color-mix( in srgb, var(--card-accent) 85%, #1e293b ) !important;
+	color: #fff !important;
+}
+
+.bazaar-core-card__cta--install:hover {
+	background: color-mix( in srgb, var(--card-accent) 85%, #1e293b ) !important;
+	border-color: color-mix( in srgb, var(--card-accent) 70%, #1e293b ) !important;
+}
+
+.bazaar-core-card__cta--installed {
+	background: var(--bz-green-bg) !important;
+	border-color: color-mix( in srgb, var(--bz-green) 22%, transparent ) !important;
+	color: var(--bz-green) !important;
+	cursor: default !important;
+}
+
+.bazaar-core-card__cta--installed::before {
+	content: '✓';
+	font-weight: 700;
+}
+
+/* ─── Skeleton loaders ─────────────────────────────────────────────────── */
+
+@keyframes bz-shimmer {
+
+	0%   { background-position: -600px 0; }
+
+	100% { background-position:  600px 0; }
+}
+
+.bazaar-core-skeleton {
+	background: var(--bz-surface);
+	border: 1px solid var(--bz-border);
+	border-top: 4px solid var(--bz-border);
+	border-radius: var(--bz-radius-lg);
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.bazaar-core-skeleton__top {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+}
+
+.bazaar-core-skeleton__icon,
+.bazaar-core-skeleton__line,
+.bazaar-core-skeleton__btn {
+	background: linear-gradient( 90deg, #f0f0f1 25%, #e8e8e9 50%, #f0f0f1 75% );
+	background-size: 600px 100%;
+	animation: bz-shimmer 1.4s infinite linear;
+	border-radius: 6px;
+}
+
+.bazaar-core-skeleton__icon {
+	width: 56px;
+	height: 56px;
+	flex-shrink: 0;
+	border-radius: 14px;
+}
+
+.bazaar-core-skeleton__lines {
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+	flex: 1;
+}
+
+.bazaar-core-skeleton__line {
+	height: 12px;
+}
+
+.bazaar-core-skeleton__line--title {
+	width: 58%;
+	height: 15px;
+}
+
+.bazaar-core-skeleton__line--byline {
+	width: 38%;
+	height: 10px;
+}
+
+.bazaar-core-skeleton__desc-lines {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.bazaar-core-skeleton__line--d1 { width: 100%; height: 10px; }
+
+.bazaar-core-skeleton__line--d2 { width: 88%; height: 10px; }
+
+.bazaar-core-skeleton__line--d3 { width: 65%; height: 10px; }
+
+.bazaar-core-skeleton__btn {
+	height: 34px;
+	border-radius: 4px;
+	margin-top: 2px;
+}
+
+.bazaar-core-error {
+	grid-column: 1 / -1;
+	color: var(--bz-text-muted);
+	font-size: 13px;
+	padding: 32px 16px;
+	text-align: center;
 }
 
 /* ---------------------------------------------------------------------------
@@ -858,6 +1200,12 @@ html.bazaar-in-shell .bazaar-dropzone__text {
 	font-size: 15px;
 }
 
+/* ── App Directory: full-width, padded — matches gallery layout ──────────── */
+
+html.bazaar-in-shell .bazaar-core-section {
+	padding: 0 48px 8px;
+}
+
 /* ── Gallery section: full-width, padded ─────────────────────────────────── */
 
 html.bazaar-in-shell .bazaar-gallery-section {
@@ -921,321 +1269,4 @@ html.bazaar-in-shell .bazaar-notice {
 	box-sizing: border-box;
 	background: none;
 	border: none;
-}
-
-/* ---------------------------------------------------------------------------
- * Core Apps — App Directory
- * --------------------------------------------------------------------------*/
-
-.bazaar-core-section {
-	margin: 32px 0 40px;
-}
-
-.bazaar-core-header {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	flex-wrap: wrap;
-	gap: 12px;
-	margin-bottom: 4px;
-}
-
-.bazaar-core-count-badge {
-	font-size: 11px;
-	font-weight: 600;
-	color: var(--bz-text-muted);
-	background: var(--bz-bg);
-	border: 1px solid var(--bz-border);
-	border-radius: 999px;
-	padding: 2px 10px;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
-	white-space: nowrap;
-}
-
-.bazaar-core-description {
-	margin: 0 0 20px;
-	font-size: 13px;
-	color: var(--bz-text-muted);
-}
-
-.bazaar-core-grid {
-	display: grid;
-	grid-template-columns: repeat( auto-fill, minmax( 300px, 1fr ) );
-	gap: 16px;
-}
-
-/* ─── App card ─────────────────────────────────────────────────────────── */
-
-.bazaar-core-card {
-	--card-accent: #6b7280;
-	position: relative;
-	background: var(--bz-surface);
-	border: 1px solid var(--bz-border);
-	border-top: 4px solid var(--card-accent);
-	border-radius: var(--bz-radius-lg);
-	padding: 20px 20px 18px;
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-	box-shadow: var(--bz-shadow-sm);
-	transition: box-shadow .2s, transform .2s;
-	overflow: hidden;
-}
-
-.bazaar-core-card::before {
-	content: '';
-	position: absolute;
-	inset: 0;
-	background: linear-gradient( 135deg, color-mix( in srgb, var(--card-accent) 6%, transparent ) 0%, transparent 55% );
-	pointer-events: none;
-	border-radius: inherit;
-}
-
-.bazaar-core-card:hover {
-	box-shadow: 0 6px 28px color-mix( in srgb, var(--card-accent) 18%, rgba(0, 0, 0, .08) );
-	transform: translateY(-3px);
-}
-
-/* Installed corner badge */
-.bazaar-core-card__installed-badge {
-	position: absolute;
-	top: 12px;
-	right: 14px;
-	display: flex;
-	align-items: center;
-	gap: 4px;
-	font-size: 10px;
-	font-weight: 700;
-	color: #16a34a;
-	background: #dcfce7;
-	border: 1px solid #bbf7d0;
-	border-radius: 999px;
-	padding: 2px 9px;
-	letter-spacing: 0.03em;
-	pointer-events: none;
-}
-
-.bazaar-core-card__installed-badge::before {
-	content: '✓';
-}
-
-/* Top row: icon + name */
-.bazaar-core-card__top {
-	display: flex;
-	align-items: center;
-	gap: 14px;
-}
-
-.bazaar-core-card__icon-wrap {
-	position: relative;
-	width: 56px;
-	height: 56px;
-	border-radius: 14px;
-	flex-shrink: 0;
-	background: color-mix( in srgb, var(--card-accent) 12%, #f8fafc );
-	overflow: hidden;
-}
-
-/* Initial-letter fallback — visible when no image loads */
-.bazaar-core-card__initial {
-	position: absolute;
-	inset: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 26px;
-	font-weight: 800;
-	color: var(--card-accent);
-	line-height: 1;
-	user-select: none;
-}
-
-.bazaar-core-card__icon {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	object-fit: contain;
-}
-
-.bazaar-core-card__info {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	min-width: 0;
-}
-
-.bazaar-core-card__name {
-	margin: 0;
-	font-size: 16px;
-	font-weight: 700;
-	color: var(--bz-text);
-	line-height: 1.2;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.bazaar-core-card__byline {
-	font-size: 11.5px;
-	color: var(--bz-text-muted);
-	white-space: nowrap;
-}
-
-/* Description — 3-line clamp */
-.bazaar-core-card__desc {
-	margin: 0;
-	font-size: 12.5px;
-	line-height: 1.6;
-	color: var(--bz-text-dim);
-	flex: 1;
-	display: -webkit-box;
-	-webkit-line-clamp: 3;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-}
-
-/* Tag pills — themed via --card-accent */
-.bazaar-core-card__tags {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 5px;
-}
-
-.bazaar-core-tag {
-	display: inline-flex;
-	align-items: center;
-	padding: 2px 9px;
-	background: color-mix( in srgb, var(--card-accent) 10%, #f8fafc );
-	border: 1px solid color-mix( in srgb, var(--card-accent) 22%, #e5e7eb );
-	border-radius: 999px;
-	font-size: 10.5px;
-	font-weight: 500;
-	color: color-mix( in srgb, var(--card-accent) 65%, #374151 );
-	text-transform: lowercase;
-	letter-spacing: 0.01em;
-}
-
-/* Full-width install CTA */
-.bazaar-core-card__cta {
-	width: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 6px;
-	font-size: 13px;
-	padding: 8px 16px;
-	margin-top: 2px;
-}
-
-.bazaar-core-card__cta--install {
-	background: color-mix( in srgb, var(--card-accent) 100%, transparent ) !important;
-	border-color: color-mix( in srgb, var(--card-accent) 85%, #1e293b ) !important;
-	color: #fff !important;
-}
-
-.bazaar-core-card__cta--install:hover {
-	background: color-mix( in srgb, var(--card-accent) 85%, #1e293b ) !important;
-	border-color: color-mix( in srgb, var(--card-accent) 70%, #1e293b ) !important;
-}
-
-.bazaar-core-card__cta--installed {
-	background: #f0fdf4 !important;
-	border-color: #bbf7d0 !important;
-	color: #16a34a !important;
-	cursor: default !important;
-}
-
-.bazaar-core-card__cta--installed::before {
-	content: '✓';
-	font-weight: 700;
-}
-
-/* ─── Skeleton loaders ─────────────────────────────────────────────────── */
-
-@keyframes bz-shimmer {
-
-	0%   { background-position: -600px 0; }
-
-	100% { background-position:  600px 0; }
-}
-
-.bazaar-core-skeleton {
-	background: var(--bz-surface);
-	border: 1px solid var(--bz-border);
-	border-top: 4px solid #e5e7eb;
-	border-radius: var(--bz-radius-lg);
-	padding: 20px;
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-}
-
-.bazaar-core-skeleton__top {
-	display: flex;
-	align-items: center;
-	gap: 14px;
-}
-
-.bazaar-core-skeleton__icon,
-.bazaar-core-skeleton__line,
-.bazaar-core-skeleton__btn {
-	background: linear-gradient( 90deg, #f0f0f1 25%, #e8e8e9 50%, #f0f0f1 75% );
-	background-size: 600px 100%;
-	animation: bz-shimmer 1.4s infinite linear;
-	border-radius: 6px;
-}
-
-.bazaar-core-skeleton__icon {
-	width: 56px;
-	height: 56px;
-	flex-shrink: 0;
-	border-radius: 14px;
-}
-
-.bazaar-core-skeleton__lines {
-	display: flex;
-	flex-direction: column;
-	gap: 7px;
-	flex: 1;
-}
-
-.bazaar-core-skeleton__line {
-	height: 12px;
-}
-
-.bazaar-core-skeleton__line--title {
-	width: 58%;
-	height: 15px;
-}
-
-.bazaar-core-skeleton__line--byline {
-	width: 38%;
-	height: 10px;
-}
-
-.bazaar-core-skeleton__desc-lines {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
-
-.bazaar-core-skeleton__line--d1 { width: 100%; height: 10px; }
-
-.bazaar-core-skeleton__line--d2 { width: 88%; height: 10px; }
-
-.bazaar-core-skeleton__line--d3 { width: 65%; height: 10px; }
-
-.bazaar-core-skeleton__btn {
-	height: 34px;
-	border-radius: 4px;
-	margin-top: 2px;
-}
-
-.bazaar-core-error {
-	grid-column: 1 / -1;
-	color: var(--bz-text-muted);
-	font-size: 13px;
-	padding: 8px;
 }

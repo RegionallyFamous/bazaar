@@ -587,7 +587,7 @@ function insertWareCard( ware ) {
 						aria-label="${ escAttr( toggleLabel ) }">
 					<span class="bazaar-toggle__slider" aria-hidden="true"></span>
 				</label>
-				<button type="button" class="button bazaar-card__delete"
+				<button type="button" class="bazaar-card__delete"
 					data-slug="${ escAttr( ware.slug ) }" data-action="delete"
 					data-confirm="${ escAttr( deleteConfirm ) }"
 					aria-label="${ escAttr( deleteLabel ) }">
@@ -716,6 +716,12 @@ function renderCoreCard( app, isInstalled ) {
 
 	const initial = ( app.name || '?' ).charAt( 0 ).toUpperCase();
 
+	// For installed wares use the local serve endpoint so the icon loads without
+	// needing a published GitHub release. Remote icon_url is kept as the fallback.
+	const resolvedIconUrl = isInstalled
+		? `${ window.bazaarData?.restUrl ?? '' }/serve/${ encodeURIComponent( app.slug ) }/icon.svg`
+		: app.icon_url;
+
 	const tagsHtml = ( app.tags ?? [] )
 		.map( ( t ) => `<span class="bazaar-core-tag">${ escHtml( t ) }</span>` )
 		.join( '' );
@@ -738,7 +744,7 @@ function renderCoreCard( app, isInstalled ) {
 			<div class="bazaar-core-card__icon-wrap">
 				<span class="bazaar-core-card__initial" aria-hidden="true">${ escHtml( initial ) }</span>
 				<img
-					src="${ escAttr( app.icon_url ) }"
+					src="${ escAttr( resolvedIconUrl ) }"
 					alt=""
 					class="bazaar-core-card__icon"
 					onerror="this.style.display='none'"
