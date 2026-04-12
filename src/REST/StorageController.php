@@ -172,8 +172,16 @@ final class StorageController extends BazaarController {
 		$uid = get_current_user_id();
 		$raw = get_user_meta( $uid, $this->meta_key( $slug, $key ), true );
 
+		// An absent key is not an error — return null so callers can apply
+		// their own defaults without catching a 404 on every first-time load.
 		if ( '' === $raw || false === $raw ) {
-			return new WP_Error( 'not_found', __( 'Key not found.', 'bazaar' ), array( 'status' => 404 ) );
+			return new WP_REST_Response(
+				array(
+					'key'   => $key,
+					'value' => null,
+				),
+				200
+			);
 		}
 
 		$value = json_decode( (string) $raw, true );

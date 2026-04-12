@@ -1,8 +1,9 @@
 import { StrictMode }        from 'react';
 import { createRoot }        from 'react-dom/client';
-import { setBazaarContext }  from '@bazaar/client';
+import { setBazaarContext, getBazaarContext } from '@bazaar/client';
+import { applyAdminColor }   from '@bazaar/design/theme';
+import '@bazaar/design/css';
 import App                   from './App.tsx';
-import './index.css';
 
 // ---------------------------------------------------------------------------
 // Dev mode context seeding
@@ -20,6 +21,9 @@ if ( import.meta.env.DEV ) {
     slug:     import.meta.env.VITE_BAZAAR_SLUG ?? '__WARE_SLUG__',
   } );
 }
+
+// Align the ware's accent colour with the active WP admin colour scheme.
+applyAdminColor( getBazaarContext().adminColor );
 
 createRoot( document.getElementById( 'root' )! ).render(
   <StrictMode>

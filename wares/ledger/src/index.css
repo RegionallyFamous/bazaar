@@ -1,0 +1,5 @@
+/*
+ * Ware-level style overrides.
+ * @bazaar/design/css is already imported in main.tsx and provides the base reset,
+ * CSS custom properties, and shared component classes.
+ */

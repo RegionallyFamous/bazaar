@@ -1,0 +1,91 @@
+/*
+ * @bazaar/design — base reset and body defaults.
+ *
+ * Import tokens.css before this file so the --bw-* variables are in scope.
+ */
+
+/* ── Box model reset ─────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+/* ── Root defaults ───────────────────────────────────────────────────────── */
+
+:root {
+	font-family: var(--bw-font);
+	font-size: var(--bw-text-md);
+	color: var(--bw-text);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	text-rendering: optimizeLegibility;
+}
+
+body {
+	background: var(--bw-bg);
+	min-height: 100dvh;
+	line-height: 1.5;
+}
+
+/* ── Interactive resets ──────────────────────────────────────────────────── */
+
+button {
+	font: inherit;
+	cursor: pointer;
+	background: none;
+	border: none;
+	padding: 0;
+	color: inherit;
+}
+
+input,
+textarea,
+select {
+	font: inherit;
+	color: inherit;
+}
+
+a {
+	color: var(--bw-accent);
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+/* ── Focus ring ──────────────────────────────────────────────────────────── */
+
+:focus-visible {
+	outline: 2px solid var(--bw-border-focus);
+	outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+	outline: none;
+}
+
+/* ── Scrollbar styling ───────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+	width: 5px;
+	height: 5px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--bw-border);
+	border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--bw-text-dim);
+}

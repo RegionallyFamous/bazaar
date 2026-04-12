@@ -7,7 +7,9 @@ alwaysApply: true
 # WordPress Core Standards
 
 Target: PHP 8.2+, WordPress 6.6+, Node 24+, @wordpress/scripts latest, block.json apiVersion 3.
-Code must pass PHPCS WordPress-VIP-Go, PHPStan level 6+, and @wordpress/eslint-plugin.
+Code must pass PHPCS WordPress-VIP-Go, PHPStan level 8, and @wordpress/eslint-plugin.
+
+> **Scope note:** These rules cover the WordPress plugin (`src/`, `bazaar.php`, `admin/`, `templates/`). For the standalone ware apps in `wares/*/` (React + Vite), see `wares-react-css.mdc`.
 
 ## SECURITY — sanitize early, escape late
 
@@ -201,19 +203,22 @@ function my_plugin_get_data( string $key ): array {
 
 ## TOOLING
 
-- PHP: PHPCS with WordPress-VIP-Go + WordPress-Extra + WordPress-Docs. PHPStan with `szepeviktor/phpstan-wordpress` at level 6+.
-- JS: `@wordpress/scripts` (lint-js, lint-style, build, test-unit-js), `@wordpress/eslint-plugin`.
+- PHP: PHPCS with WordPress-VIP-Go + WordPress-Extra + WordPress-Docs. PHPStan with `szepeviktor/phpstan-wordpress` at level 8.
+- Plugin JS (`admin/`): `@wordpress/scripts` (lint-js, lint-style, build, test-unit-js), `@wordpress/eslint-plugin`.
+- Ware apps (`wares/*/`): Vite + React 19 + TypeScript strict. See `wares-react-css.mdc`.
 - Pre-commit: Husky + lint-staged.
 
 ## VERIFICATION LOOP — run before declaring any task done
 
-After ANY code change, run in order and fix until green:
+After ANY code change to the plugin, run in order and fix until green:
 
-1. `composer lint` (phpcs + phpstan)
+1. `php composer.phar lint` (phpcs + phpstan)
 2. `npm run lint`
 3. `npm run build`
-4. `composer test` (if tests exist)
+4. `php composer.phar test` (if tests exist)
 5. `npm test` (if tests exist)
+
+For ware changes, run inside the ware directory: `npm run build` and `tsc --noEmit`.
 
 "Done" means ALL of the above are green. Do not report success otherwise.
 

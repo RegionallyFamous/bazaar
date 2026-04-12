@@ -1,0 +1,12 @@
+/*
+ * @bazaar/design — full CSS bundle.
+ *
+ * Import this single file in a ware's main.tsx to get tokens, base styles,
+ * and component classes in one shot:
+ *
+ *   import '@bazaar/design/css';
+ */
+
+@import './tokens.css';
+@import './base.css';
+@import './components.css';

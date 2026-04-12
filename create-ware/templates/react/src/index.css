@@ -1,9 +1,20 @@
-*, *::before, *::after { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 14px;
-  background: #f0f0f1;
-  color: #1d2327;
-}
+/*
+ * Ware-level style overrides.
+ *
+ * @bazaar/design/css is already imported in main.tsx and provides:
+ *   - CSS custom properties  (--bw-*)
+ *   - Base reset and body defaults
+ *   - Shared component classes (.bw-btn, .bw-badge, etc.)
+ *
+ * Add overrides here to customise the accent colour, dark theme, or any
+ * other ware-specific styles that should apply globally.
+ *
+ * Example — custom accent colour:
+ *
+ *   :root {
+ *     --bw-accent:     #0ea5e9;
+ *     --bw-accent-hi:  #0284c7;
+ *     --bw-accent-bg:  #e0f2fe;
+ *     --bw-accent-rgb: 14, 165, 233;
+ *   }
+ */

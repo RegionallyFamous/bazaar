@@ -40,6 +40,11 @@ import {
 } from './modules/nav.js';
 import { CommandPalette } from './modules/palette.js';
 import { connectSSE, pollBadges, pollHealth, sseConnected } from './modules/sse.js';
+import { NotificationCenter } from './modules/notifications.js';
+import { NavContextMenu } from './modules/context-menu.js';
+import { Launchpad } from './modules/launchpad.js';
+import { HomeScreen } from './modules/home.js';
+import { WareInfo } from './modules/ware-info.js';
 
 // ===========================================================================
 // Bootstrap
@@ -86,13 +91,16 @@ const loading = document.getElementById( 'bsh-loading' );
 const collapse = document.getElementById( 'bsh-collapse' );
 const root = document.getElementById( 'bazaar-shell-root' );
 const toolbarContext = document.getElementById( 'bsh-toolbar-context' );
+const taskbarEl = document.getElementById( 'bsh-taskbar' );
+const statusbarLeft = document.getElementById( 'bsh-statusbar-left' );
+const statusbarClock = document.getElementById( 'bsh-statusbar-clock' );
+const winbarEl = document.getElementById( 'bsh-winbar' );
+const homePanel = document.getElementById( 'bsh-home-screen' );
 
 // Fail loudly in development; degrade gracefully in production when the shell
 // template is missing a required element rather than throwing a cascade of
 // null-dereference TypeErrors throughout the module.
 if ( ! navList || ! navFooter || ! navEl || ! main || ! loading || ! collapse || ! root ) {
-	// eslint-disable-next-line no-console
-	console.error( '[Bazaar] Shell template is missing required elements. Shell will not start.' );
 	throw new Error( 'Bazaar shell: missing required DOM elements' );
 }
 
@@ -318,6 +326,56 @@ const palette = new CommandPalette( {
 	openExternal,
 } );
 
+// ===========================================================================
+// OS features — instantiated here so they can reference helpers above
+// ===========================================================================
+
+const homeScreen = new HomeScreen( {
+	wareMap,
+	navigateTo,
+	iconUrl,
+	sortedEnabled,
+	badgeMap,
+} );
+if ( homePanel ) {
+	homeScreen.mount( homePanel );
+}
+
+const wareInfo = new WareInfo();
+
+const launchpad = new Launchpad( {
+	wareMap,
+	navigateTo,
+	iconUrl,
+	sortedEnabled,
+} );
+
+const notifCenter = new NotificationCenter( {
+	root,
+	toolbar: document.getElementById( 'bsh-toolbar' ),
+} );
+
+// Patch toasts to also log to the notification center.
+// DnD mode in NotificationCenter suppresses the visible popup.
+const _origToastShow = toasts.show.bind( toasts );
+toasts.show = ( message, level = 'info', ms = TOAST_DEFAULT_MS ) => {
+	const suppress = notifCenter.add( 'system', message, level, null );
+	if ( ! suppress ) {
+		_origToastShow( message, level, ms );
+	}
+};
+
+const ctxMenu = new NavContextMenu( {
+	navigateTo,
+	popOut,
+	serveUrl,
+	wareMap,
+} );
+
+// Shortcut overlay state
+let shortcutsEl = null;
+let shortcutsWareCol = null;
+
 /**
  * Open a URL in a new tab only if it has an http/https scheme.
  * Blocks javascript:, data:, and other dangerous protocols that could be
@@ -379,7 +437,7 @@ function parseDeepLink() {
 function updateUrl( slug, route ) {
 	const p = new URLSearchParams( window.location.search );
 	p.set( 'page', 'bazaar' );
-	if ( slug && slug !== 'manage' ) {
+	if ( slug && slug !== 'manage' && slug !== 'home' ) {
 		p.set( 'ware', slug );
 	} else {
 		p.delete( 'ware' );
@@ -438,6 +496,18 @@ function renderNav() {
 
 	navList.innerHTML = '';
 	navFooter.innerHTML = '';
+
+	// Home — always first in footer
+	const homeItem = buildItem(
+		'home',
+		{
+			label: __( 'Home', 'bazaar' ),
+			di: 'dashicons-admin-home',
+		},
+		activeSlug,
+		badgeMap
+	);
+	navFooter.appendChild( homeItem );
 
 	// Manage — pinned in footer, not mixed with ware tabs
 	const manageItem = buildItem(
@@ -612,6 +682,7 @@ function renderNav() {
 	filterWrap.classList.toggle( 'bsh-nav__filter-wrap--active', showFilter );
 
 	attachDragHandlers( navList );
+	ctxMenu.attach( navList );
 	applyNavFilter();
 }
 
@@ -650,6 +721,14 @@ function recordView( newSlug ) {
 // ===========================================================================
 
 function renderToolbarContext( slug ) {
+	if ( 'startViewTransition' in document ) {
+		document.startViewTransition( () => _renderToolbarContextInner( slug ) );
+	} else {
+		_renderToolbarContextInner( slug );
+	}
+}
+
+function _renderToolbarContextInner( slug ) {
 	if ( ! toolbarContext ) {
 		return;
 	}
@@ -660,10 +739,16 @@ function renderToolbarContext( slug ) {
 	}
 
 	const isManage = slug === 'manage';
-	const ware = isManage ? null : wareMap.get( slug );
-	const label = isManage
-		? __( 'Manage Wares', 'bazaar' )
-		: ( ware?.menu_title ?? ware?.name ?? slug );
+	const isHome = slug === 'home';
+	const ware = ( isManage || isHome ) ? null : wareMap.get( slug );
+	let label;
+	if ( isManage ) {
+		label = __( 'Manage Wares', 'bazaar' );
+	} else if ( isHome ) {
+		label = __( 'Home', 'bazaar' );
+	} else {
+		label = ware?.menu_title ?? ware?.name ?? slug;
+	}
 
 	// Breadcrumb button opens the command palette for quick switching.
 	const btn = document.createElement( 'button' );
@@ -675,7 +760,9 @@ function renderToolbarContext( slug ) {
 	const iconEl = document.createElement( 'span' );
 	iconEl.setAttribute( 'aria-hidden', 'true' );
 
-	if ( isManage ) {
+	if ( isHome ) {
+		iconEl.className = 'dashicons dashicons-admin-home bsh-toolbar__context-icon';
+	} else if ( isManage ) {
 		iconEl.className = 'dashicons dashicons-admin-settings bsh-toolbar__context-icon';
 	} else if ( ware?.icon ) {
 		const img = document.createElement( 'img' );
@@ -716,8 +803,8 @@ function navigateTo( slug, route ) {
 		return;
 	}
 
-	// Guard: non-manage slugs must exist in the registry.
-	if ( slug !== 'manage' && ! wareMap.has( slug ) ) {
+	// Guard: non-manage/home slugs must exist in the registry.
+	if ( slug !== 'manage' && slug !== 'home' && ! wareMap.has( slug ) ) {
 		return;
 	}
 
@@ -729,6 +816,8 @@ function navigateTo( slug, route ) {
 	pushRecent( slug );
 	recordView( slug );
 	renderToolbarContext( slug );
+	renderWinBar( slug );
+	renderStatusBar( slug );
 
 	navEl.querySelectorAll( '.bsh-nav__btn' ).forEach( ( btn ) => {
 		const a = btn.dataset.slug === slug;
@@ -740,12 +829,39 @@ function navigateTo( slug, route ) {
 		}
 	} );
 
+	// Home screen — no iframe needed.
+	if ( slug === 'home' ) {
+		for ( const f of iframes.frames.values() ) {
+			f.classList.remove( 'bsh-iframe--visible' );
+			f.setAttribute( 'aria-hidden', 'true' );
+		}
+		if ( homePanel ) {
+			homePanel.hidden = false;
+			homeScreen.refresh();
+		}
+		loading.hidden = true;
+		renderTaskbar();
+		return;
+	}
+
+	// Hide the home panel when switching to a real ware.
+	if ( homePanel ) {
+		homePanel.hidden = true;
+	}
+
 	const url =
 		slug === 'manage' ? manageUrl : serveUrl( wareMap.get( slug ) );
 	const had = iframes.frames.has( slug );
 
 	dismissError( slug );
-	iframes.activate( slug, url );
+
+	if ( 'startViewTransition' in document ) {
+		document.startViewTransition( () => iframes.activate( slug, url ) );
+	} else {
+		iframes.activate( slug, url );
+	}
+
+	renderTaskbar();
 
 	if ( had ) {
 		loading.hidden = true;
@@ -857,9 +973,10 @@ function applyWareDeleted( slug ) {
 	wareMap.delete( slug );
 	iframes.destroy( slug );
 	if ( activeSlug === slug ) {
-		navigateTo( 'manage' );
+		navigateTo( 'home' );
 	}
 	renderNav();
+	renderTaskbar();
 }
 
 /**
@@ -890,6 +1007,7 @@ const sseDeps = {
 	onBadge: ( slug, count ) => {
 		badgeMap.set( slug, count );
 		patchNavBadges( navList, badgeMap );
+		renderTaskbar();
 	},
 	onToast: ( message, level ) => toasts.show( message, level ),
 	onWareInstalled: applyWareInstalled,
@@ -1041,14 +1159,34 @@ window.addEventListener( 'message', ( event ) => {
 		case 'bazaar:toast':
 			toasts.show( p.message ?? '', p.level ?? 'info', p.duration ?? 4000 );
 			break;
+		case 'bazaar:notify':
+			notifCenter.add(
+				fromSlug ?? 'system',
+				p.message ?? '',
+				p.level ?? 'info',
+				fromSlug ? wareMap.get( fromSlug ) : null
+			);
+			break;
 		case 'bazaar:badge':
 			if ( fromSlug ) {
 				badgeMap.set( fromSlug, p.count ?? 0 );
 				renderNav();
+				renderTaskbar();
+				homeScreen.refresh();
 			}
 			break;
 		case 'bazaar:navigate':
 			navigateTo( p.ware, p.route, p.secondary ?? false );
+			break;
+		case 'bazaar:widget':
+			if ( fromSlug ) {
+				homeScreen.addWidget( fromSlug, p.data ?? {} );
+			}
+			break;
+		case 'bazaar:shortcuts':
+			if ( fromSlug && p.shortcuts ) {
+				updateWareShortcuts( fromSlug, wareMap.get( fromSlug ), p.shortcuts );
+			}
 			break;
 
 		// Data cache
@@ -1121,6 +1259,15 @@ window.addEventListener( 'message', ( event ) => {
 		return b;
 	}
 
+	// Launchpad
+	mkBtn( __( 'Launchpad', 'bazaar' ), 'dashicons-grid-view', () => {
+		if ( launchpad.visible ) {
+			launchpad.close();
+		} else {
+			launchpad.open();
+		}
+	} );
+
 	const fsBtn = mkBtn( __( 'Fullscreen', 'bazaar' ), 'dashicons-fullscreen-alt', () => {
 		toggleFullscreen( root );
 		const isFs = root.classList.contains( 'bsh--fullscreen' );
@@ -1128,7 +1275,7 @@ window.addEventListener( 'message', ( event ) => {
 	} );
 
 	mkBtn( __( 'Pop out', 'bazaar' ), 'dashicons-external', () => {
-		if ( activeSlug && activeSlug !== 'manage' ) {
+		if ( activeSlug && activeSlug !== 'manage' && activeSlug !== 'home' ) {
 			const ware = wareMap.get( activeSlug );
 			if ( ware ) {
 				popOut( serveUrl( ware ), activeSlug );
@@ -1136,6 +1283,365 @@ window.addEventListener( 'message', ( event ) => {
 		}
 	} );
 }() );
+
+// ===========================================================================
+// Taskbar — shows LRU-resident running wares
+// ===========================================================================
+
+function renderTaskbar() {
+	if ( ! taskbarEl ) {
+		return;
+	}
+	taskbarEl.innerHTML = '';
+
+	if ( iframes.order.length === 0 ) {
+		taskbarEl.hidden = true;
+		return;
+	}
+	taskbarEl.hidden = false;
+
+	// Newest first (most recently used at front)
+	for ( const slug of [ ...iframes.order ].reverse() ) {
+		const ware = wareMap.get( slug );
+		const label = slug === 'manage'
+			? __( 'Manage Wares', 'bazaar' )
+			: ( ware?.menu_title ?? ware?.name ?? slug );
+
+		const item = document.createElement( 'div' );
+		item.className = 'bsh-taskbar__item' +
+			( slug === activeSlug ? ' bsh-taskbar__item--active' : '' );
+		item.dataset.slug = slug;
+
+		// Icon
+		const iconWrap = document.createElement( 'span' );
+		iconWrap.className = 'bsh-taskbar__icon-wrap';
+		iconWrap.setAttribute( 'aria-hidden', 'true' );
+		if ( ware?.icon ) {
+			const img = document.createElement( 'img' );
+			img.src = iconUrl( ware );
+			img.alt = '';
+			img.className = 'bsh-taskbar__icon';
+			img.onerror = () => img.remove();
+			iconWrap.appendChild( img );
+		} else {
+			const di = document.createElement( 'span' );
+			di.className = 'dashicons ' +
+				( slug === 'manage' ? 'dashicons-admin-settings' : 'dashicons-admin-plugins' );
+			iconWrap.appendChild( di );
+		}
+		item.appendChild( iconWrap );
+
+		// Label
+		item.appendChild(
+			Object.assign( document.createElement( 'span' ), {
+				className: 'bsh-taskbar__label',
+				textContent: label,
+			} )
+		);
+
+		// Badge
+		const badge = badgeMap.get( slug );
+		if ( badge > 0 ) {
+			item.appendChild(
+				Object.assign( document.createElement( 'span' ), {
+					className: 'bsh-taskbar__badge',
+					textContent: badge > 99 ? '99+' : String( badge ),
+				} )
+			);
+		}
+
+		// Close button
+		const closeBtn = document.createElement( 'button' );
+		closeBtn.type = 'button';
+		closeBtn.className = 'bsh-taskbar__close';
+		closeBtn.setAttribute(
+			'aria-label',
+			/* translators: %s: ware name */
+			sprintf( __( 'Close %s', 'bazaar' ), label )
+		);
+		closeBtn.innerHTML = '<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>';
+		const closedSlug = slug;
+		closeBtn.addEventListener( 'click', ( e ) => {
+			e.stopPropagation();
+			iframes.destroy( closedSlug );
+			if ( activeSlug === closedSlug ) {
+				const next = [ ...iframes.order ].reverse()[ 0 ] ?? 'home';
+				navigateTo( next );
+			}
+			renderTaskbar();
+		} );
+		item.appendChild( closeBtn );
+
+		item.addEventListener( 'click', () => navigateTo( slug ) );
+		taskbarEl.appendChild( item );
+	}
+}
+
+// ===========================================================================
+// Window chrome — thin title bar above the active ware
+// ===========================================================================
+
+function renderWinBar( slug ) {
+	if ( ! winbarEl ) {
+		return;
+	}
+	if ( ! slug || slug === 'home' ) {
+		winbarEl.hidden = true;
+		winbarEl.setAttribute( 'aria-hidden', 'true' );
+		return;
+	}
+	winbarEl.hidden = false;
+	winbarEl.removeAttribute( 'aria-hidden' );
+	winbarEl.innerHTML = '';
+
+	const ware = slug === 'manage' ? null : wareMap.get( slug );
+	const label = slug === 'manage'
+		? __( 'Manage Wares', 'bazaar' )
+		: ( ware?.menu_title ?? ware?.name ?? slug );
+
+	// Icon
+	if ( ware?.icon ) {
+		const img = document.createElement( 'img' );
+		img.src = iconUrl( ware );
+		img.alt = '';
+		img.className = 'bsh-winbar__icon';
+		img.onerror = () => img.remove();
+		winbarEl.appendChild( img );
+	}
+
+	// Name
+	winbarEl.appendChild(
+		Object.assign( document.createElement( 'span' ), {
+			className: 'bsh-winbar__name',
+			textContent: label,
+		} )
+	);
+
+	const spacer = document.createElement( 'span' );
+	spacer.className = 'bsh-winbar__spacer';
+	winbarEl.appendChild( spacer );
+
+	// Reload
+	const reloadBtn = document.createElement( 'button' );
+	reloadBtn.type = 'button';
+	reloadBtn.className = 'bsh-winbar__btn';
+	reloadBtn.setAttribute( 'aria-label', __( 'Reload ware', 'bazaar' ) );
+	reloadBtn.title = __( 'Reload', 'bazaar' );
+	reloadBtn.innerHTML = '<span class="dashicons dashicons-update" aria-hidden="true"></span>';
+	reloadBtn.addEventListener( 'click', () => iframes.reload( slug ) );
+	winbarEl.appendChild( reloadBtn );
+
+	// Info (real wares only)
+	if ( ware ) {
+		const infoBtn = document.createElement( 'button' );
+		infoBtn.type = 'button';
+		infoBtn.className = 'bsh-winbar__btn';
+		infoBtn.setAttribute( 'aria-label', __( 'About this ware', 'bazaar' ) );
+		infoBtn.title = __( 'About this ware', 'bazaar' );
+		infoBtn.innerHTML = '<span class="dashicons dashicons-info-outline" aria-hidden="true"></span>';
+		infoBtn.addEventListener( 'click', ( e ) => {
+			e.stopPropagation();
+			wareInfo.toggle( ware, infoBtn );
+		} );
+		winbarEl.appendChild( infoBtn );
+	}
+}
+
+// ===========================================================================
+// Status bar — ware name, trust badge, clock
+// ===========================================================================
+
+function renderStatusBar( slug ) {
+	if ( ! statusbarLeft ) {
+		return;
+	}
+	statusbarLeft.innerHTML = '';
+
+	if ( slug && slug !== 'home' ) {
+		const ware = slug === 'manage' ? null : wareMap.get( slug );
+		const label = slug === 'manage'
+			? __( 'Manage Wares', 'bazaar' )
+			: ( ware?.menu_title ?? ware?.name ?? slug );
+
+		statusbarLeft.appendChild(
+			Object.assign( document.createElement( 'span' ), {
+				className: 'bsh-statusbar__ware-name',
+				textContent: label,
+			} )
+		);
+
+		if ( ware ) {
+			const trust = ware.trust ?? 'standard';
+			const TRUST_ICONS = {
+				verified: 'dashicons-shield',
+				trusted: 'dashicons-shield-alt',
+				standard: 'dashicons-unlock',
+			};
+			const trustEl = document.createElement( 'span' );
+			trustEl.className = 'bsh-statusbar__trust bsh-statusbar__trust--' + trust;
+			trustEl.title = trust.charAt( 0 ).toUpperCase() + trust.slice( 1 );
+			trustEl.innerHTML =
+				`<span class="dashicons ${ TRUST_ICONS[ trust ] ?? 'dashicons-unlock' }" aria-hidden="true"></span>`;
+			statusbarLeft.appendChild( trustEl );
+		}
+	}
+}
+
+( function startClock() {
+	if ( ! statusbarClock ) {
+		return;
+	}
+	function tick() {
+		const now = new Date();
+		const h = now.getHours().toString().padStart( 2, '0' );
+		const m = now.getMinutes().toString().padStart( 2, '0' );
+		statusbarClock.textContent = h + ':' + m;
+	}
+	tick();
+	setInterval( tick, 10_000 );
+}() );
+
+// ===========================================================================
+// Keyboard shortcuts overlay
+// ===========================================================================
+
+( function buildShortcutsOverlay() {
+	const overlay = document.createElement( 'div' );
+	overlay.className = 'bsh-shortcuts';
+	overlay.setAttribute( 'role', 'dialog' );
+	overlay.setAttribute( 'aria-modal', 'true' );
+	overlay.setAttribute( 'aria-label', __( 'Keyboard shortcuts', 'bazaar' ) );
+	overlay.hidden = true;
+
+	const inner = document.createElement( 'div' );
+	inner.className = 'bsh-shortcuts__inner';
+
+	// ── Header
+	const header = document.createElement( 'div' );
+	header.className = 'bsh-shortcuts__header';
+
+	const title = Object.assign( document.createElement( 'h2' ), {
+		className: 'bsh-shortcuts__title',
+		textContent: __( 'Keyboard Shortcuts', 'bazaar' ),
+	} );
+
+	const closeBtn = document.createElement( 'button' );
+	closeBtn.type = 'button';
+	closeBtn.className = 'bsh-shortcuts__close';
+	closeBtn.setAttribute( 'aria-label', __( 'Close shortcuts', 'bazaar' ) );
+	closeBtn.innerHTML = '<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>';
+	closeBtn.addEventListener( 'click', () => {
+		overlay.hidden = true;
+	} );
+	header.append( title, closeBtn );
+
+	// ── Body
+	const body = document.createElement( 'div' );
+	body.className = 'bsh-shortcuts__body';
+
+	const SHELL_SHORTCUTS = [
+		{ keys: [ '⌘', 'K' ], label: __( 'Open command palette', 'bazaar' ) },
+		{ keys: [ '?' ], label: __( 'Show this overlay', 'bazaar' ) },
+		{ keys: [ 'F' ], label: __( 'Toggle fullscreen', 'bazaar' ) },
+		{ keys: [ '/' ], label: __( 'Focus nav filter', 'bazaar' ) },
+		{ keys: [ '⌥', '1–9' ], label: __( 'Switch to nth ware', 'bazaar' ) },
+		{ keys: [ 'Esc' ], label: __( 'Close overlay / palette', 'bazaar' ) },
+	];
+
+	const shellCol = document.createElement( 'div' );
+	shellCol.className = 'bsh-shortcuts__col';
+
+	const shellColTitle = Object.assign( document.createElement( 'h3' ), {
+		className: 'bsh-shortcuts__col-title',
+		textContent: __( 'Shell', 'bazaar' ),
+	} );
+	shellCol.appendChild( shellColTitle );
+
+	const dl = document.createElement( 'dl' );
+	dl.className = 'bsh-shortcuts__list';
+	for ( const { keys, label: lbl } of SHELL_SHORTCUTS ) {
+		const dt = document.createElement( 'dt' );
+		dt.className = 'bsh-shortcuts__keys';
+		for ( const k of keys ) {
+			const kbd = Object.assign( document.createElement( 'kbd' ), {
+				className: 'bsh-shortcuts__key',
+				textContent: k,
+			} );
+			dt.appendChild( kbd );
+		}
+		const dd = Object.assign( document.createElement( 'dd' ), {
+			className: 'bsh-shortcuts__desc',
+			textContent: lbl,
+		} );
+		dl.append( dt, dd );
+	}
+	shellCol.appendChild( dl );
+	body.appendChild( shellCol );
+
+	// Ware shortcuts column (populated via bazaar:shortcuts postMessages)
+	const wareCol = document.createElement( 'div' );
+	wareCol.className = 'bsh-shortcuts__col bsh-shortcuts__col--ware';
+	wareCol.hidden = true;
+	body.appendChild( wareCol );
+	shortcutsWareCol = wareCol;
+
+	inner.append( header, body );
+	overlay.appendChild( inner );
+
+	overlay.addEventListener( 'click', ( e ) => {
+		if ( e.target === overlay ) {
+			overlay.hidden = true;
+		}
+	} );
+
+	document.body.appendChild( overlay );
+	shortcutsEl = overlay;
+}() );
+
+/**
+ * Update the ware-specific shortcuts column in the overlay.
+ *
+ * @param {string} slug
+ * @param {Object} ware
+ * @param {Array}  shortcuts Array of { keys: string[], label: string }
+ */
+function updateWareShortcuts( slug, ware, shortcuts ) {
+	if ( ! shortcutsWareCol ) {
+		return;
+	}
+	shortcutsWareCol.innerHTML = '';
+	if ( ! shortcuts?.length ) {
+		shortcutsWareCol.hidden = true;
+		return;
+	}
+	shortcutsWareCol.hidden = false;
+
+	const colTitle = Object.assign( document.createElement( 'h3' ), {
+		className: 'bsh-shortcuts__col-title',
+		textContent: ware?.menu_title ?? ware?.name ?? slug,
+	} );
+	shortcutsWareCol.appendChild( colTitle );
+
+	const dl = document.createElement( 'dl' );
+	dl.className = 'bsh-shortcuts__list';
+	for ( const { keys, label: lbl } of shortcuts ) {
+		const dt = document.createElement( 'dt' );
+		dt.className = 'bsh-shortcuts__keys';
+		for ( const k of ( Array.isArray( keys ) ? keys : [ keys ] ) ) {
+			const kbd = Object.assign( document.createElement( 'kbd' ), {
+				className: 'bsh-shortcuts__key',
+				textContent: k,
+			} );
+			dt.appendChild( kbd );
+		}
+		const dd = Object.assign( document.createElement( 'dd' ), {
+			className: 'bsh-shortcuts__desc',
+			textContent: lbl,
+		} );
+		dl.append( dt, dd );
+	}
+	shortcutsWareCol.appendChild( dl );
+}
 
 // ===========================================================================
 // Keyboard shortcuts
@@ -1152,30 +1658,34 @@ document.addEventListener( 'keydown', ( e ) => {
 		}
 		return;
 	}
-	// F → fullscreen (not when typing in an input/editable element).
-	// Use a known element's ownerDocument to access activeElement rather than
-	// reading it off the global document object.
+
 	const _active = ( root?.ownerDocument ?? document ).activeElement;
-	if (
-		e.key === 'F' &&
-		! e.metaKey &&
-		! e.ctrlKey &&
-		! [ 'INPUT', 'TEXTAREA', 'SELECT' ].includes( _active?.tagName ?? '' ) &&
-		! _active?.isContentEditable
-	) {
+	const _typing =
+		[ 'INPUT', 'TEXTAREA', 'SELECT' ].includes( _active?.tagName ?? '' ) ||
+		( _active?.isContentEditable ?? false );
+
+	// F → fullscreen (not when typing in an input/editable element).
+	if ( e.key === 'F' && ! e.metaKey && ! e.ctrlKey && ! _typing ) {
 		toggleFullscreen( root );
 		return;
 	}
+
+	// ? → keyboard shortcuts overlay (not when typing)
+	if ( e.key === '?' && ! e.metaKey && ! e.ctrlKey && ! _typing ) {
+		if ( shortcutsEl ) {
+			shortcutsEl.hidden = ! shortcutsEl.hidden;
+		}
+		return;
+	}
+
 	// / → focus nav filter when visible and not already typing somewhere.
-	const _activeEl = ( root?.ownerDocument ?? document ).activeElement;
 	if (
 		e.key === '/' &&
 		! e.metaKey &&
 		! e.ctrlKey &&
 		filterWrap.classList.contains( 'bsh-nav__filter-wrap--active' ) &&
 		! root.classList.contains( 'bsh--collapsed' ) &&
-		! [ 'INPUT', 'TEXTAREA', 'SELECT' ].includes( _activeEl?.tagName ?? '' ) &&
-		! _activeEl?.isContentEditable
+		! _typing
 	) {
 		e.preventDefault();
 		filterInput.focus();
@@ -1183,11 +1693,23 @@ document.addEventListener( 'keydown', ( e ) => {
 		return;
 	}
 
-	// Esc
+	// Esc — close any open overlay
 	if ( e.key === 'Escape' ) {
 		if ( palette.visible ) {
 			palette.close();
+		} else if ( shortcutsEl && ! shortcutsEl.hidden ) {
+			shortcutsEl.hidden = true;
+		} else if ( launchpad.visible ) {
+			launchpad.close();
 		}
+	}
+} );
+
+// Reload a specific ware (dispatched by context-menu.js)
+document.addEventListener( 'bazaar:reload-ware', ( e ) => {
+	const slug = e.detail?.slug;
+	if ( slug ) {
+		iframes.reload( slug );
 	}
 } );
 
@@ -1392,5 +1914,4 @@ for ( const ware of wareMap.values() ) {
 }() );
 
 const dl = parseDeepLink();
-const firstEnabled = sortedEnabled( wareMap )[ 0 ];
-navigateTo( dl.ware ?? firstEnabled?.slug ?? 'manage', dl.route );
+navigateTo( dl.ware ?? 'home', dl.route );

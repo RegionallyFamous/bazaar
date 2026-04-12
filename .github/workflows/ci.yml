@@ -167,28 +167,28 @@ jobs:
         working-directory: packages/client
         run: npm run build
 
-      - name: Build pixel-art
-        working-directory: wares/pixel-art
+      - name: Build mosaic
+        working-directory: wares/mosaic
         run: npm run package
 
-      - name: Build invoice-generator
-        working-directory: wares/invoice-generator
+      - name: Build ledger
+        working-directory: wares/ledger
         run: npm run package
 
-      - name: Build focus
-        working-directory: wares/focus
+      - name: Build flow
+        working-directory: wares/flow
         run: npm run package
 
-      - name: Build kanban
-        working-directory: wares/kanban
+      - name: Build board
+        working-directory: wares/board
         run: npm run package
 
-      - name: Build color-palette
-        working-directory: wares/color-palette
+      - name: Build swatch
+        working-directory: wares/swatch
         run: npm run package
 
-      - name: Build retro-synth
-        working-directory: wares/retro-synth
+      - name: Build sine
+        working-directory: wares/sine
         run: npm run package
 
       - name: Verify .wp files
@@ -227,12 +227,12 @@ jobs:
 
       - name: Copy ware icons to release assets
         run: |
-          cp wares/pixel-art/public/icon.svg        wares-dist/pixel-art-icon.svg
-          cp wares/invoice-generator/public/icon.svg wares-dist/invoice-generator-icon.svg
-          cp wares/focus/public/icon.svg            wares-dist/focus-icon.svg
-          cp wares/kanban/public/icon.svg           wares-dist/kanban-icon.svg
-          cp wares/color-palette/public/icon.svg    wares-dist/color-palette-icon.svg
-          cp wares/retro-synth/public/icon.svg      wares-dist/retro-synth-icon.svg
+          cp wares/mosaic/public/icon.svg  wares-dist/mosaic-icon.svg
+          cp wares/ledger/public/icon.svg  wares-dist/ledger-icon.svg
+          cp wares/flow/public/icon.svg    wares-dist/flow-icon.svg
+          cp wares/board/public/icon.svg   wares-dist/board-icon.svg
+          cp wares/swatch/public/icon.svg  wares-dist/swatch-icon.svg
+          cp wares/sine/public/icon.svg    wares-dist/sine-icon.svg
 
       - name: Attach wares to release
         env:

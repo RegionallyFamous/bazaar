@@ -1,0 +1,28 @@
+/*
+ * Pixel Art Editor — ware-level token overrides.
+ * @bazaar/design/css is imported in main.tsx.
+ * data-theme="dark" is applied on document.documentElement.
+ *
+ * This ware uses the Catppuccin Mocha colour palette.
+ */
+
+:root {
+  --bw-bg:         #1e1e2e; /* Catppuccin Base */
+  --bw-surface:    #181825; /* Catppuccin Mantle */
+  --bw-surface-2:  #313244; /* Catppuccin Surface0 */
+  --bw-border:     #313244; /* Surface0 also used as border */
+  --bw-text:       #cdd6f4; /* Catppuccin Text */
+  --bw-text-muted: #a6adc8; /* Catppuccin Subtext0 */
+  --bw-text-dim:   #6c7086; /* Catppuccin Overlay1 */
+  --bw-accent:     #cba6f7; /* Catppuccin Mauve */
+  --bw-accent-hi:  #b4befe; /* Catppuccin Lavender */
+  --bw-accent-bg:  rgba(203, 166, 247, .12);
+  --bw-accent-rgb: 203, 166, 247;
+}
+
+/* Pixel art editor requires the window to not scroll and text to not be selected */
+body {
+  overflow: hidden;
+  height: 100vh;
+  user-select: none;
+}

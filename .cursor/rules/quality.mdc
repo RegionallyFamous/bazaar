@@ -8,7 +8,7 @@ alwaysApply: true
 
 ## Zero suppression comments — always
 
-Never add these to any production file in `src/`, `bazaar.php`, or `templates/`:
+### PHP — never add to `src/`, `bazaar.php`, or `templates/`
 
 ```
 // phpcs:ignore
@@ -27,6 +27,25 @@ If a linter flags something, **fix the code**. The only legitimate alternatives:
 | WP_REST_Request method missing from stubs | Use `$_SERVER` with `wp_unslash` + `sanitize_text_field` instead |
 
 Test files in `tests/` are not scanned by PHPCS — no suppressions needed there either.
+
+### JS/TS — never add to `admin/src/`, `wares/*/src/`, or `packages/*/src/`
+
+```
+// eslint-disable
+// eslint-disable-next-line
+/* eslint-disable */
+// @ts-ignore
+// @ts-expect-error
+// @ts-nocheck
+```
+
+If ESLint flags something, fix the code. If TypeScript complains, fix the type. The only legitimate alternatives:
+
+| Situation | Right fix |
+|---|---|
+| ESLint rule is wrong for this entire file/pattern | Add an override in `eslint.config.*` or `.eslintrc.*` |
+| TypeScript can't infer a type from a third-party API | Add or extend a `.d.ts` declaration file |
+| A genuine narrowing impossibility | Use a type guard function that validates at runtime |
 
 ## Classmap autoload — regenerate after adding files
 

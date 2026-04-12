@@ -207,7 +207,7 @@ trait WareOpsTrait {
 			);
 
 			// 4. .htaccess protection — accept either a per-ware file or the
-			//    parent directory's file (which cascades to all subdirs in Apache).
+			// parent directory's file (which cascades to all subdirs in Apache).
 			$ht_ware   = $dir . '/.htaccess';
 			$ht_parent = rtrim( BAZAAR_WARES_DIR, '/' ) . '/.htaccess';
 			$has_ht    = (

@@ -10,12 +10,14 @@ Copy the `.cursor/rules/` folder into the root of your WordPress plugin project.
 your-plugin/
 ├── .cursor/
 │   └── rules/
-│       ├── wordpress-core.mdc      ← always active
+│       ├── wordpress-core.mdc      ← always active (plugin PHP + admin JS)
+│       ├── wares-react-css.mdc     ← activates on wares/**
 │       ├── gutenberg-blocks.mdc    ← activates on block files
 │       ├── rest-api.mdc            ← activates on API/endpoint files
 │       ├── i18n.mdc                ← activates on PHP/JS files (description-triggered)
 │       └── testing.mdc             ← activates on test files
 ├── src/
+├── wares/
 ├── build/
 └── ...
 ```
@@ -24,8 +26,9 @@ your-plugin/
 
 Each `.mdc` file uses Cursor's rule system:
 
-- **wordpress-core.mdc** — `alwaysApply: true`. Security, performance, structure, tooling, and the verification loop. Active on every prompt.
-- **gutenberg-blocks.mdc** — Glob-scoped to `**/blocks/**`. Block.json, edit.js patterns, dynamic vs static, registration, pitfalls. Only loads when you're working on block files.
+- **wordpress-core.mdc** — `alwaysApply: true`. Security, performance, structure, tooling, and the verification loop. Scoped to the plugin (`src/`, `admin/`, `templates/`). Active on every prompt.
+- **wares-react-css.mdc** — Glob-scoped to `wares/**`. React 19, TypeScript strict, CSS custom properties, accessibility, sandbox constraints, and Vite build rules.
+- **gutenberg-blocks.mdc** — Glob-scoped to `**/blocks/**`. Block.json, edit.js patterns, dynamic vs static, registration, pitfalls.
 - **rest-api.mdc** — Glob-scoped to API/endpoint directories. Route registration, permission callbacks, schemas, api-fetch.
 - **i18n.mdc** — Description-triggered. Text domains, translator comments, JS translation pipeline.
 - **testing.mdc** — Glob-scoped to test files. WP-Browser, Brain Monkey, Jest, Playwright, CI.
@@ -33,14 +36,16 @@ Each `.mdc` file uses Cursor's rule system:
 ## Standards covered
 
 - WordPress VIP Coding Standards (WPCS, VIPCS)
-- PHPStan level 6+ with szepeviktor/phpstan-wordpress
-- @wordpress/eslint-plugin
+- PHPStan level 8 with szepeviktor/phpstan-wordpress
+- @wordpress/eslint-plugin (plugin JS) + ESLint with react-hooks (wares)
 - Sanitize-early, escape-late security model
 - WP_Query performance optimization
 - Gutenberg block.json apiVersion 3
 - REST API best practices
 - Full i18n pipeline (PHP + JS + block.json)
 - Testing pyramid (unit → integration → E2E)
+- React 19 + TypeScript strict for standalone ware apps
+- CSS custom properties, BEM, accessibility, reduced motion
 
 ## Customization
 

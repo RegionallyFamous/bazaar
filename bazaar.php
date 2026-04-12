@@ -1,12 +1,13 @@
 <?php
 /**
  * Plugin Name:       Bazaar
- * Plugin URI:        https://github.com/nickhblair/bazaar
- * Description:       Turn wp-admin into an app marketplace. Install .wp ware packages and they appear as menu pages in your sidebar.
- * Version:           1.0.11
+ * Plugin URI:        https://github.com/RegionallyFamous/bazaar
+ * Description:       Your WordPress dashboard is an operating system you didn't know you had. Bazaar unlocks it.
+ * Version:           1.1.0
  * Requires at least: 6.6
  * Requires PHP:      8.2
- * Author:            Nick
+ * Author:            Regionally Famous
+ * Author URI:        https://regionallyfamous.com
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       bazaar
@@ -17,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'BAZAAR_VERSION', '1.0.11' );
+define( 'BAZAAR_VERSION', '1.1.0' );
 define( 'BAZAAR_FILE', __FILE__ );
 define( 'BAZAAR_PLUGIN_FILE', __FILE__ );
 define( 'BAZAAR_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -61,6 +62,26 @@ register_activation_hook( BAZAAR_FILE, array( Plugin::class, 'activate' ) );
 register_deactivation_hook( BAZAAR_FILE, array( Plugin::class, 'deactivate' ) );
 
 add_action( 'plugins_loaded', array( Plugin::class, 'boot' ) );
+
+// ─── Self-update via GitHub Releases ─────────────────────────────────────────
+
+if ( file_exists( BAZAAR_DIR . 'github-updater.php' ) ) {
+	require_once BAZAAR_DIR . 'github-updater.php';
+}
+
+if ( class_exists( 'GitHub_Plugin_Updater', false ) ) {
+	new GitHub_Plugin_Updater(
+		BAZAAR_FILE,
+		array(
+			'owner' => 'RegionallyFamous',
+			'repo'  => 'bazaar',
+			// Optionally supply a GitHub PAT to raise the API rate-limit or for
+			// private forks. Store in wp_options as `bazaar_github_token`, or
+			// override with the `bazaar_github_updater_token` filter.
+			'token' => (string) apply_filters( 'bazaar_github_updater_token', get_option( 'bazaar_github_token', '' ) ),
+		)
+	);
+}
 
 // ─── Global helper functions ─────────────────────────────────────────────────
 

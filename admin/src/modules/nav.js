@@ -68,7 +68,7 @@ export function saveRecent() {
  * @param {string} slug
  */
 export function pushRecent( slug ) {
-	if ( slug === 'manage' ) {
+	if ( slug === 'manage' || slug === 'home' ) {
 		return;
 	}
 	const idx = recentList.indexOf( slug );
@@ -345,8 +345,8 @@ export function buildItem(
 		document.dispatchEvent( new CustomEvent( 'bazaar:nav-refresh' ) );
 	} );
 
-	// Manage Wares is pinned to the footer permanently — no pin button needed.
-	if ( slug !== 'manage' ) {
+	// Footer items (manage, home) are permanent — no pin button needed.
+	if ( slug !== 'manage' && slug !== 'home' ) {
 		li.append( btn, pinBtn );
 	} else {
 		li.appendChild( btn );

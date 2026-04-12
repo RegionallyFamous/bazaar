@@ -1,0 +1,345 @@
+---
+description: Ware app development — React 19, TypeScript strict, CSS custom properties, accessibility, and ware sandbox rules
+globs: "wares/**/*.{ts,tsx,css,json}"
+alwaysApply: false
+---
+
+# Ware App Standards
+
+Wares run as **sandboxed iframes** inside the Bazaar shell. They are standalone React 19 + TypeScript + Vite apps. WordPress APIs, `window.parent`, and external CDN resources are all unavailable.
+
+---
+
+## TYPESCRIPT
+
+### Strictness
+- `"strict": true` in every ware's `tsconfig.app.json` — no exceptions.
+- No `any`. Use `unknown` + a type guard, or define a proper type.
+- No non-null assertions (`!`) when the value could reasonably be null at runtime. Use optional chaining (`?.`) or a guard.
+- No `as SomeType` casts unless narrowing is genuinely impossible and the cast is provably safe — add a comment explaining why.
+
+### Naming & organisation
+- `interface` for object shapes. `type` for unions, mapped types, and utility aliases.
+- Exported component props are named `Props` (local) or `ComponentNameProps` (if exported for external use).
+- One default export per file — the component or hook that owns the file.
+- Named exports for utilities, constants, and types.
+
+### Explicit return types
+Always annotate return types on exported functions and custom hooks:
+```tsx
+// ❌
+export function useTimer() { … }
+
+// ✅
+export function useTimer(): TimerHandle { … }
+export default function App(): React.JSX.Element { … }
+```
+
+---
+
+## REACT
+
+### Component rules
+- **One component per file.** Filename = component name (PascalCase), extension `.tsx`.
+- **One hook per file.** Filename = hook name (camelCase), extension `.ts`.
+- Default-export the component; named-export its `Props` type only if other files need it.
+- Wrap `<App />` in an `<ErrorBoundary>` so unhandled errors show a friendly message instead of a blank screen.
+
+### State & immutability
+- Never mutate state directly. Use `structuredClone` for deep copies, spread for shallow.
+- Derive values from state; avoid storing derived data as separate state that can fall out of sync.
+- Prefer a single `update(fn: (draft) => void)` pattern (like the `produce` helper in kanban) over scattered `setState` calls.
+
+### Keys
+- `key` must be a **stable, unique identifier** from the data — never the array index on a list that can be reordered, filtered, or mutated.
+
+### `useEffect` — cleanup is mandatory
+Always return a cleanup function when adding event listeners, starting timers, or opening subscriptions:
+
+```tsx
+// ✅
+useEffect( () => {
+    function onKey( e: KeyboardEvent ) { … }
+    window.addEventListener( 'keydown', onKey );
+    return () => window.removeEventListener( 'keydown', onKey );
+}, [] );
+
+// ❌ — leaks listener on every render cycle that recreates the effect
+useEffect( () => {
+    window.addEventListener( 'keydown', onKey );
+} );
+```
+
+### `useCallback` / `useMemo`
+Use when the value/function is:
+- a dependency in another hook's dependency array, **or**
+- passed as a prop to a component wrapped in `React.memo`.
+
+Do **not** add them to every function "just in case" — empty dep arrays on `useCallback` that close over mutable state are latent bugs. Profile before memoising render output.
+
+### No browser dialogs
+`confirm()`, `alert()`, and `prompt()` are blocked in sandboxed cross-origin iframes and block the JS thread. Build inline confirmation UI instead:
+
+```tsx
+// ❌
+if ( ! confirm( 'Delete this column?' ) ) return;
+
+// ✅
+const [ confirming, setConfirming ] = useState( false );
+// render a visible "Are you sure? [Yes] [Cancel]" element
+```
+
+### Error boundaries
+Every ware must have at least one error boundary at the root. A minimal class-based boundary:
+
+```tsx
+class ErrorBoundary extends React.Component<
+    { children: React.ReactNode },
+    { error: Error | null }
+> {
+    state = { error: null };
+    static getDerivedStateFromError( error: Error ) { return { error }; }
+    render() {
+        if ( this.state.error ) {
+            return <div role="alert" className="error-boundary">Something went wrong.</div>;
+        }
+        return this.props.children;
+    }
+}
+```
+
+---
+
+## ACCESSIBILITY
+
+### Every interactive element needs an accessible name
+Icon-only buttons must have `aria-label` (or `title` as a fallback — prefer `aria-label`):
+
+```tsx
+// ❌
+<button onClick={ close }>×</button>
+
+// ✅
+<button onClick={ close } aria-label="Close">×</button>
+```
+
+### Semantic HTML first
+Use the right element before reaching for ARIA:
+
+| Situation | Element |
+|---|---|
+| Clickable action | `<button>` |
+| Navigation links | `<nav>` + `<a>` |
+| Page landmark | `<main>`, `<header>`, `<footer>`, `<aside>` |
+| Grouping content | `<section>` (with heading), `<article>` |
+| Overlay dialog | `<dialog>` or `role="dialog"` + `aria-modal="true"` |
+
+Never attach `onClick` to a `<div>` or `<span>` without also adding `role="button"`, `tabIndex={0}`, and keyboard handlers (`onKeyDown`).
+
+### Focus management
+- Modals must trap focus inside while open. On close, return focus to the trigger element.
+- Use `autoFocus` only on the first interactive element inside a newly opened dialog/modal.
+- Never remove `:focus-visible` styles without providing an equivalent visible focus indicator.
+
+### Keyboard navigation
+Every action reachable by mouse must be reachable by keyboard. Common gaps:
+- Drag-and-drop boards: provide a keyboard-accessible move action (arrow keys or explicit move button)
+- Custom dropdown menus: implement arrow-key navigation and `Escape` to close
+- Modal dialogs: `Escape` to close
+
+---
+
+## CSS
+
+### Token-first — no magic numbers
+All design decisions live in `:root` custom properties. Reference tokens everywhere else:
+
+```css
+/* ✅ Define once */
+:root {
+    --bg:        #f0f4f8;
+    --surface:   #ffffff;
+    --border:    #e2e8f0;
+    --text:      #1e293b;
+    --text-dim:  #64748b;
+    --accent:    #0ea5e9;
+    --danger:    #ef4444;
+    --radius:    10px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, .08);
+    --shadow:    0 4px 16px rgba(0, 0, 0, .10);
+}
+
+/* ❌ Never inline a raw colour not in tokens */
+.card { background: #f0f4f8; }
+
+/* ✅ */
+.card { background: var(--bg); }
+```
+
+### Dynamic values via custom properties
+Pass runtime values through CSS custom properties on the element, not through inline `style` objects:
+
+```tsx
+// ✅ — declarative, CSS can reference it transitively
+<div style={{ '--mode-color': color } as React.CSSProperties}>
+
+// ❌ — bakes the value into the DOM attribute; can't be referenced in CSS
+<div style={{ color: color }}>
+```
+
+### Naming — BEM with a ware prefix
+`.{ware-slug}` for the root, `__element`, `--modifier`:
+```css
+.kanban { }              /* root */
+.kanban__header { }      /* element */
+.kanban__board { }       /* element */
+.column--drag-over { }   /* modifier */
+```
+
+Never use ID selectors (`#id`) in component CSS. Avoid deep chains (`.a .b .c`) — one level of nesting max.
+
+### Focus visible — required
+Every file that styles interactive elements must include visible `:focus-visible` styles:
+
+```css
+button:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+```
+
+Never `outline: none` or `outline: 0` without a custom replacement.
+
+### Transitions — specific properties only
+```css
+/* ❌ Forces the browser to check every property */
+transition: all 0.2s ease;
+
+/* ✅ */
+transition: background 0.12s ease, color 0.12s ease;
+```
+
+### Reduced motion
+Any animation or transition that serves a visual-only purpose must be dampened:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration:        0.01ms !important;
+        animation-iteration-count: 1      !important;
+        transition-duration:       0.01ms !important;
+    }
+}
+```
+
+### Box model reset — first thing in every CSS file
+```css
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin:     0;
+    padding:    0;
+}
+```
+
+### Units
+| Use case | Unit |
+|---|---|
+| Font sizes | `rem` (relative to `:root`) |
+| Component-relative spacing | `em` |
+| Borders, fine-tuned spacing | `px` |
+| Full-height layouts | `100dvh` / `100svh` |
+| Avoid | `vw`/`vh` (use `dv*` variants) |
+
+### Layout
+- `gap` between flex/grid children — not margin hacks.
+- `z-index` always has a comment: `z-index: 100; /* above sticky header */`
+- No `!important` except inside resets.
+
+---
+
+## WARE SANDBOX RULES
+
+### No WordPress dependencies
+Wares run in a sandboxed iframe. There is no `wp` global, no `@wordpress/*` packages, and no WP REST nonce. Never import or call:
+- `wp.apiFetch`, `@wordpress/api-fetch`
+- `window.wp`, `window.wpApiSettings`
+- Any `@wordpress/*` package
+
+### No cross-frame access
+`window.parent`, `window.top`, and `window.frameElement` are blocked by the iframe sandbox and CSP. Do not attempt cross-frame communication unless specifically implementing the `@bazaar/client` postMessage protocol.
+
+### No external CDN resources
+CSP blocks third-party origins. Bundle everything:
+- No Google Fonts `@import` or `<link>` — use the system font stack
+- No CDN script tags — bundle all dependencies with Vite
+- No remote images in CSS — use bundled SVGs or data URIs
+
+System font stack:
+```css
+font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+```
+
+### Persistence
+| Use case | Approach |
+|---|---|
+| Ware-local data | `localStorage` with key `bazaar-{ware-slug}-v{n}` |
+| Cross-ware shared data | `@bazaar/client` SDK |
+| Schema migrations | Bump the version suffix in the key |
+
+Always wrap `localStorage` reads in try/catch — storage can be full or blocked:
+
+```ts
+export function loadState(): AppState {
+    try {
+        const raw = localStorage.getItem( 'bazaar-myware-v1' );
+        if ( raw ) return JSON.parse( raw ) as AppState;
+    } catch {
+        // corrupt data or storage unavailable — fall through to default
+    }
+    return structuredClone( DEFAULT_STATE );
+}
+```
+
+---
+
+## BUILD (VITE)
+
+- `base: './'` — required. Relative asset URLs work correctly inside the iframe; absolute paths break.
+- `react`, `react-dom`, `react/jsx-runtime` must be in `rollupOptions.external` — they are injected by the shell's import map.
+- No source maps in production builds — they expose source code from a sandboxed context unnecessarily.
+
+Canonical `vite.config.ts`:
+```ts
+import { defineConfig } from 'vite';
+import react            from '@vitejs/plugin-react';
+
+export default defineConfig( {
+    plugins: [ react() ],
+    base:    './',
+    build: {
+        outDir:      'dist',
+        emptyOutDir: true,
+        sourcemap:   false,
+        rollupOptions: {
+            external: [ 'react', 'react-dom', 'react/jsx-runtime' ],
+        },
+    },
+    server: { cors: true },
+} );
+```
+
+## VERIFICATION LOOP — run before declaring a ware done
+
+From inside the ware directory:
+```bash
+npm run build    # must produce a clean dist/
+```
+
+The ware is shippable when:
+1. `npm run build` exits 0
+2. TypeScript reports zero errors (`tsc --noEmit`)
+3. No `console.log` in `src/`
+4. All icon-only buttons have `aria-label`
+5. All `useEffect` calls that add listeners return a cleanup function

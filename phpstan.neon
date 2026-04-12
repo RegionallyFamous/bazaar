@@ -18,7 +18,7 @@ parameters:
     reportUnmatchedIgnoredErrors: false
     ignoreErrors:
         - message: '#Path in require_once\(\) .* is not a file or it does not exist#'
-          path: src/Plugin.php
+          path: src/
     # Run single-process in CI so all memory stays in one PHP process.
     # PHPStan's parallel workers each inherit the PHP memory_limit; with the
     # heavyweight WordPress stubs this tips the total well over 512 MB.

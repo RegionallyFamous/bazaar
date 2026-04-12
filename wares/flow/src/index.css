@@ -1,0 +1,27 @@
+/*
+ * Focus — ware-level token overrides.
+ * @bazaar/design/css is imported in main.tsx.
+ * data-theme="dark" is applied on document.documentElement.
+ *
+ * Override the dark-mode surfaces to match Focus's warm near-black aesthetic
+ * (Catppuccin Mocha-inspired warm dark tones rather than the cooler default slate).
+ */
+
+:root {
+  /* Warm near-black surfaces */
+  --bw-bg:        #0c0a09;
+  --bw-surface:   #1c1917;
+  --bw-surface-2: #27201c;
+  --bw-border:    rgba(255, 255, 255, .06);
+
+  /* Text follows the warm dark token overrides */
+  --bw-text:       #fafaf9;
+  --bw-text-muted: rgba(255, 255, 255, .60);
+  --bw-text-dim:   rgba(255, 255, 255, .32);
+
+  /* Amber accent (default work mode colour) */
+  --bw-accent:     #f59e0b;
+  --bw-accent-hi:  #d97706;
+  --bw-accent-bg:  rgba(245, 158, 11, .12);
+  --bw-accent-rgb: 245, 158, 11;
+}

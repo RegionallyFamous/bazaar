@@ -1,0 +1,574 @@
+/* ── Tome — two-panel wiki ───────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+	--sidebar-w:      260px;
+	--sidebar-bg:     #f0f2f5;
+	--sidebar-border: #dde1e7;
+	--accent:         #0f172a;
+	--accent-line:    2px solid #0f172a;
+	--muted:          #64748b;
+	--danger:         #dc2626;
+	--font-ui:        -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	--font-read:      "Charter", "Georgia", "Times New Roman", serif;
+	--font-code:      ui-monospace, "Cascadia Code", "Fira Code", monospace;
+}
+
+/* ── Shell ─────────────────────────────────────────────────────────────── */
+
+.tome {
+	display:     flex;
+	height:      100vh;
+	overflow:    hidden;
+	font-family: var( --font-ui );
+	background:  #fff;
+}
+
+.tome-loading {
+	display:         flex;
+	align-items:     center;
+	justify-content: center;
+	height:          100vh;
+	font-family:     var( --font-ui );
+	color:           var( --muted );
+	font-size:       14px;
+}
+
+/* ── Sidebar ───────────────────────────────────────────────────────────── */
+
+.tome-sidebar {
+	width:           var( --sidebar-w );
+	min-width:       var( --sidebar-w );
+	background:      var( --sidebar-bg );
+	border-right:    1px solid var( --sidebar-border );
+	display:         flex;
+	flex-direction:  column;
+	overflow:        hidden;
+}
+
+.tome-sidebar__header {
+	display:      flex;
+	align-items:  center;
+	padding:      18px 16px 12px;
+	border-bottom: 1px solid var( --sidebar-border );
+}
+
+.tome-sidebar__brand {
+	font-size:   13px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color:       #1e293b;
+}
+
+.tome-sidebar__search {
+	padding: 10px 12px;
+}
+
+.tome-sidebar__search-input {
+	width:        100%;
+	padding:      6px 10px;
+	border:       1px solid var( --sidebar-border );
+	border-radius: 6px;
+	font-size:    13px;
+	font-family:  var( --font-ui );
+	background:   #fff;
+	color:        #1e293b;
+	outline:      none;
+	transition:   border-color 0.15s;
+}
+
+.tome-sidebar__search-input:focus {
+	border-color: #94a3b8;
+}
+
+.tome-sidebar__search-input::-webkit-search-cancel-button {
+	opacity: 0.5;
+	cursor:  pointer;
+}
+
+.tome-sidebar__nav {
+	flex:       1;
+	overflow-y: auto;
+	padding:    4px 0;
+}
+
+.tome-sidebar__empty {
+	font-size: 13px;
+	color:     var( --muted );
+	padding:   12px 16px;
+}
+
+.tome-sidebar__footer {
+	padding:      10px 12px 14px;
+	border-top:   1px solid var( --sidebar-border );
+}
+
+.tome-sidebar__new-btn {
+	width:         100%;
+	padding:       7px 12px;
+	border:        1px solid var( --sidebar-border );
+	border-radius: 6px;
+	background:    transparent;
+	font-size:     13px;
+	font-family:   var( --font-ui );
+	color:         #475569;
+	cursor:        pointer;
+	text-align:    left;
+	transition:    background 0.12s, color 0.12s;
+}
+
+.tome-sidebar__new-btn:hover {
+	background: #e2e6ea;
+	color:      #1e293b;
+}
+
+/* ── Page tree ─────────────────────────────────────────────────────────── */
+
+.tome-tree,
+.tome-tree__children {
+	list-style: none;
+	padding:    0;
+	margin:     0;
+}
+
+.tome-tree__item {
+	display: block;
+}
+
+.tome-tree__row {
+	display:      flex;
+	align-items:  center;
+	gap:          2px;
+	padding-right: 8px;
+	height:        30px;
+	cursor:        pointer;
+	position:      relative;
+}
+
+.tome-tree__row:hover { background: #e2e6ea; }
+
+.tome-tree__row--active {
+	background:  #fff;
+	border-left: var( --accent-line );
+}
+
+.tome-tree__toggle {
+	width:       18px;
+	min-width:   18px;
+	height:      18px;
+	border:      none;
+	background:  transparent;
+	padding:     0;
+	font-size:   12px;
+	color:       var( --muted );
+	cursor:      pointer;
+	display:     flex;
+	align-items: center;
+	justify-content: center;
+	line-height: 1;
+	transition:  transform 0.15s;
+}
+
+.tome-tree__toggle--open { transform: rotate( 90deg ); }
+
+.tome-tree__toggle-placeholder {
+	display:   inline-block;
+	width:     18px;
+	min-width: 18px;
+}
+
+.tome-tree__title {
+	flex:        1;
+	min-width:   0;
+	background:  transparent;
+	border:      none;
+	padding:     0;
+	font-size:   13.5px;
+	font-family: var( --font-ui );
+	color:       #1e293b;
+	text-align:  left;
+	cursor:      pointer;
+	white-space: nowrap;
+	overflow:    hidden;
+	text-overflow: ellipsis;
+}
+
+.tome-tree__row--active .tome-tree__title {
+	font-weight: 600;
+}
+
+.tome-tree__actions {
+	display:    flex;
+	gap:        2px;
+	opacity:    0;
+	transition: opacity 0.1s;
+}
+
+.tome-tree__row:hover .tome-tree__actions,
+.tome-tree__row--active .tome-tree__actions {
+	opacity: 1;
+}
+
+.tome-tree__action {
+	width:       20px;
+	height:      20px;
+	border:      none;
+	background:  transparent;
+	border-radius: 4px;
+	font-size:   14px;
+	line-height: 1;
+	color:       var( --muted );
+	cursor:      pointer;
+	display:     flex;
+	align-items: center;
+	justify-content: center;
+	transition:  background 0.1s, color 0.1s;
+}
+
+.tome-tree__action:hover           { background: #cbd5e1; color: #1e293b; }
+.tome-tree__action--danger:hover   { background: #fee2e2; color: var( --danger ); }
+
+/* ── Main content area ─────────────────────────────────────────────────── */
+
+.tome-main {
+	flex:       1;
+	overflow-y: auto;
+	background: #fff;
+}
+
+/* ── Empty state ───────────────────────────────────────────────────────── */
+
+.tome-empty {
+	display:         flex;
+	align-items:     center;
+	justify-content: center;
+	height:          100%;
+	min-height:      400px;
+}
+
+.tome-empty__inner {
+	text-align: center;
+}
+
+.tome-empty__icon {
+	font-size:     40px;
+	margin-bottom: 16px;
+}
+
+.tome-empty__heading {
+	font-size:   20px;
+	font-weight: 600;
+	color:       #1e293b;
+	margin-bottom: 8px;
+}
+
+.tome-empty__sub {
+	font-size:     14px;
+	color:         var( --muted );
+	margin-bottom: 24px;
+}
+
+.tome-empty__cta {
+	padding:       10px 22px;
+	background:    #1e293b;
+	color:         #fff;
+	border:        none;
+	border-radius: 8px;
+	font-size:     14px;
+	font-family:   var( --font-ui );
+	cursor:        pointer;
+	transition:    background 0.15s;
+}
+
+.tome-empty__cta:hover { background: #0f172a; }
+
+/* ── Page view ─────────────────────────────────────────────────────────── */
+
+.tome-view {
+	max-width:  680px;
+	margin:     0 auto;
+	padding:    40px 32px 80px;
+}
+
+.tome-view__header {
+	display:        flex;
+	align-items:    flex-start;
+	gap:            16px;
+	margin-bottom:  28px;
+}
+
+.tome-view__title {
+	flex:          1;
+	font-size:     26px;
+	font-weight:   700;
+	line-height:   1.25;
+	color:         #0f172a;
+	font-family:   var( --font-ui );
+}
+
+.tome-view__edit-btn {
+	display:        flex;
+	align-items:    center;
+	gap:            6px;
+	padding:        6px 14px;
+	border:         1px solid var( --sidebar-border );
+	border-radius:  6px;
+	background:     transparent;
+	font-size:      13px;
+	font-family:    var( --font-ui );
+	color:          var( --muted );
+	cursor:         pointer;
+	white-space:    nowrap;
+	transition:     border-color 0.15s, color 0.15s;
+	flex-shrink:    0;
+	margin-top:     4px;
+}
+
+.tome-view__edit-btn:hover {
+	border-color: #94a3b8;
+	color:        #1e293b;
+}
+
+/* Prose rendering ─────────────────────────────────────────────────────── */
+
+.tome-view__body {
+	font-family:  var( --font-read );
+	font-size:    17px;
+	line-height:  1.75;
+	color:        #1e293b;
+}
+
+.tome-view__body h1,
+.tome-view__body h2,
+.tome-view__body h3,
+.tome-view__body h4 {
+	font-family:  var( --font-ui );
+	font-weight:  700;
+	margin-top:   1.8em;
+	margin-bottom: 0.5em;
+	color:        #0f172a;
+	line-height:  1.3;
+}
+
+.tome-view__body h1 { font-size: 1.6em; }
+.tome-view__body h2 { font-size: 1.3em; }
+.tome-view__body h3 { font-size: 1.1em; }
+
+.tome-view__body p  { margin-bottom: 1em; }
+
+.tome-view__body a {
+	color:           #0891b2;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.tome-view__body a:hover { color: #0e7490; }
+
+.tome-view__body ul,
+.tome-view__body ol {
+	padding-left:  1.6em;
+	margin-bottom: 1em;
+}
+
+.tome-view__body li { margin-bottom: 0.3em; }
+
+.tome-view__body blockquote {
+	border-left:  3px solid #cbd5e1;
+	padding-left: 1em;
+	margin-left:  0;
+	color:        var( --muted );
+	font-style:   italic;
+}
+
+.tome-view__body code {
+	font-family:   var( --font-code );
+	font-size:     0.875em;
+	background:    #f1f5f9;
+	padding:       0.1em 0.35em;
+	border-radius: 4px;
+}
+
+.tome-view__body pre {
+	background:    #f8fafc;
+	border:        1px solid #e2e8f0;
+	border-radius: 8px;
+	padding:       16px;
+	overflow-x:    auto;
+	margin-bottom: 1em;
+}
+
+.tome-view__body pre code {
+	background: transparent;
+	padding:    0;
+	font-size:  0.85em;
+}
+
+.tome-view__body hr {
+	border:        none;
+	border-top:    1px solid #e2e8f0;
+	margin:        2em 0;
+}
+
+.tome-view__body table {
+	width:           100%;
+	border-collapse: collapse;
+	margin-bottom:   1em;
+	font-size:       15px;
+	font-family:     var( --font-ui );
+}
+
+.tome-view__body th,
+.tome-view__body td {
+	padding:      8px 12px;
+	border:       1px solid #e2e8f0;
+	text-align:   left;
+}
+
+.tome-view__body th {
+	background:  #f8fafc;
+	font-weight: 600;
+}
+
+.tome-view__empty {
+	text-align:  center;
+	padding:     60px 0;
+	color:       var( --muted );
+	font-family: var( --font-ui );
+}
+
+.tome-view__empty p   { margin-bottom: 16px; }
+
+.tome-view__empty-cta {
+	padding:       8px 20px;
+	background:    #1e293b;
+	color:         #fff;
+	border:        none;
+	border-radius: 6px;
+	font-size:     14px;
+	font-family:   var( --font-ui );
+	cursor:        pointer;
+}
+
+.tome-view__meta {
+	margin-top:  32px;
+	font-size:   12px;
+	color:       #94a3b8;
+	font-family: var( --font-ui );
+}
+
+/* ── Page editor ───────────────────────────────────────────────────────── */
+
+.tome-editor {
+	display:        flex;
+	flex-direction: column;
+	height:         100%;
+	min-height:     100vh;
+}
+
+.tome-editor__header {
+	display:       flex;
+	align-items:   center;
+	gap:           12px;
+	padding:       20px 32px 16px;
+	border-bottom: 1px solid var( --sidebar-border );
+	background:    #fafaf8;
+	position:      sticky;
+	top:           0;
+	z-index:       10;
+}
+
+.tome-editor__title {
+	flex:          1;
+	font-size:     22px;
+	font-weight:   700;
+	font-family:   var( --font-ui );
+	color:         #0f172a;
+	border:        none;
+	background:    transparent;
+	outline:       none;
+	padding:       4px 0;
+}
+
+.tome-editor__title::placeholder { color: #94a3b8; }
+
+.tome-editor__actions {
+	display: flex;
+	gap:     8px;
+}
+
+.tome-editor__btn {
+	padding:       7px 16px;
+	border:        1px solid var( --sidebar-border );
+	border-radius: 6px;
+	font-size:     13px;
+	font-family:   var( --font-ui );
+	cursor:        pointer;
+	transition:    background 0.12s;
+}
+
+.tome-editor__btn--save {
+	background:   #1e293b;
+	color:        #fff;
+	border-color: #1e293b;
+}
+
+.tome-editor__btn--save:hover  { background: #0f172a; }
+
+.tome-editor__btn--cancel {
+	background: transparent;
+	color:      var( --muted );
+}
+
+.tome-editor__btn--cancel:hover { background: #f1f5f9; }
+
+.tome-editor__body {
+	flex:          1;
+	padding:       28px 32px;
+	font-family:   var( --font-code );
+	font-size:     14px;
+	line-height:   1.7;
+	color:         #1e293b;
+	background:    #fafaf8;
+	border:        none;
+	outline:       none;
+	resize:        none;
+	min-height:    calc( 100vh - 120px );
+}
+
+.tome-editor__body::placeholder { color: #94a3b8; }
+
+.tome-editor__hint {
+	padding:      8px 32px 16px;
+	font-size:    11px;
+	color:        #94a3b8;
+	font-family:  var( --font-ui );
+	background:   #fafaf8;
+	border-top:   1px solid var( --sidebar-border );
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+
+@media ( max-width: 640px ) {
+	.tome {
+		flex-direction: column;
+		height:         auto;
+		min-height:     100vh;
+	}
+
+	.tome-sidebar {
+		width:     100%;
+		min-width: 0;
+		border-right:  none;
+		border-bottom: 1px solid var( --sidebar-border );
+		max-height:    40vh;
+	}
+
+	.tome-view   { padding: 24px 16px 60px; }
+	.tome-editor__header,
+	.tome-editor__body,
+	.tome-editor__hint { padding-left: 16px; padding-right: 16px; }
+}

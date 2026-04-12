@@ -47,7 +47,7 @@ defined( 'ABSPATH' ) || exit;
 		</ul>
 
 		<div class="bsh-nav__footer" id="bsh-nav-footer">
-			<!-- Manage Wares injected by shell.js -->
+			<!-- Home + Manage Wares injected by shell.js -->
 		</div>
 
 		<a
@@ -73,13 +73,41 @@ defined( 'ABSPATH' ) || exit;
 			<!-- Action buttons injected by shell.js -->
 		</div>
 
+		<!-- Window chrome: thin title bar above the active ware iframe -->
+		<div class="bsh-winbar" id="bsh-winbar" hidden aria-hidden="true">
+			<!-- Populated by shell.js -->
+		</div>
+
 		<main class="bsh-main" id="bsh-main" aria-live="polite">
-			<!-- Iframes injected here by shell.js -->
+			<!-- Home screen panel (shown when slug === "home") -->
+			<div class="bsh-home" id="bsh-home-screen" hidden aria-label="<?php esc_attr_e( 'Home', 'bazaar' ); ?>">
+				<!-- Rendered by home.js -->
+			</div>
+
+			<!-- Skeleton loader (replaces spinner while iframe content loads) -->
 			<div class="bsh-loading" id="bsh-loading" aria-hidden="true">
-				<div class="bsh-loading__spinner" aria-hidden="true"></div>
-				<p class="bsh-loading__label"><?php esc_html_e( 'Loading…', 'bazaar' ); ?></p>
+				<div class="bsh-skeleton">
+					<div class="bsh-skeleton__bar bsh-skeleton__bar--header"></div>
+					<div class="bsh-skeleton__bar bsh-skeleton__bar--wide"></div>
+					<div class="bsh-skeleton__bar"></div>
+					<div class="bsh-skeleton__bar bsh-skeleton__bar--short"></div>
+				</div>
 			</div>
 		</main>
+
+		<!-- Running-app taskbar: shows LRU-resident wares -->
+		<div class="bsh-taskbar" id="bsh-taskbar" role="toolbar" aria-label="<?php esc_attr_e( 'Running wares', 'bazaar' ); ?>" hidden>
+			<!-- Populated by shell.js -->
+		</div>
+
+		<!-- Status bar: ware name, trust level, clock -->
+		<div class="bsh-statusbar" id="bsh-statusbar" aria-hidden="true">
+			<div class="bsh-statusbar__left" id="bsh-statusbar-left"></div>
+			<div class="bsh-statusbar__center" id="bsh-statusbar-center"></div>
+			<div class="bsh-statusbar__right">
+				<span class="bsh-statusbar__clock" id="bsh-statusbar-clock" aria-hidden="true"></span>
+			</div>
+		</div>
 
 	</div><!-- .bsh-content -->
 

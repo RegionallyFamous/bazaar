@@ -1,0 +1,56 @@
+{
+  "name": "@bazaar/design",
+  "version": "0.1.0",
+  "description": "Shared design tokens and React components for Bazaar wares",
+  "keywords": ["wordpress", "bazaar", "ware", "design-system", "react"],
+  "license": "GPL-2.0-or-later",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./css": {
+      "types": "./src/css/index.d.ts",
+      "default": "./src/css/index.css"
+    },
+    "./tokens": "./src/css/tokens.css",
+    "./theme": {
+      "import": "./dist/theme/adminColor.js",
+      "types": "./dist/theme/adminColor.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src/css",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "dev":   "tsc --project tsconfig.json --watch",
+    "check": "tsc --project tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nickhblair/bazaar",
+    "directory": "packages/design"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "Flow",
+  "slug": "flow",
+  "version": "1.1.0",
+  "author": "Regionally Famous",
+  "description": "Stop doomscrolling, start doing. A Pomodoro timer with ambient soundscapes, per-session task lists, and a heatmap so you can see exactly which days you crushed it.",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "menu": {
+    "title": "Flow",
+    "position": 7,
+    "capability": "manage_options"
+  },
+  "shared": []
+}

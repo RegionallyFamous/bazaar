@@ -62,7 +62,7 @@ final class WareRenderer {
 		}
 
 		$dev_url = ! empty( $ware['dev_url'] ) ? (string) $ware['dev_url'] : '';
-		$is_dev  = '' !== $dev_url && defined( 'WP_DEBUG' ) && WP_DEBUG;
+		$is_dev  = '' !== $dev_url && defined( 'WP_DEBUG' ) && (bool) constant( 'WP_DEBUG' );
 
 		// Defence-in-depth: even in debug mode, only allow loopback origins as
 		// the iframe src so that a crafted registry entry cannot point the admin

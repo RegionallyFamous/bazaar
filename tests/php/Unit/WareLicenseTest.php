@@ -7,6 +7,7 @@ namespace Bazaar\Tests\Unit;
 use Bazaar\WareLicense;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -289,9 +290,8 @@ final class WareLicenseTest extends TestCase {
 	/**
 	 * A license server returning { "valid": "false" } (truthy string!) must be
 	 * rejected.  Before the fix, empty("false") === false so it passed.
-	 *
-	 * @dataProvider truthy_but_not_true_valid_provider
 	 */
+	#[DataProvider( 'truthy_but_not_true_valid_provider' )]
 	public function test_validate_rejects_truthy_non_true_valid( mixed $valid_value ): void {
 		Functions\when( 'esc_url_raw' )->justReturn( 'https://vendor.example.com/license' );
 		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );

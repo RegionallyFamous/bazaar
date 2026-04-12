@@ -364,7 +364,7 @@ TS;
 			return;
 		}
 
-		$debug_status = ( defined( 'WP_DEBUG' ) && WP_DEBUG )
+		$debug_status = ( defined( 'WP_DEBUG' ) && (bool) constant( 'WP_DEBUG' ) )
 			? __( 'WP_DEBUG is true — dev mode will be active immediately.', 'bazaar' )
 			: __( 'Note: WP_DEBUG is false on this site. Set WP_DEBUG=true for dev mode to take effect.', 'bazaar' );
 

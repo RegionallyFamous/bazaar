@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@bazaar/client": "^0.1.0",
+    "@bazaar/design": "^0.1.0",
     "react":          "^19.0.0",
     "react-dom":      "^19.0.0"
   },
