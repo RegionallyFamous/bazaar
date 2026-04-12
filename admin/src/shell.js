@@ -54,6 +54,7 @@ const LRU_CAP = Math.max(
 // ===========================================================================
 
 let activeSlug = null;
+let navFilterQuery = '';
 
 /** @type {Map<string, Object>} slug → index entry */
 const wareMap = new Map( ( initialWares ?? [] ).map( ( w ) => [ w.slug, w ] ) );
@@ -71,6 +72,7 @@ const main = document.getElementById( 'bsh-main' );
 const loading = document.getElementById( 'bsh-loading' );
 const collapse = document.getElementById( 'bsh-collapse' );
 const root = document.getElementById( 'bazaar-shell-root' );
+const toolbarContext = document.getElementById( 'bsh-toolbar-context' );
 
 // Fail loudly in development; degrade gracefully in production when the shell
 // template is missing a required element rather than throwing a cascade of
@@ -85,6 +87,76 @@ if ( ! navList || ! navFooter || ! navEl || ! main || ! loading || ! collapse ||
 const toastEl = document.createElement( 'div' );
 toastEl.className = 'bsh-toasts';
 document.body.appendChild( toastEl );
+
+// ─── Nav filter input ────────────────────────────────────────────────────────
+
+const filterWrap = document.createElement( 'div' );
+filterWrap.className = 'bsh-nav__filter-wrap';
+
+const filterIcon = document.createElement( 'span' );
+filterIcon.className = 'dashicons dashicons-search bsh-nav__filter-icon';
+filterIcon.setAttribute( 'aria-hidden', 'true' );
+
+const filterInput = document.createElement( 'input' );
+filterInput.type = 'search';
+filterInput.className = 'bsh-nav__filter-input';
+filterInput.placeholder = __( 'Filter…', 'bazaar' );
+filterInput.setAttribute( 'aria-label', __( 'Filter wares', 'bazaar' ) );
+filterInput.autocomplete = 'off';
+filterInput.spellcheck = false;
+
+filterWrap.append( filterIcon, filterInput );
+navEl.querySelector( '.bsh-nav__header' )?.insertAdjacentElement( 'afterend', filterWrap );
+
+filterInput.addEventListener( 'input', () => {
+	navFilterQuery = filterInput.value.trim().toLowerCase();
+	applyNavFilter();
+} );
+
+filterInput.addEventListener( 'keydown', ( e ) => {
+	if ( e.key === 'Escape' ) {
+		filterInput.value = '';
+		navFilterQuery = '';
+		applyNavFilter();
+		filterInput.blur();
+	}
+} );
+
+// ─── Mobile nav hamburger + backdrop ─────────────────────────────────────────
+
+const mobileMenuBtn = document.createElement( 'button' );
+mobileMenuBtn.type = 'button';
+mobileMenuBtn.className = 'bsh-mobile-menu';
+mobileMenuBtn.id = 'bsh-mobile-menu';
+mobileMenuBtn.setAttribute( 'aria-label', __( 'Open navigation', 'bazaar' ) );
+mobileMenuBtn.setAttribute( 'aria-expanded', 'false' );
+mobileMenuBtn.innerHTML =
+	'<span class="dashicons dashicons-menu-alt" aria-hidden="true"></span>';
+document.getElementById( 'bsh-toolbar' )?.insertAdjacentElement(
+	'afterbegin',
+	mobileMenuBtn
+);
+
+const navBackdrop = document.createElement( 'div' );
+navBackdrop.className = 'bsh-nav-backdrop';
+root.appendChild( navBackdrop );
+
+function closeMobileNav() {
+	root.classList.remove( 'bsh--nav-open' );
+	mobileMenuBtn.setAttribute( 'aria-expanded', 'false' );
+	mobileMenuBtn.setAttribute( 'aria-label', __( 'Open navigation', 'bazaar' ) );
+}
+
+mobileMenuBtn.addEventListener( 'click', () => {
+	const open = root.classList.toggle( 'bsh--nav-open' );
+	mobileMenuBtn.setAttribute( 'aria-expanded', String( open ) );
+	mobileMenuBtn.setAttribute(
+		'aria-label',
+		open ? __( 'Close navigation', 'bazaar' ) : __( 'Open navigation', 'bazaar' )
+	);
+} );
+
+navBackdrop.addEventListener( 'click', closeMobileNav );
 
 // ===========================================================================
 // Core services
@@ -544,6 +616,35 @@ function updateUrl( slug, route ) {
 }
 
 // ===========================================================================
+// Nav filter
+// ===========================================================================
+
+/**
+ * Show/hide nav list items based on the current navFilterQuery.
+ * When a query is active, structural chrome (section labels, dividers, group
+ * headers) is hidden so matching items appear as a flat filtered list.
+ */
+function applyNavFilter() {
+	const q = navFilterQuery;
+	navList.querySelectorAll( 'li' ).forEach( ( li ) => {
+		if ( li.dataset.slug ) {
+			if ( ! q ) {
+				li.hidden = false;
+				return;
+			}
+			const label = (
+				li.querySelector( '.bsh-nav__label' )?.textContent ?? ''
+			).toLowerCase();
+			li.hidden =
+				! label.includes( q ) && ! li.dataset.slug.toLowerCase().includes( q );
+		} else {
+			// Section labels, dividers, group headers — suppress during active filter.
+			li.hidden = !! q;
+		}
+	} );
+}
+
+// ===========================================================================
 // Nav rendering
 // ===========================================================================
 
@@ -588,6 +689,7 @@ function renderNav() {
 		btn.addEventListener( 'click', () => navigateTo( 'manage' ) );
 		li.appendChild( btn );
 		navList.appendChild( li );
+		filterWrap.classList.remove( 'bsh-nav__filter-wrap--active' );
 		attachDragHandlers( navList );
 		return;
 	}
@@ -639,10 +741,17 @@ function renderNav() {
 		navList.appendChild( buildDivider() );
 	}
 
-	// All wares (grouped)
+	// All wares (grouped) — skip anything already shown in Pinned or Recent
+	const shownInSections = new Set( [
+		...pinned.map( ( w ) => w.slug ),
+		...recents,
+	] );
 	const groups = new Map();
 	const ungrouped = [];
 	for ( const w of enabled ) {
+		if ( shownInSections.has( w.slug ) ) {
+			continue;
+		}
 		if ( w.group ) {
 			if ( ! groups.has( w.group ) ) {
 				groups.set( w.group, [] );
@@ -699,7 +808,16 @@ function renderNav() {
 		}
 	} );
 
+	// Show filter when there are enough wares; hide on transition to fewer.
+	const showFilter = enabled.length >= 5;
+	if ( ! showFilter && navFilterQuery ) {
+		filterInput.value = '';
+		navFilterQuery = '';
+	}
+	filterWrap.classList.toggle( 'bsh-nav__filter-wrap--active', showFilter );
+
 	attachDragHandlers( navList );
+	applyNavFilter();
 }
 
 // Nav refresh event (from drag/pin toggles).
@@ -733,6 +851,68 @@ function recordView( newSlug ) {
 }
 
 // ===========================================================================
+// Toolbar context breadcrumb
+// ===========================================================================
+
+function renderToolbarContext( slug ) {
+	if ( ! toolbarContext ) {
+		return;
+	}
+	toolbarContext.innerHTML = '';
+
+	if ( ! slug ) {
+		return;
+	}
+
+	const isManage = slug === 'manage';
+	const ware = isManage ? null : wareMap.get( slug );
+	const label = isManage
+		? __( 'Manage Wares', 'bazaar' )
+		: ( ware?.menu_title ?? ware?.name ?? slug );
+
+	// Breadcrumb button opens the command palette for quick switching.
+	const btn = document.createElement( 'button' );
+	btn.type = 'button';
+	btn.className = 'bsh-toolbar__context-btn';
+	btn.setAttribute( 'aria-label', __( 'Switch ware (⌘K)', 'bazaar' ) );
+	btn.title = __( 'Switch ware · ⌘K', 'bazaar' );
+
+	const iconEl = document.createElement( 'span' );
+	iconEl.setAttribute( 'aria-hidden', 'true' );
+
+	if ( isManage ) {
+		iconEl.className = 'dashicons dashicons-admin-settings bsh-toolbar__context-icon';
+	} else if ( ware?.icon ) {
+		const img = document.createElement( 'img' );
+		img.src = iconUrl( ware );
+		img.alt = '';
+		img.className = 'bsh-toolbar__context-icon-img';
+		img.onerror = () => img.remove();
+		iconEl.replaceWith( img );
+		btn.appendChild( img );
+	} else {
+		iconEl.className = 'dashicons dashicons-admin-plugins bsh-toolbar__context-icon';
+	}
+
+	if ( iconEl.className ) {
+		btn.appendChild( iconEl );
+	}
+
+	const labelEl = document.createElement( 'span' );
+	labelEl.className = 'bsh-toolbar__context-label';
+	labelEl.textContent = label;
+	btn.appendChild( labelEl );
+
+	const chevron = document.createElement( 'span' );
+	chevron.className = 'bsh-toolbar__context-chevron';
+	chevron.setAttribute( 'aria-hidden', 'true' );
+	btn.appendChild( chevron );
+
+	btn.addEventListener( 'click', () => palette.open() );
+	toolbarContext.appendChild( btn );
+}
+
+// ===========================================================================
 // Navigation
 // ===========================================================================
 
@@ -746,6 +926,9 @@ function navigateTo( slug, route, toSecondary = false ) {
 		return;
 	}
 
+	// Close the mobile drawer on navigation.
+	closeMobileNav();
+
 	if ( toSecondary && splitView.active ) {
 		const url =
 			slug === 'manage' ? manageUrl : serveUrl( wareMap.get( slug ) );
@@ -757,6 +940,7 @@ function navigateTo( slug, route, toSecondary = false ) {
 	updateUrl( slug, route );
 	pushRecent( slug );
 	recordView( slug );
+	renderToolbarContext( slug );
 
 	navEl.querySelectorAll( '.bsh-nav__btn' ).forEach( ( btn ) => {
 		const a = btn.dataset.slug === slug;
@@ -866,10 +1050,17 @@ async function pollBadges() {
 	}
 }
 
+let _sseDelay = 5_000;
+const SSE_MAX_DELAY = 5 * 60_000;
+
 function connectSSE() {
 	const u = new URL( `${ restUrl }/stream` );
 	u.searchParams.set( '_wpnonce', nonce );
 	const src = new EventSource( u.toString(), { withCredentials: true } );
+
+	src.addEventListener( 'open', () => {
+		_sseDelay = 5_000; // Reset backoff after a clean connection.
+	} );
 
 	src.addEventListener( 'badge', ( e ) => {
 		try {
@@ -925,7 +1116,8 @@ function connectSSE() {
 
 	src.onerror = () => {
 		src.close();
-		setTimeout( connectSSE, 10_000 );
+		setTimeout( connectSSE, _sseDelay );
+		_sseDelay = Math.min( _sseDelay * 2, SSE_MAX_DELAY );
 	};
 }
 
@@ -937,6 +1129,12 @@ const _dataCache = new Map();
 const DATA_CACHE_MAX = 200;
 
 async function cacheQuery( id, path, targetWindow ) {
+	// Only proxy paths within the Bazaar namespace — prevents a ware from
+	// using the shell's admin nonce to fetch arbitrary WordPress REST data.
+	if ( typeof path !== 'string' || ! path.startsWith( '/bazaar/v1/' ) ) {
+		return;
+	}
+
 	const cached = _dataCache.get( path );
 	if ( cached && Date.now() - cached.ts < 60_000 ) {
 		try {
@@ -1134,18 +1332,6 @@ window.addEventListener( 'message', ( event ) => {
 		return b;
 	}
 
-	const splitBtn = mkBtn( __( 'Split view', 'bazaar' ), 'dashicons-columns', () => {
-		if ( splitView.active ) {
-			splitView.exit( iframes );
-			root.classList.remove( 'bsh--split' );
-			splitBtn.classList.remove( 'bsh-toolbar__btn--active' );
-		} else {
-			splitView.enter( iframes );
-			root.classList.add( 'bsh--split' );
-			splitBtn.classList.add( 'bsh-toolbar__btn--active' );
-		}
-	} );
-
 	const fsBtn = mkBtn( __( 'Fullscreen', 'bazaar' ), 'dashicons-fullscreen-alt', () => {
 		toggleFullscreen( root );
 		const isFs = root.classList.contains( 'bsh--fullscreen' );
@@ -1162,15 +1348,6 @@ window.addEventListener( 'message', ( event ) => {
 	} );
 
 	if ( globalDevMode ) {
-		mkBtn( __( 'Inspect', 'bazaar' ), 'dashicons-search', () => {
-			const ware = wareMap.get( activeSlug );
-			inspector.toggle( activeSlug, {
-				nonce,
-				restUrl,
-				adminColor,
-				devUrl: ware?.dev_url,
-			} );
-		} );
 	}
 }() );
 
@@ -1203,6 +1380,23 @@ document.addEventListener( 'keydown', ( e ) => {
 		toggleFullscreen( root );
 		return;
 	}
+	// / → focus nav filter when visible and not already typing somewhere.
+	const _activeEl = ( root?.ownerDocument ?? document ).activeElement;
+	if (
+		e.key === '/' &&
+		! e.metaKey &&
+		! e.ctrlKey &&
+		filterWrap.classList.contains( 'bsh-nav__filter-wrap--active' ) &&
+		! root.classList.contains( 'bsh--collapsed' ) &&
+		! [ 'INPUT', 'TEXTAREA', 'SELECT' ].includes( _activeEl?.tagName ?? '' ) &&
+		! _activeEl?.isContentEditable
+	) {
+		e.preventDefault();
+		filterInput.focus();
+		filterInput.select();
+		return;
+	}
+
 	// Esc
 	if ( e.key === 'Escape' ) {
 		if ( palette.visible ) {
@@ -1212,6 +1406,65 @@ document.addEventListener( 'keydown', ( e ) => {
 } );
 
 registerShortcuts( wareMap, navigateTo );
+
+// ===========================================================================
+// Nav resize
+// ===========================================================================
+
+const LS_NAV_WIDTH = 'bazaar_nav_width';
+const NAV_MIN_W = 140;
+const NAV_MAX_W = 400;
+
+( function restoreNavWidth() {
+	try {
+		const saved = parseInt( localStorage.getItem( LS_NAV_WIDTH ), 10 );
+		if ( saved >= NAV_MIN_W && saved <= NAV_MAX_W ) {
+			root.style.setProperty( '--bsh-nav-width', saved + 'px' );
+		}
+	} catch {
+		/* non-fatal */
+	}
+}() );
+
+const resizeHandle = document.getElementById( 'bsh-resize-handle' );
+if ( resizeHandle ) {
+	resizeHandle.addEventListener( 'mousedown', ( e ) => {
+		if ( root.classList.contains( 'bsh--collapsed' ) ) {
+			return;
+		}
+		e.preventDefault();
+		const startX = e.clientX;
+		const startW = navEl.getBoundingClientRect().width;
+		root.classList.add( 'bsh--resizing' );
+
+		const onMove = ( me ) => {
+			const w = Math.min(
+				NAV_MAX_W,
+				Math.max( NAV_MIN_W, startW + me.clientX - startX )
+			);
+			root.style.setProperty( '--bsh-nav-width', w + 'px' );
+		};
+
+		const onUp = ( me ) => {
+			const w = Math.min(
+				NAV_MAX_W,
+				Math.max( NAV_MIN_W, startW + me.clientX - startX )
+			);
+			root.style.setProperty( '--bsh-nav-width', w + 'px' );
+			try {
+				localStorage.setItem( LS_NAV_WIDTH, String( Math.round( w ) ) );
+			} catch {
+				/* non-fatal */
+			}
+			root.classList.remove( 'bsh--resizing' );
+			document.removeEventListener( 'mousemove', onMove );
+			document.removeEventListener( 'mouseup', onUp );
+		};
+
+		document.addEventListener( 'mousemove', onMove );
+		document.addEventListener( 'mouseup', onUp );
+	} );
+}
 
 // ===========================================================================
 // Collapse toggle
@@ -1226,6 +1479,12 @@ collapse.addEventListener( 'click', () => {
 			? __( 'Expand navigation', 'bazaar' )
 			: __( 'Collapse navigation', 'bazaar' )
 	);
+	// Clear filter when collapsing — it won't be visible anyway.
+	if ( c && navFilterQuery ) {
+		filterInput.value = '';
+		navFilterQuery = '';
+		applyNavFilter();
+	}
 } );
 
 navEl.addEventListener( 'click', ( e ) => {
