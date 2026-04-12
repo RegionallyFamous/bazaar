@@ -67,7 +67,11 @@ export default function SwatchEditor( { swatch, onChange, onClose }: Props ) {
           />
           { hasEyeDropper && (
             <button className="swatch-editor__eyedrop-btn" onClick={ pickColor } title="Pick colour from screen">
-              🔬
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m2 22 1-1h3l9-9"/>
+                <path d="M3 21v-3l9-9"/>
+                <path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8-2.1 2.2"/>
+              </svg>
             </button>
           ) }
         </div>
@@ -78,7 +82,6 @@ export default function SwatchEditor( { swatch, onChange, onClose }: Props ) {
         <input type="range" min="0" max="359" value={ hsl.h }
           onChange={ e => applyHsl( { ...hsl, h: Number( e.target.value ) } ) }
           className="swatch-editor__range swatch-editor__range--hue"
-          style={ { '--h': hsl.h } as React.CSSProperties }
         />
       </div>
 
@@ -87,6 +90,7 @@ export default function SwatchEditor( { swatch, onChange, onClose }: Props ) {
         <input type="range" min="0" max="100" value={ hsl.s }
           onChange={ e => applyHsl( { ...hsl, s: Number( e.target.value ) } ) }
           className="swatch-editor__range"
+          style={ { background: `linear-gradient(to right, hsl(${hsl.h},0%,${hsl.l}%), hsl(${hsl.h},100%,${hsl.l}%))` } }
         />
       </div>
 
@@ -95,6 +99,7 @@ export default function SwatchEditor( { swatch, onChange, onClose }: Props ) {
         <input type="range" min="0" max="100" value={ hsl.l }
           onChange={ e => applyHsl( { ...hsl, l: Number( e.target.value ) } ) }
           className="swatch-editor__range"
+          style={ { background: `linear-gradient(to right, hsl(${hsl.h},${hsl.s}%,0%), hsl(${hsl.h},${hsl.s}%,50%), hsl(${hsl.h},${hsl.s}%,100%))` } }
         />
       </div>
 

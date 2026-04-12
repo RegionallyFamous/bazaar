@@ -156,7 +156,8 @@ export default function App() {
                 onClick={ () => setEditSwatch( s ) }
                 title={ `Edit ${s.hex}` }
               />
-              <span className="cps__swatch-name">{ s.name || s.hex }</span>
+              <span className="cps__swatch-hex">{ s.hex }</span>
+              { s.name && <span className="cps__swatch-name">{ s.name }</span> }
               <button
                 className="cps__swatch-remove"
                 onClick={ () => deleteSwatch( s.id ) }
@@ -182,7 +183,7 @@ export default function App() {
               className={ `cps__panel-tab${ panel === t ? ' cps__panel-tab--active' : '' }` }
               onClick={ () => setPanel( t ) }
             >
-              { t === 'harmony' ? '🎨 Harmony' : t === 'contrast' ? '👁 Contrast' : '📤 Export' }
+              { t === 'harmony' ? 'Harmony' : t === 'contrast' ? 'Contrast' : 'Export' }
             </button>
           ) ) }
         </div>

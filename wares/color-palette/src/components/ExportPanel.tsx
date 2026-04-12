@@ -43,8 +43,6 @@ export default function ExportPanel( { palette }: Props ) {
 
   return (
     <div className="export">
-      <h3 className="export__title">Export</h3>
-
       <div className="export__tabs">
         { ( [ 'css', 'tailwind', 'hex', 'svg' ] as Format[] ).map( f => (
           <button

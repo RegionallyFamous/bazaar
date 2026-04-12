@@ -21,8 +21,6 @@ export default function HarmonyPanel( { swatches, onAddSwatch }: Props ) {
 
   return (
     <div className="harmony">
-      <h3 className="harmony__title">Harmony Generator</h3>
-
       <div className="harmony__controls">
         <div className="harmony__field">
           <label className="harmony__label">Source swatch</label>

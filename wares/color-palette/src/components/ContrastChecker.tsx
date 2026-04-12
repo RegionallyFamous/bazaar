@@ -22,8 +22,6 @@ export default function ContrastChecker( { swatches }: Props ) {
 
   return (
     <div className="contrast">
-      <h3 className="contrast__title">Contrast Checker</h3>
-
       <div className="contrast__preview" style={ { background: bgHex, color: fgHex } }>
         <span className="contrast__sample-lg">Aa</span>
         <span className="contrast__sample-sm">Sample text</span>
