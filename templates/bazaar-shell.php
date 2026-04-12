@@ -16,6 +16,7 @@ defined( 'ABSPATH' ) || exit;
 #wpcontent         { padding-left: 0 !important; }
 #wpbody-content    { padding: 0 !important; overflow: hidden; }
 #bazaar-shell-root { margin: 0 !important; }
+#wpfooter          { display: none !important; }
 </style>
 
 <div id="bazaar-shell-root" class="bsh" aria-label="<?php esc_attr_e( 'Bazaar', 'bazaar' ); ?>">
@@ -45,12 +46,27 @@ defined( 'ABSPATH' ) || exit;
 			<!-- Manage Wares injected by shell.js -->
 		</div>
 
+		<a
+			class="bsh-nav__wp-link"
+			href="<?php echo esc_url( get_admin_url() ); ?>"
+			title="<?php esc_attr_e( 'Back to WordPress', 'bazaar' ); ?>"
+			aria-label="<?php esc_attr_e( 'Back to WordPress admin', 'bazaar' ); ?>"
+		>
+			<span class="dashicons dashicons-wordpress-alt bsh-nav__wp-icon" aria-hidden="true"></span>
+			<span class="bsh-nav__wp-label"><?php esc_html_e( 'WordPress', 'bazaar' ); ?></span>
+		</a>
+
+		<div class="bsh-nav__resize-handle" id="bsh-resize-handle" aria-hidden="true"></div>
+
 	</nav>
 
 	<div class="bsh-content">
 
 		<div class="bsh-toolbar" id="bsh-toolbar" role="toolbar" aria-label="<?php esc_attr_e( 'View controls', 'bazaar' ); ?>">
-			<!-- Buttons injected by shell.js -->
+			<div class="bsh-toolbar__context" id="bsh-toolbar-context" aria-live="polite">
+				<!-- Active ware breadcrumb injected by shell.js -->
+			</div>
+			<!-- Action buttons injected by shell.js -->
 		</div>
 
 		<main class="bsh-main" id="bsh-main" aria-live="polite">

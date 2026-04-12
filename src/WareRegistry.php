@@ -598,6 +598,24 @@ final class WareRegistry implements WareRegistryInterface {
 		if ( null === $ware ) {
 			return false;
 		}
+
+		// Sanitize the incoming value according to what each field stores.
+		$value = match ( $field ) {
+			'enabled', 'zero_trust'
+				=> (bool) $value,
+			'version', 'name', 'description', 'entry', 'dev_url',
+			'health_check', 'search_endpoint'
+				=> sanitize_text_field( (string) $value ),
+			'icon'
+				=> esc_url_raw( (string) $value ),
+			'trust'
+				=> sanitize_key( (string) $value ),
+			'jobs', 'settings', 'permissions'
+				=> is_array( $value ) ? $value : array(),
+			default
+				=> $value,
+		};
+
 		$ware[ $field ] = $value;
 		if ( ! $this->save_ware( $slug, $ware ) ) {
 			return false;

@@ -32,7 +32,7 @@ export interface WareStore {
  * Create a store instance scoped to `slug`.
  */
 export function createStore( slug: string, config: BazaarClientConfig ): WareStore {
-	const base = `${ config.restUrl }/store/${ encodeURIComponent( slug ) }`;
+	const base = `${ config.restUrl }/bazaar/v1/store/${ encodeURIComponent( slug ) }`;
 
 	async function req( method: string, path: string, body?: JsonValue ): Promise<Response> {
 		const opts: RequestInit = {

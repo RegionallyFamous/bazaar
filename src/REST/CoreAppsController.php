@@ -272,6 +272,11 @@ final class CoreAppsController extends BazaarController {
 		}
 
 		// Write to a unique temp file so WareLoader can read it.
+		// wp_tempnam() lives in wp-admin/includes/file.php which is not loaded
+		// in REST API context — require it before calling.
+		if ( ! function_exists( 'wp_tempnam' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
 		$tmp = wp_tempnam( 'bazaar-core-app-.wp' );
 		if ( false === $tmp ) {
 			return new WP_Error(

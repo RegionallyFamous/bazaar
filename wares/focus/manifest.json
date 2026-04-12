@@ -11,5 +11,5 @@
     "position": 7,
     "capability": "manage_options"
   },
-  "shared": ["react", "react-dom"]
+  "shared": []
 }

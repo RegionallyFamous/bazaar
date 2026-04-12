@@ -27,7 +27,7 @@ export interface WareJobs {
 }
 
 export function createJobs( slug: string, config: BazaarClientConfig ): WareJobs {
-	const base = `${ config.restUrl }/jobs/${ encodeURIComponent( slug ) }`;
+	const base = `${ config.restUrl }/bazaar/v1/jobs/${ encodeURIComponent( slug ) }`;
 	const hdr  = { 'X-WP-Nonce': config.nonce, 'Content-Type': 'application/json' };
 
 	return {

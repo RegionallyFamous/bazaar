@@ -40,7 +40,11 @@ if ( ! defined( 'BAZAAR_SECRET' ) ) {
 	$_bazaar_secret = get_option( 'bazaar_secret' );
 	if ( false === $_bazaar_secret ) {
 		$_bazaar_secret = wp_generate_password( 64, true, true );
-		update_option( 'bazaar_secret', $_bazaar_secret, false );
+		// add_option is atomic: it only inserts if the key does not exist.
+		// If two requests race, one wins; the loser re-reads the winner's value.
+		if ( ! add_option( 'bazaar_secret', $_bazaar_secret, '', false ) ) {
+			$_bazaar_secret = get_option( 'bazaar_secret' );
+		}
 	}
 	define( 'BAZAAR_SECRET', (string) $_bazaar_secret );
 	unset( $_bazaar_secret );

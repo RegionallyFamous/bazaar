@@ -353,7 +353,7 @@ final class Plugin {
 		( new StreamController() )->register_routes();
 		( new AnalyticsController() )->register_routes();
 		( new NonceController() )->register_routes();
-		( new StorageController() )->register_routes();
+		( new StorageController( $this->registry ) )->register_routes();
 		( new ConfigController( $this->registry ) )->register_routes();
 		( new WebhooksController() )->register_routes();
 		( new HealthController( $this->registry ) )->register_routes();

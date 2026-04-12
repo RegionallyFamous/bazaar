@@ -54,11 +54,12 @@ export default defineConfig( {
 				bazaar:            resolve( __dirname, 'admin/src/main.js' ),
 				shell:             resolve( __dirname, 'admin/src/shell.js' ),
 				'zero-trust-sw':   resolve( __dirname, 'admin/src/zero-trust-sw.js' ),
-				// Shared bundles — hosted by the shell, referenced via importmap.
-				// Content-hashed so they can be cached immutably by browsers and SWs.
-				'shared/react':     resolve( __dirname, 'admin/src/shared/react.js' ),
-				'shared/react-dom': resolve( __dirname, 'admin/src/shared/react-dom.js' ),
-				'shared/vue':       resolve( __dirname, 'admin/src/shared/vue.js' ),
+			// Shared bundles — hosted by the shell, referenced via importmap.
+			// Content-hashed so they can be cached immutably by browsers and SWs.
+			'shared/react':             resolve( __dirname, 'admin/src/shared/react.js' ),
+			'shared/react-dom':         resolve( __dirname, 'admin/src/shared/react-dom.js' ),
+			'shared/react-jsx-runtime': resolve( __dirname, 'admin/src/shared/react-jsx-runtime.js' ),
+			'shared/vue':               resolve( __dirname, 'admin/src/shared/vue.js' ),
 			},
 			output: {
 				// Shared libs get content-hash in their filename; other entries keep

@@ -4,7 +4,7 @@
  * Coordinates all shell modules and owns the top-level application state.
  */
 
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import './shell.css';
 
 import { connectHmr } from './modules/hmr-bridge.js';
@@ -1080,6 +1080,12 @@ function connectSSE() {
 			const d = JSON.parse( e.data );
 			wareMap.set( d.slug, d );
 			renderNav();
+			navigateTo( d.slug );
+			toasts.show(
+				sprintf( /* translators: %s: ware name */ __( '%s is ready', 'bazaar' ), d.name ?? d.slug ),
+				'success',
+				3000
+			);
 		} catch { /* malformed SSE payload — skip */ }
 	} );
 	src.addEventListener( 'ware-deleted', ( e ) => {
@@ -1188,6 +1194,12 @@ window.addEventListener( 'message', ( event ) => {
 			if ( p.ware?.slug ) {
 				wareMap.set( p.ware.slug, p.ware );
 				renderNav();
+				navigateTo( p.ware.slug );
+				toasts.show(
+					sprintf( /* translators: %s: ware name */ __( '%s is ready', 'bazaar' ), p.ware.name ?? p.ware.slug ),
+					'success',
+					3000
+				);
 			}
 			break;
 		case 'bazaar:ware-deleted':

@@ -37,7 +37,7 @@ export interface WareConfig {
 }
 
 export function createConfig( slug: string, config: BazaarClientConfig ): WareConfig {
-	const base = `${ config.restUrl }/config/${ encodeURIComponent( slug ) }`;
+	const base = `${ config.restUrl }/bazaar/v1/config/${ encodeURIComponent( slug ) }`;
 	const hdr  = { 'X-WP-Nonce': config.nonce, 'Content-Type': 'application/json' };
 
 	return {

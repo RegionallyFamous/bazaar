@@ -19,7 +19,9 @@ export default defineConfig( {
     emptyOutDir: true,
     assetsDir:   'assets',
     rollupOptions: {
-      external: [ 'react', 'react-dom', 'react/jsx-runtime' ],
+      // React is bundled into the ware so the .wp archive is fully self-contained.
+      // Wares that want to share the shell's React copy may opt in via manifest
+      // "shared" + an importmap — but that requires the host to provide it.
     },
   },
 

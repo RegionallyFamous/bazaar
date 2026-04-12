@@ -21,52 +21,6 @@ defined( 'ABSPATH' ) || exit;
 		<p class="bazaar-tagline"><?php esc_html_e( 'Your WordPress app marketplace. Install a ware and it appears instantly in your sidebar.', 'bazaar' ); ?></p>
 	</header>
 
-	<!-- Upload zone -->
-	<section class="bazaar-upload-section" aria-labelledby="bazaar-upload-heading">
-		<h2 id="bazaar-upload-heading" class="screen-reader-text"><?php esc_html_e( 'Upload a Ware', 'bazaar' ); ?></h2>
-
-		<div
-			class="bazaar-dropzone"
-			id="bazaar-dropzone"
-			role="button"
-			tabindex="0"
-			aria-label="<?php esc_attr_e( 'Drop a .wp file here or click to browse', 'bazaar' ); ?>"
-		>
-			<span class="bazaar-dropzone__icon-wrap" aria-hidden="true">
-				<span class="dashicons dashicons-upload bazaar-dropzone__icon"></span>
-			</span>
-			<p class="bazaar-dropzone__text">
-				<?php esc_html_e( 'Drop a .wp file here, or', 'bazaar' ); ?>
-				<label for="bazaar-file-input" class="bazaar-dropzone__browse">
-					<?php esc_html_e( 'browse to upload', 'bazaar' ); ?>
-				</label>
-			</p>
-			<p class="bazaar-dropzone__hint">
-				<?php esc_html_e( '.wp files only', 'bazaar' ); ?>
-			</p>
-			<input
-				type="file"
-				id="bazaar-file-input"
-				accept=".wp"
-				class="bazaar-dropzone__input"
-				aria-hidden="true"
-				tabindex="-1"
-			>
-		</div>
-
-		<div class="bazaar-upload-progress" id="bazaar-upload-progress" hidden aria-live="polite">
-			<div class="bazaar-upload-progress__bar-wrap">
-				<div class="bazaar-upload-progress__bar" id="bazaar-upload-bar"></div>
-			</div>
-			<p class="bazaar-upload-progress__label" id="bazaar-upload-label">
-				<?php esc_html_e( 'Uploading…', 'bazaar' ); ?>
-			</p>
-		</div>
-
-		<div class="bazaar-notice bazaar-notice--error" id="bazaar-upload-error" hidden role="alert" aria-live="assertive"></div>
-		<div class="bazaar-notice bazaar-notice--success" id="bazaar-upload-success" hidden role="status" aria-live="polite"></div>
-	</section>
-
 	<!-- Core Apps discovery -->
 	<section class="bazaar-core-section" id="bazaar-core-section" aria-labelledby="bazaar-core-heading">
 		<div class="bazaar-core-header">
@@ -126,6 +80,54 @@ defined( 'ABSPATH' ) || exit;
 				<div class="bazaar-core-skeleton__btn"></div>
 			</div>
 		</div>
+	</section>
+
+	<!-- Upload zone — secondary path for custom / developer wares -->
+	<section class="bazaar-upload-section" aria-labelledby="bazaar-upload-heading">
+		<h2 id="bazaar-upload-heading" class="bazaar-section-heading bazaar-upload-section__heading">
+			<?php esc_html_e( 'Upload a custom .wp file', 'bazaar' ); ?>
+		</h2>
+
+		<div
+			class="bazaar-dropzone"
+			id="bazaar-dropzone"
+			role="button"
+			tabindex="0"
+			aria-label="<?php esc_attr_e( 'Drop a .wp file here or click to browse', 'bazaar' ); ?>"
+		>
+			<span class="bazaar-dropzone__icon-wrap" aria-hidden="true">
+				<span class="dashicons dashicons-upload bazaar-dropzone__icon"></span>
+			</span>
+			<p class="bazaar-dropzone__text">
+				<?php esc_html_e( 'Drop a .wp file here, or', 'bazaar' ); ?>
+				<label for="bazaar-file-input" class="bazaar-dropzone__browse">
+					<?php esc_html_e( 'browse to upload', 'bazaar' ); ?>
+				</label>
+			</p>
+			<p class="bazaar-dropzone__hint">
+				<?php esc_html_e( '.wp files only', 'bazaar' ); ?>
+			</p>
+			<input
+				type="file"
+				id="bazaar-file-input"
+				accept=".wp"
+				class="bazaar-dropzone__input"
+				aria-hidden="true"
+				tabindex="-1"
+			>
+		</div>
+
+		<div class="bazaar-upload-progress" id="bazaar-upload-progress" hidden aria-live="polite">
+			<div class="bazaar-upload-progress__bar-wrap">
+				<div class="bazaar-upload-progress__bar" id="bazaar-upload-bar"></div>
+			</div>
+			<p class="bazaar-upload-progress__label" id="bazaar-upload-label">
+				<?php esc_html_e( 'Uploading…', 'bazaar' ); ?>
+			</p>
+		</div>
+
+		<div class="bazaar-notice bazaar-notice--error" id="bazaar-upload-error" hidden role="alert" aria-live="assertive"></div>
+		<div class="bazaar-notice bazaar-notice--success" id="bazaar-upload-success" hidden role="status" aria-live="polite"></div>
 	</section>
 
 	<!-- Installed wares gallery -->
@@ -288,6 +290,13 @@ defined( 'ABSPATH' ) || exit;
 						<?php endif; ?>
 					</div>
 						<div class="bazaar-card__actions">
+							<button
+								type="button"
+								class="bazaar-card__open"
+								data-slug="<?php echo esc_attr( $slug ); ?>"
+								data-action="open"
+								aria-label="<?php echo esc_attr( sprintf( /* translators: %s: ware name */ __( 'Open %s', 'bazaar' ), $ware['name'] ) ); ?>"
+							><?php esc_html_e( 'Open', 'bazaar' ); ?></button>
 							<label class="bazaar-toggle" title="<?php echo esc_attr( $toggle_label ); ?>">
 								<input
 									type="checkbox"

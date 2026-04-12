@@ -153,6 +153,8 @@ export function buildItem(
 	btn.className =
 		'bsh-nav__btn' + ( slug === activeSlug ? ' bsh-nav__btn--active' : '' );
 	btn.dataset.slug = slug;
+	btn.title = label;
+	btn.setAttribute( 'aria-label', label );
 	if ( slug === activeSlug ) {
 		btn.setAttribute( 'aria-current', 'page' );
 	}

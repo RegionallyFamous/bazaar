@@ -164,6 +164,15 @@ final class JobsController extends BazaarController {
 	// ─── Registration helpers ─────────────────────────────────────────────
 
 	/**
+	 * Tracks hooks that already have an add_action callback this request.
+	 * Prevents stacking duplicate callbacks when register_ware_jobs is called
+	 * more than once for the same ware within a single PHP process.
+	 *
+	 * @var array<string, true>
+	 */
+	private static array $registered_hooks = array();
+
+	/**
 	 * Register WP-Cron events for all jobs declared in a ware's manifest.
 	 * Call this on ware install.
 	 *
@@ -180,6 +189,12 @@ final class JobsController extends BazaarController {
 			if ( ! wp_next_scheduled( $hook ) ) {
 				wp_schedule_event( time() + 60, $interval, $hook );
 			}
+
+			// Guard against duplicate add_action calls within the same request.
+			if ( isset( self::$registered_hooks[ $hook ] ) ) {
+				continue;
+			}
+			self::$registered_hooks[ $hook ] = true;
 
 			// When the cron fires, call the ware's declared endpoint.
 			add_action(
@@ -213,12 +228,53 @@ final class JobsController extends BazaarController {
 	 * @param array<string,mixed> $ware Description.
 	 * @param array<string,mixed> $job Description.
 	 */
+	/**
+	 * Return true only for public http/https endpoint URLs.
+	 * Prevents SSRF via manifest-declared job endpoints.
+	 *
+	 * @param string $url URL to validate.
+	 * @return bool
+	 */
+	private static function is_safe_url( string $url ): bool {
+		$parsed = wp_parse_url( $url );
+		if ( ! is_array( $parsed ) ) {
+			return false;
+		}
+		$scheme = $parsed['scheme'] ?? '';
+		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) ) {
+			return false;
+		}
+		$host = $parsed['host'] ?? '';
+		if ( '' === $host ) {
+			return false;
+		}
+		if ( in_array( strtolower( $host ), array( 'localhost', '127.0.0.1', '::1' ), true ) ) {
+			return false;
+		}
+		if ( filter_var( $host, FILTER_VALIDATE_IP ) !== false
+			&& filter_var( $host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) === false
+		) {
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Execute a single job by calling its declared endpoint.
+	 *
+	 * @param array<string,mixed> $ware Ware index entry.
+	 * @param array<string,mixed> $job  Job declaration from the manifest.
+	 */
 	private static function run_job( array $ware, array $job ): void {
 		if ( empty( $job['endpoint'] ) ) {
 			return;
 		}
 
-		$url      = $job['endpoint'];
+		$url = $job['endpoint'];
+		if ( ! self::is_safe_url( $url ) ) {
+			return;
+		}
+
 		$response = wp_remote_post(
 			$url,
 			array(

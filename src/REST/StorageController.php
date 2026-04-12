@@ -25,6 +25,7 @@ namespace Bazaar\REST;
 
 defined( 'ABSPATH' ) || exit;
 
+use Bazaar\WareRegistry;
 use WP_REST_Server;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -34,6 +35,22 @@ use WP_Error;
  * Per-user, per-ware key-value storage.
  */
 final class StorageController extends BazaarController {
+
+	/**
+	 * WareRegistry instance for slug validation.
+	 *
+	 * @var WareRegistry
+	 */
+	private WareRegistry $registry;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param WareRegistry $registry Registry used to confirm a ware slug exists before operating on its storage.
+	 */
+	public function __construct( WareRegistry $registry ) {
+		$this->registry = $registry;
+	}
 
 	/**
 	 * REST API namespace.
@@ -123,10 +140,13 @@ final class StorageController extends BazaarController {
 	 * List keys.
 	 *
 	 * @param WP_REST_Request $request Description.
-	 * @return WP_REST_Response
+	 * @return WP_REST_Response|WP_Error
 	 */
-	public function list_keys( WP_REST_Request $request ): WP_REST_Response {
-		$slug   = sanitize_key( $request->get_param( 'slug' ) );
+	public function list_keys( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$slug = sanitize_key( $request->get_param( 'slug' ) );
+		if ( null === $this->registry->get( $slug ) ) {
+			return new WP_Error( 'not_found', __( 'Ware not found.', 'bazaar' ), array( 'status' => 404 ) );
+		}
 		$uid    = get_current_user_id();
 		$prefix = $this->meta_prefix( $slug );
 
@@ -149,9 +169,12 @@ final class StorageController extends BazaarController {
 	 */
 	public function get_value( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$slug = sanitize_key( $request->get_param( 'slug' ) );
-		$key  = sanitize_text_field( $request->get_param( 'key' ) );
-		$uid  = get_current_user_id();
-		$raw  = get_user_meta( $uid, $this->meta_key( $slug, $key ), true );
+		if ( null === $this->registry->get( $slug ) ) {
+			return new WP_Error( 'not_found', __( 'Ware not found.', 'bazaar' ), array( 'status' => 404 ) );
+		}
+		$key = sanitize_text_field( $request->get_param( 'key' ) );
+		$uid = get_current_user_id();
+		$raw = get_user_meta( $uid, $this->meta_key( $slug, $key ), true );
 
 		if ( '' === $raw || false === $raw ) {
 			return new WP_Error( 'not_found', __( 'Key not found.', 'bazaar' ), array( 'status' => 404 ) );
@@ -174,7 +197,10 @@ final class StorageController extends BazaarController {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function set_value( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$slug  = sanitize_key( $request->get_param( 'slug' ) );
+		$slug = sanitize_key( $request->get_param( 'slug' ) );
+		if ( null === $this->registry->get( $slug ) ) {
+			return new WP_Error( 'not_found', __( 'Ware not found.', 'bazaar' ), array( 'status' => 404 ) );
+		}
 		$key   = sanitize_text_field( $request->get_param( 'key' ) );
 		$value = $request->get_param( 'value' );
 		$uid   = get_current_user_id();
@@ -212,9 +238,12 @@ final class StorageController extends BazaarController {
 	 * @param WP_REST_Request $request Description.
 	 * @return WP_REST_Response
 	 */
-	public function delete_value( WP_REST_Request $request ): WP_REST_Response {
+	public function delete_value( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$slug = sanitize_key( $request->get_param( 'slug' ) );
-		$key  = sanitize_text_field( $request->get_param( 'key' ) );
+		if ( null === $this->registry->get( $slug ) ) {
+			return new WP_Error( 'not_found', __( 'Ware not found.', 'bazaar' ), array( 'status' => 404 ) );
+		}
+		$key = sanitize_text_field( $request->get_param( 'key' ) );
 		delete_user_meta( get_current_user_id(), $this->meta_key( $slug, $key ) );
 		return new WP_REST_Response( array( 'deleted' => true ), 200 );
 	}
@@ -225,8 +254,11 @@ final class StorageController extends BazaarController {
 	 * @param WP_REST_Request $request Description.
 	 * @return WP_REST_Response
 	 */
-	public function clear_all( WP_REST_Request $request ): WP_REST_Response {
-		$slug   = sanitize_key( $request->get_param( 'slug' ) );
+	public function clear_all( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$slug = sanitize_key( $request->get_param( 'slug' ) );
+		if ( null === $this->registry->get( $slug ) ) {
+			return new WP_Error( 'not_found', __( 'Ware not found.', 'bazaar' ), array( 'status' => 404 ) );
+		}
 		$uid    = get_current_user_id();
 		$prefix = $this->meta_prefix( $slug );
 		foreach ( array_keys( get_user_meta( $uid ) ) as $meta_key ) {

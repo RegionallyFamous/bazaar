@@ -28,7 +28,7 @@ export interface WareWebhooks {
 }
 
 export function createWebhooks( slug: string, config: BazaarClientConfig ): WareWebhooks {
-	const base = `${ config.restUrl }/webhooks/${ encodeURIComponent( slug ) }`;
+	const base = `${ config.restUrl }/bazaar/v1/webhooks/${ encodeURIComponent( slug ) }`;
 	const hdr  = { 'X-WP-Nonce': config.nonce, 'Content-Type': 'application/json' };
 
 	return {

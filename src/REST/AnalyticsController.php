@@ -89,6 +89,14 @@ final class AnalyticsController extends BazaarController {
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'get_aggregate' ),
 					'permission_callback' => $this->require_admin(),
+					'args'                => array(
+						'days' => array(
+							'type'    => 'integer',
+							'default' => 30,
+							'minimum' => 1,
+							'maximum' => 365,
+						),
+					),
 				),
 			)
 		);

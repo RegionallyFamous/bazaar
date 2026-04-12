@@ -607,6 +607,32 @@
 	flex-shrink: 0;
 }
 
+/* Hidden outside the shell; visible when embedded so users can launch from the manage page */
+.bazaar-card__open {
+	display: none;
+}
+
+html.bazaar-in-shell .bazaar-card__open {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: var(--bz-accent);
+	color: #fff;
+	border: none;
+	border-radius: 6px;
+	padding: 5px 10px;
+	font-size: 11.5px;
+	font-weight: 600;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background var(--bz-ease), transform var(--bz-ease);
+}
+
+html.bazaar-in-shell .bazaar-card__open:hover {
+	background: var(--bz-accent-dark, #1a5fa0);
+	transform: translateY(-1px);
+}
+
 /* ---------------------------------------------------------------------------
  * Toggle switch
  * --------------------------------------------------------------------------*/
@@ -979,6 +1005,7 @@
 	border-color: color-mix( in srgb, var(--card-accent) 70%, #1e293b ) !important;
 }
 
+/* Legacy "Installed" disabled state — kept for any code paths that may still set it */
 .bazaar-core-card__cta--installed {
 	background: var(--bz-green-bg) !important;
 	border-color: color-mix( in srgb, var(--bz-green) 22%, transparent ) !important;
@@ -989,6 +1016,17 @@
 .bazaar-core-card__cta--installed::before {
 	content: '✓';
 	font-weight: 700;
+}
+
+/* "Open" CTA — shown for already-installed apps, navigates to them in the shell */
+.bazaar-core-card__cta--open {
+	background: var(--bz-accent) !important;
+	border-color: transparent !important;
+	color: #fff !important;
+}
+
+.bazaar-core-card__cta--open:hover {
+	background: var(--bz-accent-dark, color-mix( in srgb, var(--bz-accent) 80%, #000 )) !important;
 }
 
 /* ─── Skeleton loaders ─────────────────────────────────────────────────── */
@@ -1157,21 +1195,33 @@ html.bazaar-in-shell .bazaar-tagline {
 	color: var(--bz-text-muted);
 }
 
-/* ── Upload zone: centered, spacious, prominent ─────────────────────────── */
+/* ── App Directory: full-width, padded — leads the page ─────────────────── */
+
+html.bazaar-in-shell .bazaar-core-section {
+	padding: 40px 48px 0;
+}
+
+/* ── Upload zone: secondary — sits below the App Directory ───────────────── */
 
 html.bazaar-in-shell .bazaar-upload-section {
-	max-width: 580px;
-	margin: 36px auto 0;
 	padding: 0 48px;
+	margin-top: 40px;
 	box-sizing: border-box;
 }
 
+html.bazaar-in-shell .bazaar-upload-section__heading {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--bz-text-muted);
+	margin: 0 0 12px;
+}
+
 html.bazaar-in-shell .bazaar-dropzone {
-	padding: 48px 40px;
-	border-radius: 16px;
+	padding: 28px 32px;
+	border-radius: 12px;
 	border-width: 1.5px;
 	background: #fff;
-	box-shadow: 0 1px 4px rgba(0,0,0,.06), 0 0 0 0 transparent;
+	box-shadow: 0 1px 3px rgba(0,0,0,.04);
 	transition: border-color var(--bz-ease), box-shadow var(--bz-ease), transform var(--bz-ease);
 }
 
@@ -1186,24 +1236,18 @@ html.bazaar-in-shell .bazaar-dropzone--hover {
 
 /* Specificity (0,3,1) — higher than both .--hover (0,2,0) and :hover (0,3,0) variants */
 html.bazaar-in-shell .bazaar-dropzone .bazaar-dropzone__icon-wrap {
-	width: 60px;
-	height: 60px;
+	width: 48px;
+	height: 48px;
 }
 
 html.bazaar-in-shell .bazaar-dropzone__icon {
-	font-size: 30px;
-	width: 30px;
-	height: 30px;
+	font-size: 24px;
+	width: 24px;
+	height: 24px;
 }
 
 html.bazaar-in-shell .bazaar-dropzone__text {
-	font-size: 15px;
-}
-
-/* ── App Directory: full-width, padded — matches gallery layout ──────────── */
-
-html.bazaar-in-shell .bazaar-core-section {
-	padding: 0 48px 8px;
+	font-size: 13.5px;
 }
 
 /* ── Gallery section: full-width, padded ─────────────────────────────────── */

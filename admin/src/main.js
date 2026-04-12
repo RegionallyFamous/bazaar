@@ -456,6 +456,13 @@ gallery.addEventListener( 'change', async ( e ) => {
 } );
 
 gallery.addEventListener( 'click', ( e ) => {
+	// Open ware in shell (only meaningful when embedded in the shell iframe).
+	const openBtn = e.target.closest( '[data-action="open"]' );
+	if ( openBtn?.dataset.slug ) {
+		notifyShell( 'bazaar:navigate', { ware: openBtn.dataset.slug } );
+		return;
+	}
+
 	const btn = e.target.closest( '[data-action="delete"]' );
 	if ( ! btn ) {
 		return;
@@ -579,22 +586,26 @@ function insertWareCard( ware ) {
 				</p>
 				${ descHtml }
 			</div>
-			<div class="bazaar-card__actions">
-				<label class="bazaar-toggle" title="${ escAttr( toggleLabel ) }">
-					<input type="checkbox" class="bazaar-toggle__input"
-						data-slug="${ escAttr( ware.slug ) }" data-action="toggle"
-						${ isEnabled ? 'checked' : '' }
-						aria-label="${ escAttr( toggleLabel ) }">
-					<span class="bazaar-toggle__slider" aria-hidden="true"></span>
-				</label>
-				<button type="button" class="bazaar-card__delete"
-					data-slug="${ escAttr( ware.slug ) }" data-action="delete"
-					data-confirm="${ escAttr( deleteConfirm ) }"
-					aria-label="${ escAttr( deleteLabel ) }">
-					<span class="dashicons dashicons-trash" aria-hidden="true"></span>
-				</button>
-			</div>
-		</div>`;
+		<div class="bazaar-card__actions">
+			<button type="button" class="bazaar-card__open"
+				data-slug="${ escAttr( ware.slug ) }" data-action="open"
+				aria-label="${ escAttr( sprintf( /* translators: %s: ware name */ __( 'Open %s', 'bazaar' ), ware.name ) ) }"
+				>${ __( 'Open', 'bazaar' ) }</button>
+			<label class="bazaar-toggle" title="${ escAttr( toggleLabel ) }">
+				<input type="checkbox" class="bazaar-toggle__input"
+					data-slug="${ escAttr( ware.slug ) }" data-action="toggle"
+					${ isEnabled ? 'checked' : '' }
+					aria-label="${ escAttr( toggleLabel ) }">
+				<span class="bazaar-toggle__slider" aria-hidden="true"></span>
+			</label>
+			<button type="button" class="bazaar-card__delete"
+				data-slug="${ escAttr( ware.slug ) }" data-action="delete"
+				data-confirm="${ escAttr( deleteConfirm ) }"
+				aria-label="${ escAttr( deleteLabel ) }">
+				<span class="dashicons dashicons-trash" aria-hidden="true"></span>
+			</button>
+		</div>
+	</div>`;
 
 	gallery.prepend( card );
 	applyFilters();
@@ -727,16 +738,24 @@ function renderCoreCard( app, isInstalled ) {
 		.join( '' );
 
 	const installedBadge = isInstalled
-		? '<span class="bazaar-core-card__installed-badge">' + escHtml( __( 'Installed', 'bazaar' ) ) + '</span>'
+		? '<span class="bazaar-core-card__installed-badge">' + escHtml( __( '✓ Installed', 'bazaar' ) ) + '</span>'
 		: '';
 
-	const btnClass = isInstalled
-		? 'button bazaar-core-card__cta bazaar-core-card__cta--installed'
-		: 'button bazaar-core-card__cta bazaar-core-card__cta--install';
-
-	const btnLabel = isInstalled
-		? __( 'Installed', 'bazaar' )
-		: __( 'Install', 'bazaar' );
+	// Installed apps get an "Open" button; uninstalled get an "Install" button.
+	const ctaHtml = isInstalled
+		? `<button
+			type="button"
+			class="button bazaar-core-card__cta bazaar-core-card__cta--open"
+			data-core-slug="${ escAttr( app.slug ) }"
+			aria-label="${ escAttr( sprintf( /* translators: %s: app name */ __( 'Open %s', 'bazaar' ), app.name ) ) }"
+		>${ escHtml( __( 'Open', 'bazaar' ) ) }</button>`
+		: `<button
+			type="button"
+			class="button bazaar-core-card__cta bazaar-core-card__cta--install"
+			data-core-slug="${ escAttr( app.slug ) }"
+			data-download-url="${ escAttr( app.download_url ) }"
+			aria-label="${ escAttr( sprintf( /* translators: %s: app name */ __( 'Install %s', 'bazaar' ), app.name ) ) }"
+		>${ escHtml( __( 'Install', 'bazaar' ) ) }</button>`;
 
 	card.innerHTML = `
 		${ installedBadge }
@@ -757,14 +776,7 @@ function renderCoreCard( app, isInstalled ) {
 		</div>
 		<p class="bazaar-core-card__desc">${ escHtml( app.description ) }</p>
 		<div class="bazaar-core-card__tags">${ tagsHtml }</div>
-		<button
-			type="button"
-			class="${ escAttr( btnClass ) }"
-			data-core-slug="${ escAttr( app.slug ) }"
-			data-download-url="${ escAttr( app.download_url ) }"
-			${ isInstalled ? 'disabled' : '' }
-			aria-label="${ escAttr( sprintf( /* translators: %s: app name */ __( 'Install %s', 'bazaar' ), app.name ) ) }"
-		>${ escHtml( btnLabel ) }</button>
+		${ ctaHtml }
 	`;
 
 	return card;
@@ -834,17 +846,19 @@ async function handleCoreInstall( btn ) {
 			data: { url: downloadUrl },
 		} );
 
-		btn.textContent = __( 'Installed', 'bazaar' );
+		// Swap the "Install" button out for an "Open" button.
+		btn.textContent = __( 'Open', 'bazaar' );
 		btn.classList.remove( 'bazaar-core-card__cta--install' );
-		btn.classList.add( 'bazaar-core-card__cta--installed' );
-		btn.disabled = true;
+		btn.classList.add( 'bazaar-core-card__cta--open' );
+		btn.disabled = false;
+		btn.removeAttribute( 'data-download-url' );
 
 		// Inject the installed corner badge if not already present.
 		const cardEl = btn.closest( '.bazaar-core-card' );
 		if ( cardEl && ! cardEl.querySelector( '.bazaar-core-card__installed-badge' ) ) {
 			const badge = document.createElement( 'span' );
 			badge.className = 'bazaar-core-card__installed-badge';
-			badge.textContent = __( 'Installed', 'bazaar' );
+			badge.textContent = __( '✓ Installed', 'bazaar' );
 			cardEl.prepend( badge );
 		}
 
@@ -864,9 +878,16 @@ async function handleCoreInstall( btn ) {
 
 if ( coreGrid ) {
 	coreGrid.addEventListener( 'click', ( e ) => {
-		const btn = e.target.closest( '.bazaar-core-card__cta--install' );
-		if ( btn ) {
-			handleCoreInstall( /** @type {HTMLButtonElement} */ ( btn ) );
+		const installBtn = e.target.closest( '.bazaar-core-card__cta--install' );
+		if ( installBtn ) {
+			handleCoreInstall( /** @type {HTMLButtonElement} */ ( installBtn ) );
+			return;
+		}
+
+		// "Open" button on already-installed apps: navigate in the shell.
+		const openBtn = e.target.closest( '.bazaar-core-card__cta--open' );
+		if ( openBtn?.dataset.coreSlug ) {
+			notifyShell( 'bazaar:navigate', { ware: openBtn.dataset.coreSlug } );
 		}
 	} );
 

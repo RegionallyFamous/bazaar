@@ -150,12 +150,48 @@ final class HealthController extends BazaarController {
 	// ─── Helpers ──────────────────────────────────────────────────────────
 
 	/**
+	 * Return true only for public http/https URLs.
+	 * Rejects localhost, loopback, and RFC-1918 private ranges to prevent
+	 * server-side request forgery via manifest-declared health_check URLs.
+	 *
+	 * @param string $url URL to validate.
+	 * @return bool
+	 */
+	private function is_safe_url( string $url ): bool {
+		$parsed = wp_parse_url( $url );
+		if ( ! is_array( $parsed ) ) {
+			return false;
+		}
+		$scheme = $parsed['scheme'] ?? '';
+		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) ) {
+			return false;
+		}
+		$host = $parsed['host'] ?? '';
+		if ( '' === $host ) {
+			return false;
+		}
+		if ( in_array( strtolower( $host ), array( 'localhost', '127.0.0.1', '::1' ), true ) ) {
+			return false;
+		}
+		if ( filter_var( $host, FILTER_VALIDATE_IP ) !== false
+			&& filter_var( $host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) === false
+		) {
+			return false;
+		}
+		return true;
+	}
+
+	/**
 	 * HTTP-probe a URL and return a normalised status string.
 	 *
 	 * @param string $url URL to probe.
 	 * @return 'ok'|'warn'|'error'|'unknown'
 	 */
 	private function probe( string $url ): string {
+		if ( ! $this->is_safe_url( $url ) ) {
+			return 'unknown';
+		}
+
 		$response = wp_remote_get(
 			$url,
 			array(
@@ -185,9 +221,13 @@ final class HealthController extends BazaarController {
 	public static function cron_refresh(): void {
 		delete_transient( 'bazaar_health_all' );
 
-		$registry = new \Bazaar\WareRegistry();
+		$registry    = new \Bazaar\WareRegistry();
+		$url_checker = new self( $registry );
 		foreach ( $registry->get_all() as $ware ) {
 			if ( empty( $ware['health_check'] ) ) {
+				continue;
+			}
+			if ( ! $url_checker->is_safe_url( $ware['health_check'] ) ) {
 				continue;
 			}
 			$response = wp_remote_get(

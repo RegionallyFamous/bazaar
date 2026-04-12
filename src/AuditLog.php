@@ -63,7 +63,7 @@ final class AuditLog {
 		);
 		if ( false === $inserted ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'Bazaar AuditLog: failed to insert record for ' . $slug . '/' . $event . ' — ' . $wpdb->last_error );
+			error_log( 'Bazaar AuditLog: failed to insert audit record. Check database configuration.' );
 		}
 	}
 
