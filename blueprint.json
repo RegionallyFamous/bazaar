@@ -12,8 +12,11 @@
       "pluginData": {
         "resource": "url",
         "url": "https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/bazaar.zip"
-      },
-      "activate": true
+      }
+    },
+    {
+      "step": "wp-cli",
+      "command": "wp plugin activate bazaar"
     },
     {
       "step": "wp-cli",
