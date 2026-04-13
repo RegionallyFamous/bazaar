@@ -423,3 +423,44 @@ jobs:
         run: |
           gh release create "${GITHUB_REF_NAME}" --generate-notes --title "${GITHUB_REF_NAME}" || true
           gh release upload "${GITHUB_REF_NAME}" wares-dist/* --clobber
+
+  # ---------------------------------------------------------------------------
+  # Sync docs/ → GitHub Wiki on every push to main
+  # ---------------------------------------------------------------------------
+  sync-wiki:
+    name: Sync wiki
+    runs-on: ubuntu-latest
+    needs: [ php, js ]
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Clone wiki repo
+        run: git clone https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.wiki.git /tmp/wiki
+
+      - name: Copy docs into wiki (skip internal files)
+        run: |
+          # Copy every .md in docs/ except internal/audit files
+          for f in docs/*.md; do
+            base=$(basename "$f")
+            case "$base" in
+              10-pass-audit-todos.md) continue ;;
+            esac
+            cp "$f" /tmp/wiki/"$base"
+          done
+
+      - name: Commit and push if anything changed
+        run: |
+          cd /tmp/wiki
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No wiki changes."
+          else
+            git commit -m "docs: sync from docs/ @ ${{ github.sha }}"
+            git push
+          fi
