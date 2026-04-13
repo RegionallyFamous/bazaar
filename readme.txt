@@ -3,8 +3,8 @@ Contributors: nickhblair
 Tags: admin, apps, marketplace, tools, dashboard
 Requires at least: 6.6
 Tested up to: 6.7
-Requires PHP: 8.1
-Stable tag: 1.1.1
+Requires PHP: 8.2
+Stable tag: 1.2.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -106,10 +106,42 @@ Yes. Wares run in an iframe with `allow-same-origin` in the sandbox, so they can
 
 == Changelog ==
 
+= 1.2.2 =
+* Fix: no .wp ware files on previous releases (build-wares TypeScript error in wares/flow now resolved)
+* Fix: AbortError from toolbar context view transition no longer surfaces as unhandled rejection
+* Fix: node_modules excluded from plugin zip; self-heal on existing installs
+* Fix: UpdateTelemetry guard and wp_json_encode false-return handling
+* Chore: version numbers synced across bazaar.php, package.json, and readme.txt
+
+= 1.2.1 =
+* Chore: enable update-check telemetry endpoint (opt-out via WP-CLI)
+
+= 1.2.0 =
+* Security: WareSigner blocks signingKey in production; SSRF centralised via UrlSafety::is_safe_url()
+* Security: TOCTOU zip fix — SHA-256 hash-verify archive between validate() and extract()
+* Security: WareUpdater now snapshots files before delete and restores from backup on failed update
+* Security: CspPolicy strips CR/LF/semicolons from directive values to prevent header injection
+* Security: SVG sanitisation before serving; importmap stripped before server-controlled injection
+* Security: Symlink traversal prevention in WareLoader; audit log and error payload caps
+* Visual: 10-pass admin UI polish — token system, entry animations, skeleton loader, dark notification drawer
+* Fix: pre-existing PHPCS/PHPStan errors in Plugin.php and UpdateTelemetry.php
+
+= 1.1.1 =
+* Fix: nonce refresh, nav serialisation, atomic updater, badge throttle
+* Fix: ErrorBoundary built into design package dist; pre-commit CI gate added
+
+= 1.1.0 =
+* Feature: rename ware slugs to brand names and update descriptions
+* Feature: auto-rename ware slugs and directories on first boot after upgrade
+* Fix: guard class_alias against missing updater class
+
 = 1.0.0 =
 * Initial release
 
 == Upgrade Notice ==
+
+= 1.2.2 =
+Fixes missing .wp ware files from the v1.2.0 and v1.2.1 releases that caused 502 errors when installing core apps. Upgrade recommended.
 
 = 1.0.0 =
 Initial release.
