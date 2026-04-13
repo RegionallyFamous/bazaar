@@ -422,6 +422,8 @@ jobs:
 
       - name: Copy assets into gh-pages root
         run: |
+          # Ensure Jekyll is bypassed so GitHub Pages serves files directly
+          touch .nojekyll
           # The versioned zip (bazaar-1.x.y.zip) becomes the stable bazaar.zip
           find /tmp/artifacts -name 'bazaar-*.zip' | head -1 | xargs -I{} cp {} ./bazaar.zip
           for WARE in board flow ledger mosaic sine swatch tome; do
@@ -432,7 +434,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add bazaar.zip board.wp flow.wp ledger.wp mosaic.wp sine.wp swatch.wp tome.wp
+          git add .nojekyll bazaar.zip board.wp flow.wp ledger.wp mosaic.wp sine.wp swatch.wp tome.wp
           if git diff --cached --quiet; then
             echo "Assets already up to date."
           else
