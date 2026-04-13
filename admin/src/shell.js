@@ -444,6 +444,8 @@ const homeScreen = new HomeScreen( {
 	sortedEnabled,
 	badgeMap,
 	pinnedSet,
+	restUrl,
+	apiFetch,
 } );
 if ( homePanel ) {
 	homeScreen.mount( homePanel );
@@ -980,6 +982,7 @@ function navigateTo( slug, route ) {
 	updateUrl( slug, route );
 	pushRecent( slug );
 	recordView( slug );
+	homeScreen.recordOpen( slug );
 	renderToolbarContext( slug );
 	renderWinBar( slug );
 	renderStatusBar( slug );

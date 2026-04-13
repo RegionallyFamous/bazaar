@@ -131,6 +131,9 @@ final class Plugin {
 		if ( ! wp_next_scheduled( 'bazaar_health_refresh' ) ) {
 			wp_schedule_event( time() + 300, 'bazaar_half_hour', 'bazaar_health_refresh' );
 		}
+
+		// Queue a one-time redirect so the user lands on Bazaar immediately.
+		set_transient( '_bazaar_activation_redirect', true, 60 );
 	}
 
 	/**
@@ -212,6 +215,7 @@ final class Plugin {
 
 		add_action( 'admin_init', array( self::class, 'ensure_wares_directory' ) );
 		add_action( 'admin_init', array( self::class, 'register_privacy_policy_content' ) );
+		add_action( 'admin_init', array( self::class, 'maybe_redirect_after_activation' ) );
 		add_action( 'admin_menu', array( $this, 'register_admin_menus' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_assets' ) );
 
@@ -401,6 +405,28 @@ final class Plugin {
 				$wp_filesystem->put_contents( $htaccess, $htaccess_content, FS_CHMOD_FILE );
 			}
 		}
+	}
+
+	/**
+	 * Redirect to the Bazaar screen once after plugin activation.
+	 *
+	 * A 60-second transient is set inside activate(). On the next admin_init
+	 * we consume it and redirect so new users land on Bazaar immediately
+	 * rather than staying on the Plugins screen.
+	 *
+	 * Skipped for bulk activation and network-admin to avoid disorienting
+	 * admins who are activating multiple plugins at once.
+	 */
+	public static function maybe_redirect_after_activation(): void {
+		if ( ! get_transient( '_bazaar_activation_redirect' ) ) {
+			return;
+		}
+		delete_transient( '_bazaar_activation_redirect' );
+		if ( is_network_admin() || isset( $_GET['activate-multi'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return;
+		}
+		wp_safe_redirect( admin_url( 'admin.php?page=bazaar' ) );
+		exit;
 	}
 
 	/**

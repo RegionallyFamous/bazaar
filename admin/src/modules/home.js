@@ -3,9 +3,26 @@
  *
  * A built-in pseudo-ware (slug "home") rendered directly in the shell.
  * Wares can post a `bazaar:widget` message to surface a summary tile here.
+ *
+ * First-run flow
+ * ──────────────
+ * On first visit (localStorage key `bazaar.welcomed` absent) the screen
+ * renders a welcome panel that fetches the core-apps catalog and presents
+ * three featured apps with one-click install buttons. Once the user
+ * installs an app or clicks "Skip", the flag is set and subsequent
+ * visits show the normal home grid with a "Getting Started" progress card
+ * until both milestones (install + open) are completed or dismissed.
  */
 
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
+
+// ── localStorage keys ────────────────────────────────────────────────────────
+const LS_WELCOMED = 'bazaar.welcomed';
+const LS_GS_DONE = 'bazaar.gs.done';
+const LS_GS_OPENED = 'bazaar.gs.opened';
+
+// Slugs shown in the welcome screen, in order of prominence.
+const FEATURED_SLUGS = [ 'mosaic', 'ledger', 'flow' ];
 
 export class HomeScreen {
 	/**
@@ -16,10 +33,12 @@ export class HomeScreen {
 	 *   sortedEnabled: (wareMap: Map) => Object[],
 	 *   badgeMap:      Map<string, number>,
 	 *   pinnedSet:     Set<string>,
+	 *   restUrl:       string,
+	 *   apiFetch:      (url: string, init?: Object) => Promise<Response>,
 	 * }} deps
 	 */
-	constructor( { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap, pinnedSet } ) {
-		this._deps = { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap, pinnedSet };
+	constructor( { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap, pinnedSet, restUrl, apiFetch } ) {
+		this._deps = { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap, pinnedSet, restUrl, apiFetch };
 		this._widgets = new Map(); // slug → { count?, label? }
 		this._el = null;
 	}
@@ -42,6 +61,24 @@ export class HomeScreen {
 	}
 
 	/**
+	 * Called by shell.js whenever the user navigates to a non-shell ware.
+	 * Records the "opened an app" getting-started milestone.
+	 *
+	 * @param {string} slug
+	 */
+	recordOpen( slug ) {
+		if ( slug === 'home' || slug === 'manage' ) {
+			return;
+		}
+		if ( ! localStorage.getItem( LS_GS_OPENED ) ) {
+			localStorage.setItem( LS_GS_OPENED, '1' );
+			// Re-render the home screen if it's currently visible so the step
+			// checks off in real time when the user navigates back.
+			this.refresh();
+		}
+	}
+
+	/**
 	 * Register or update a widget tile from a ware's `bazaar:widget` message.
 	 *
 	 * @param {string}                             slug
@@ -55,14 +92,225 @@ export class HomeScreen {
 	// ── Private ─────────────────────────────────────────────────────────────
 
 	_render() {
-		const { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap, pinnedSet } = this._deps;
 		const el = this._el;
 		if ( ! el ) {
 			return;
 		}
 		el.innerHTML = '';
 
+		if ( ! localStorage.getItem( LS_WELCOMED ) ) {
+			this._renderWelcome( el );
+			return;
+		}
+
+		this._renderHome( el );
+	}
+
+	// ── Welcome screen ───────────────────────────────────────────────────────
+
+	_renderWelcome( el ) {
+		const { restUrl, apiFetch, navigateTo } = this._deps;
+
+		const wrap = document.createElement( 'div' );
+		wrap.className = 'bsh-welcome';
+
+		// ── Hero
+		const hero = document.createElement( 'div' );
+		hero.className = 'bsh-welcome__hero';
+
+		const title = Object.assign( document.createElement( 'h1' ), {
+			className: 'bsh-welcome__title',
+			textContent: __( 'Welcome to Bazaar', 'bazaar' ),
+		} );
+		const sub = Object.assign( document.createElement( 'p' ), {
+			className: 'bsh-welcome__sub',
+			textContent: __( 'Install apps from the catalog below — each one becomes a full-screen mini-app right here in your admin.', 'bazaar' ),
+		} );
+		hero.append( title, sub );
+
+		// ── Featured apps grid (filled asynchronously)
+		const section = document.createElement( 'div' );
+		section.className = 'bsh-welcome__section';
+
+		const sectionTitle = Object.assign( document.createElement( 'h2' ), {
+			className: 'bsh-welcome__section-title',
+			textContent: __( 'Featured apps', 'bazaar' ),
+		} );
+		section.appendChild( sectionTitle );
+
+		const grid = document.createElement( 'div' );
+		grid.className = 'bsh-welcome__grid';
+
+		// Skeleton cards while we fetch
+		for ( let i = 0; i < 3; i++ ) {
+			const sk = document.createElement( 'div' );
+			sk.className = 'bsh-welcome__card bsh-welcome__card--skeleton';
+			sk.setAttribute( 'aria-hidden', 'true' );
+			grid.appendChild( sk );
+		}
+		section.appendChild( grid );
+
+		// ── Footer actions
+		const footer = document.createElement( 'div' );
+		footer.className = 'bsh-welcome__footer';
+
+		const skipBtn = document.createElement( 'button' );
+		skipBtn.type = 'button';
+		skipBtn.className = 'bsh-welcome__skip';
+		skipBtn.textContent = __( 'Skip setup, take me to the dashboard', 'bazaar' );
+		skipBtn.addEventListener( 'click', () => {
+			localStorage.setItem( LS_WELCOMED, '1' );
+			this._render();
+		} );
+		footer.appendChild( skipBtn );
+
+		wrap.append( hero, section, footer );
+		el.appendChild( wrap );
+
+		// Fetch featured apps and replace skeletons
+		( async () => {
+			try {
+				const r = await apiFetch( `${ restUrl }/core-apps` );
+				if ( ! r.ok ) {
+					return;
+				}
+				const apps = await r.json();
+				if ( ! Array.isArray( apps ) ) {
+					return;
+				}
+
+				// Pick the three featured slugs in order; fall back to first three.
+				const featured = [
+					...FEATURED_SLUGS
+						.map( ( s ) => apps.find( ( a ) => a.slug === s ) )
+						.filter( Boolean ),
+					...apps.filter( ( a ) => ! FEATURED_SLUGS.includes( a.slug ) ),
+				].slice( 0, 3 );
+
+				grid.innerHTML = '';
+				for ( const app of featured ) {
+					grid.appendChild( this._renderWelcomeCard( app, restUrl, navigateTo ) );
+				}
+			} catch {
+				// Network error or REST unavailable — leave skeletons hidden.
+				grid.innerHTML = '';
+			}
+		} )();
+	}
+
+	/**
+	 * @param {Object}   app        Catalog entry.
+	 * @param {string}   restUrl    Bazaar REST base URL.
+	 * @param {Function} navigateTo Shell navigation callback.
+	 * @return {HTMLElement} Rendered card element.
+	 */
+	_renderWelcomeCard( app, restUrl, navigateTo ) {
+		const { wareMap, apiFetch } = this._deps;
+
+		const isInstalled = wareMap.has( app.slug );
+
+		const card = document.createElement( 'div' );
+		card.className = 'bsh-welcome__card';
+
+		// Icon
+		const iconWrap = document.createElement( 'div' );
+		iconWrap.className = 'bsh-welcome__card-icon-wrap';
+
+		const initial = Object.assign( document.createElement( 'span' ), {
+			className: 'bsh-welcome__card-initial',
+			textContent: ( app.name ?? '?' ).charAt( 0 ).toUpperCase(),
+			'aria-hidden': 'true',
+		} );
+
+		const img = document.createElement( 'img' );
+		img.src = isInstalled
+			? `${ restUrl }/serve/${ encodeURIComponent( app.slug ) }/icon.svg`
+			: ( app.icon_url ?? '' );
+		img.alt = '';
+		img.className = 'bsh-welcome__card-icon';
+		img.onerror = () => img.style.display = 'none';
+		iconWrap.append( initial, img );
+
+		// Meta
+		const meta = document.createElement( 'div' );
+		meta.className = 'bsh-welcome__card-meta';
+
+		const name = Object.assign( document.createElement( 'h3' ), {
+			className: 'bsh-welcome__card-name',
+			textContent: app.name ?? '',
+		} );
+		const desc = Object.assign( document.createElement( 'p' ), {
+			className: 'bsh-welcome__card-desc',
+			textContent: app.description ?? '',
+		} );
+		meta.append( name, desc );
+
+		// CTA
+		const cta = document.createElement( 'button' );
+		cta.type = 'button';
+		cta.className = 'bsh-welcome__card-cta';
+
+		if ( isInstalled ) {
+			cta.textContent = __( 'Open', 'bazaar' );
+			cta.addEventListener( 'click', () => {
+				localStorage.setItem( LS_WELCOMED, '1' );
+				navigateTo( app.slug );
+			} );
+		} else {
+			cta.textContent = __( 'Install', 'bazaar' );
+			cta.addEventListener( 'click', async () => {
+				if ( ! app.download_url ) {
+					return;
+				}
+				cta.disabled = true;
+				cta.textContent = __( 'Installing…', 'bazaar' );
+
+				try {
+					const r = await apiFetch( `${ restUrl }/core-apps/install`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify( { url: app.download_url } ),
+					} );
+					if ( ! r.ok ) {
+						throw new Error( `HTTP ${ r.status }` );
+					}
+					const data = await r.json();
+
+					// Mark welcomed and navigate to the new ware.
+					localStorage.setItem( LS_WELCOMED, '1' );
+					if ( data?.ware ) {
+						// Notify the shell so it registers the ware and expands the nav.
+						window.dispatchEvent(
+							new MessageEvent( 'message', {
+								data: { type: 'bazaar:ware-installed', ware: data.ware },
+							} )
+						);
+						navigateTo( data.ware.slug ?? app.slug );
+					} else {
+						this._render();
+					}
+				} catch {
+					cta.disabled = false;
+					cta.textContent = __( 'Install', 'bazaar' );
+				}
+			} );
+		}
+
+		card.append( iconWrap, meta, cta );
+		return card;
+	}
+
+	// ── Normal home ──────────────────────────────────────────────────────────
+
+	_renderHome( el ) {
+		const { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap, pinnedSet } = this._deps;
 		const enabled = sortedEnabled( wareMap );
+
+		// Getting Started card (shown until dismissed or all milestones complete)
+		const gsEl = this._renderGettingStarted( wareMap );
+		if ( gsEl ) {
+			el.appendChild( gsEl );
+		}
 
 		if ( enabled.length === 0 ) {
 			const empty = document.createElement( 'div' );
@@ -71,7 +319,6 @@ export class HomeScreen {
 			const art = document.createElement( 'div' );
 			art.className = 'bsh-home__empty-art';
 			art.setAttribute( 'aria-hidden', 'true' );
-			// Three staggered placeholder cards to hint at what the grid looks like.
 			for ( let i = 0; i < 3; i++ ) {
 				const ph = document.createElement( 'div' );
 				ph.className = 'bsh-home__empty-ph';
@@ -291,5 +538,139 @@ export class HomeScreen {
 
 		section.appendChild( grid );
 		el.appendChild( section );
+	}
+
+	// ── Getting Started card ─────────────────────────────────────────────────
+
+	/**
+	 * Build the Getting Started card element, or return null if it should
+	 * not be shown (already done / dismissed, or both milestones complete).
+	 *
+	 * @param {Map} wareMap Current ware registry map.
+	 * @return {HTMLElement|null} Card element, or null when hidden.
+	 */
+	_renderGettingStarted( wareMap ) {
+		if ( localStorage.getItem( LS_GS_DONE ) ) {
+			return null;
+		}
+
+		const hasWare = wareMap.size > 0;
+		const hasOpened = !! localStorage.getItem( LS_GS_OPENED );
+
+		// Auto-dismiss once all milestones are done.
+		if ( hasWare && hasOpened ) {
+			localStorage.setItem( LS_GS_DONE, '1' );
+			return null;
+		}
+
+		const { navigateTo } = this._deps;
+
+		const card = document.createElement( 'div' );
+		card.className = 'bsh-gs';
+
+		// Header
+		const hdr = document.createElement( 'div' );
+		hdr.className = 'bsh-gs__header';
+
+		const hdrTitle = Object.assign( document.createElement( 'span' ), {
+			className: 'bsh-gs__title',
+			textContent: __( 'Getting started', 'bazaar' ),
+		} );
+
+		const dismissBtn = document.createElement( 'button' );
+		dismissBtn.type = 'button';
+		dismissBtn.className = 'bsh-gs__dismiss';
+		dismissBtn.setAttribute( 'aria-label', __( 'Dismiss getting started card', 'bazaar' ) );
+		dismissBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>';
+		dismissBtn.addEventListener( 'click', () => {
+			localStorage.setItem( LS_GS_DONE, '1' );
+			card.classList.add( 'bsh-gs--fade-out' );
+			card.addEventListener( 'animationend', () => card.remove(), { once: true } );
+		} );
+
+		hdr.append( hdrTitle, dismissBtn );
+
+		// Steps list
+		const steps = document.createElement( 'ul' );
+		steps.className = 'bsh-gs__steps';
+
+		const makeStep = ( done, label, actionLabel, onAction ) => {
+			const li = document.createElement( 'li' );
+			li.className = 'bsh-gs__step' + ( done ? ' bsh-gs__step--done' : '' );
+
+			const check = document.createElementNS( 'http://www.w3.org/2000/svg', 'svg' );
+			check.setAttribute( 'class', 'bsh-gs__step-icon' );
+			check.setAttribute( 'viewBox', '0 0 20 20' );
+			check.setAttribute( 'width', '20' );
+			check.setAttribute( 'height', '20' );
+			check.setAttribute( 'aria-hidden', 'true' );
+			const circle = document.createElementNS( 'http://www.w3.org/2000/svg', 'circle' );
+			circle.setAttribute( 'cx', '10' );
+			circle.setAttribute( 'cy', '10' );
+			circle.setAttribute( 'r', '9' );
+			check.appendChild( circle );
+			if ( done ) {
+				const tick = document.createElementNS( 'http://www.w3.org/2000/svg', 'path' );
+				tick.setAttribute( 'd', 'M5.5 10l3 3 6-6' );
+				tick.setAttribute( 'stroke-linecap', 'round' );
+				tick.setAttribute( 'stroke-linejoin', 'round' );
+				check.appendChild( tick );
+			}
+
+			const text = Object.assign( document.createElement( 'span' ), {
+				className: 'bsh-gs__step-label',
+				textContent: label,
+			} );
+
+			li.append( check, text );
+
+			if ( ! done && actionLabel && onAction ) {
+				const action = document.createElement( 'button' );
+				action.type = 'button';
+				action.className = 'bsh-gs__step-action';
+				action.textContent = actionLabel;
+				action.addEventListener( 'click', onAction );
+				li.appendChild( action );
+			}
+
+			return li;
+		};
+
+		steps.appendChild( makeStep(
+			hasWare,
+			__( 'Install your first app', 'bazaar' ),
+			__( 'Browse apps', 'bazaar' ),
+			() => navigateTo( 'manage' )
+		) );
+
+		steps.appendChild( makeStep(
+			hasOpened,
+			__( 'Open an app', 'bazaar' ),
+			hasWare ? __( 'Go to home', 'bazaar' ) : null,
+			hasWare ? () => {
+				// Navigate to the first enabled ware.
+				const first = [ ...wareMap.values() ].find( ( w ) => w.enabled );
+				if ( first ) {
+					navigateTo( first.slug );
+				}
+			} : null
+		) );
+
+		// Progress bar
+		const progress = document.createElement( 'div' );
+		progress.className = 'bsh-gs__progress';
+		const done = [ hasWare, hasOpened ].filter( Boolean ).length;
+		const bar = document.createElement( 'div' );
+		bar.className = 'bsh-gs__progress-bar';
+		bar.style.width = `${ ( done / 2 ) * 100 }%`;
+		const label = Object.assign( document.createElement( 'span' ), {
+			className: 'bsh-gs__progress-label',
+			/* translators: %1$d: completed steps, %2$d: total steps */
+			textContent: sprintf( __( '%1$d / %2$d complete', 'bazaar' ), done, 2 ),
+		} );
+		progress.append( bar, label );
+
+		card.append( hdr, steps, progress );
+		return card;
 	}
 }
