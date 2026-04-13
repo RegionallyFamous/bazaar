@@ -221,6 +221,10 @@ jobs:
           HUSKY: '0'
         run: npm ci
 
+      - name: Build @bazaar/client
+        working-directory: packages/client
+        run: npm run build
+
       - name: Test board
         working-directory: wares/board
         run: npm test
