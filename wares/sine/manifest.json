@@ -1,4 +1,5 @@
 {
+  "$schema": "../../manifest.schema.json",
   "name": "Sine",
   "slug": "sine",
   "version": "1.2.0",

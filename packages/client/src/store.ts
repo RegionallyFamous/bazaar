@@ -32,7 +32,22 @@ export interface WareStore {
 }
 
 /**
- * Create a store instance scoped to `slug`.
+ * Create a server-backed key-value store scoped to `slug`.
+ *
+ * Data is persisted in `wp_usermeta` — it survives browser storage clears
+ * and is per-user, per-ware. Pass `getBazaarContext()` as the second argument.
+ *
+ * @param slug    The ware slug (use `getBazaarContext().slug`).
+ * @param config  Client config from `getBazaarContext()`.
+ *
+ * @example
+ * import { createStore, getBazaarContext } from '@bazaar/client';
+ * const ctx   = getBazaarContext();
+ * const store = createStore( ctx.slug, ctx );
+ *
+ * await store.set( 'lastTab', 'settings' );
+ * const tab = await store.get<string>( 'lastTab' ); // → 'settings' | undefined
+ * await store.del( 'lastTab' );
  */
 export function createStore( slug: string, config: BazaarClientConfig ): WareStore {
 	const base = `${ config.restUrl }/bazaar/v1/store/${ encodeURIComponent( slug ) }`;

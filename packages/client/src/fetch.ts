@@ -47,7 +47,31 @@ export interface WpJsonOptions<T> extends RequestInit {
 /**
  * Fetch a WordPress REST endpoint and parse the JSON response.
  *
+ * Nonce and base URL are added automatically from `getBazaarContext()`.
+ *
+ * @param path  A full URL, or a path relative to the REST base (e.g. `/wp/v2/posts`).
+ * @param init  Standard `RequestInit` options plus an optional `validate` callback.
+ *
  * @throws {WpApiError} If the response status is not in the 2xx range.
+ *
+ * @example
+ * // GET
+ * const posts = await wpJson<WpPost[]>( '/wp/v2/posts?per_page=5' );
+ *
+ * @example
+ * // POST
+ * const created = await wpJson<{ id: number }>( '/bazaar/v1/my-ware/items', {
+ *   method: 'POST',
+ *   body:   JSON.stringify( { name: 'New item' } ),
+ * } );
+ *
+ * @example
+ * // DELETE with error handling
+ * try {
+ *   await wpJson( `/bazaar/v1/my-ware/items/${ id }`, { method: 'DELETE' } );
+ * } catch ( err ) {
+ *   if ( err instanceof WpApiError && err.status === 404 ) { ... }
+ * }
  */
 export async function wpJson<T>( path: string, init?: WpJsonOptions<T> ): Promise<T> {
   const response = await wpFetch( path, init );

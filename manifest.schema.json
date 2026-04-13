@@ -1,0 +1,254 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/RegionallyFamous/bazaar/main/manifest.schema.json",
+  "title": "Bazaar Ware Manifest",
+  "description": "Schema for manifest.json — the only WordPress-specific file in a Bazaar ware. Place manifest.json at the root of your .wp archive.",
+  "type": "object",
+  "required": ["name", "slug", "version"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference. Set to the $id of this schema for IDE validation."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Human-readable display name shown in the Bazaar gallery and browser tab.",
+      "examples": ["My Invoice App", "Board"]
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+      "minLength": 2,
+      "maxLength": 32,
+      "description": "Permanent unique identifier. Used as the directory name, REST path segment, and menu slug. Lowercase letters, numbers, and hyphens only. Cannot be changed after installation.",
+      "examples": ["my-invoice-app", "board"]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?(-.+)?$",
+      "description": "Semver-style version string. Displayed in the gallery and compared against registry.updateUrl to detect updates.",
+      "examples": ["1.0.0", "2.3.1", "1.0.0-beta.1"]
+    },
+    "author": {
+      "type": "string",
+      "maxLength": 128,
+      "description": "Creator name shown in the gallery card.",
+      "examples": ["Acme Corp", "Nick"]
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 280,
+      "description": "Short description shown in the gallery card. One or two sentences.",
+      "examples": ["Generate and manage invoices directly from wp-admin."]
+    },
+    "icon": {
+      "type": "string",
+      "description": "Path to the sidebar icon relative to the archive root. SVG recommended (embedded as data URI, scales cleanly). Falls back to dashicons-admin-plugins if missing.",
+      "default": "icon.svg",
+      "examples": ["icon.svg", "assets/logo.svg"]
+    },
+    "entry": {
+      "type": "string",
+      "description": "Path to the HTML entry file relative to the archive root. Bazaar loads this in the sandboxed iframe.",
+      "default": "index.html",
+      "examples": ["index.html", "dist/index.html"]
+    },
+    "menu": {
+      "type": "object",
+      "description": "Controls how the ware's WordPress admin page is registered. All sub-fields are optional.",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Label shown in the WordPress sidebar. Defaults to the top-level name field.",
+          "examples": ["Invoices", "Board"]
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "WordPress menu position integer. Use non-round numbers (e.g. 26 instead of 25) to avoid collisions.",
+          "examples": [8, 26, 30]
+        },
+        "capability": {
+          "type": "string",
+          "description": "WordPress capability required to see and access the ware. Enforced on both menu registration and the REST file-serving endpoint.",
+          "default": "manage_options",
+          "examples": ["manage_options", "edit_posts", "publish_posts", "read"]
+        },
+        "parent": {
+          "type": ["string", "null"],
+          "description": "When set, the ware becomes a submenu item under an existing top-level menu page slug (e.g. 'tools.php', 'options-general.php'). null = top-level item.",
+          "default": null,
+          "examples": [null, "tools.php", "options-general.php", "upload.php"]
+        },
+        "group": {
+          "type": ["string", "null"],
+          "description": "Arbitrary label used by the Bazaar shell to visually cluster related wares in the sidebar. Multiple wares with the same group value are rendered under a shared section header.",
+          "default": null,
+          "examples": [null, "finance", "creative", "productivity"]
+        }
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "description": "WordPress capability tokens this ware declares it needs. Displayed to the admin during installation. Unrecognised tokens are silently dropped.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "read:posts",
+          "write:posts",
+          "delete:posts",
+          "read:users",
+          "write:users",
+          "read:options",
+          "write:options",
+          "read:media",
+          "write:media",
+          "read:comments",
+          "write:comments",
+          "moderate:comments",
+          "manage:plugins",
+          "manage:themes",
+          "read:analytics"
+        ]
+      },
+      "uniqueItems": true,
+      "examples": [
+        ["read:posts", "write:posts"],
+        ["read:options", "write:options"]
+      ]
+    },
+    "permissions_network": {
+      "description": "Network access policy. null = no outbound fetch allowed (default). true = allow all outbound. Array = HTTPS URL allowlist. The WordPress site origin is always implicitly allowed.",
+      "oneOf": [
+        {
+          "type": "null",
+          "description": "No external network access (default)."
+        },
+        {
+          "type": "boolean",
+          "enum": [true],
+          "description": "Allow all outbound requests. Use only for trusted wares."
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^https://"
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Allowlist of HTTPS origins/URLs the ware may fetch from.",
+          "examples": [
+            ["https://api.stripe.com", "https://api.example.com"]
+          ]
+        }
+      ],
+      "default": null
+    },
+    "shared": {
+      "type": "array",
+      "description": "npm package names to load from the Bazaar shell's import map instead of bundling. Reduces download size — the browser caches shared packages across all wares. IMPORTANT: any package listed here must also be in rollupOptions.external in vite.config.ts.",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "default": [],
+      "examples": [
+        ["react", "react-dom", "react/jsx-runtime"],
+        ["vue"],
+        []
+      ]
+    },
+    "health_check": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL Bazaar polls to determine whether an external dependency is reachable. Result is surfaced as ok/warn/error in the shell UI.",
+      "examples": ["https://api.example.com/health"]
+    },
+    "jobs": {
+      "type": "array",
+      "description": "Background jobs Bazaar schedules via WP-Cron on install.",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "interval"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$",
+            "description": "Unique job identifier within this ware.",
+            "examples": ["sync_orders", "send_digest"]
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable description shown in the Bazaar shell.",
+            "examples": ["Sync orders from payment provider"]
+          },
+          "interval": {
+            "type": "string",
+            "description": "WP-Cron schedule name. Built-in options: hourly, twicedaily, daily, weekly. Custom schedule names are also accepted.",
+            "examples": ["hourly", "twicedaily", "daily", "weekly"]
+          },
+          "endpoint": {
+            "type": "string",
+            "description": "REST URL Bazaar calls when the job fires. Omit if you register a WP-Cron hook directly in a companion plugin.",
+            "examples": ["/wp-json/bazaar/v1/jobs/my-ware/sync_orders"]
+          }
+        }
+      }
+    },
+    "license": {
+      "type": "object",
+      "description": "License-key enforcement for paid wares.",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["free", "key"],
+          "default": "free",
+          "description": "'key' enables license-key gating."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL Bazaar POSTs { slug, key, site } to for remote validation.",
+          "examples": ["https://example.com/api/validate-license"]
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, installation is blocked until a valid key is stored."
+        }
+      }
+    },
+    "registry": {
+      "type": "object",
+      "description": "Links this ware to a remote registry for update checks and gallery listings.",
+      "additionalProperties": false,
+      "properties": {
+        "updateUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to a JSON file describing the latest available version. Must return at least a 'version' field.",
+          "examples": ["https://registry.example.com/wares/my-ware.json"]
+        },
+        "homepage": {
+          "type": "string",
+          "format": "uri",
+          "description": "Canonical page for this ware, shown in the gallery.",
+          "examples": ["https://example.com/wares/my-ware"]
+        },
+        "signature": {
+          "type": "string",
+          "description": "Base64-encoded RSA signature over the archive. Verified by Bazaar on install when a keypair is configured.",
+          "examples": ["base64encodedRSAsignature=="]
+        }
+      }
+    }
+  }
+}

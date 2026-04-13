@@ -26,6 +26,23 @@ export interface WareJobs {
 	trigger( jobId: string ): Promise<void>;
 }
 
+/**
+ * Create a jobs client scoped to `slug`.
+ *
+ * Jobs are declared in `manifest.json` and run server-side via WP-Cron.
+ * This client lets you list declared jobs and trigger them from the UI.
+ *
+ * @param slug    The ware slug (use `getBazaarContext().slug`).
+ * @param config  Client config from `getBazaarContext()`.
+ *
+ * @example
+ * import { createJobs, getBazaarContext } from '@bazaar/client';
+ * const ctx  = getBazaarContext();
+ * const jobs = createJobs( ctx.slug, ctx );
+ *
+ * const list = await jobs.list();
+ * await jobs.trigger( 'sync_orders' );
+ */
 export function createJobs( slug: string, config: BazaarClientConfig ): WareJobs {
 	const base = `${ config.restUrl }/bazaar/v1/jobs/${ encodeURIComponent( slug ) }`;
 	const hdr  = { 'X-WP-Nonce': config.nonce, 'Content-Type': 'application/json' };

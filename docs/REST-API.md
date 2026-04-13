@@ -1,6 +1,6 @@
 # REST API
 
-Bazaar registers endpoints under the `bazaar/v1` namespace. All endpoints require authentication — there is no anonymous access to ware files or management actions.
+Bazaar registers endpoints under the `bazaar/v1` namespace. Most endpoints require authentication. Two exceptions: `GET /sw` is always public (the service worker script), and `GET /serve/{slug}/{file}` allows unauthenticated access for static image assets (`.png`, `.jpg`, `.gif`, `.svg`, `.webp`, `.ico`) since those are loaded by `<img>` tags that cannot send a nonce.
 
 **Base URL:** `https://your-site.com/wp-json/bazaar/v1`
 
@@ -24,6 +24,8 @@ Bazaar registers endpoints under the `bazaar/v1` namespace. All endpoints requir
   - [Storage](#storage)
   - [Stream (SSE)](#stream-sse)
   - [Webhooks](#webhooks)
+  - [Service Worker](#service-worker)
+  - [Core Apps](#core-apps)
 - [Using the REST API from Inside Your Ware](#using-the-rest-api-from-inside-your-ware)
 - [Registering Your Own REST Endpoints](#registering-your-own-rest-endpoints)
 
@@ -182,7 +184,7 @@ Remove a ware from the registry and permanently delete its files.
 
 **Response — `200 OK`**
 ```json
-{ "success": true, "slug": "ledger" }
+{ "success": true, "slug": "ledger", "message": "\"ledger\" deleted successfully." }
 ```
 
 ---
@@ -193,7 +195,7 @@ Lightweight ware index — slugs with name, enabled state, capability, and icon 
 
 **Auth:** admin
 
-**Response — `200 OK`** — `object` keyed by slug.
+**Response — `200 OK`** — `array` of index entry objects (not keyed by slug).
 
 ---
 
@@ -233,7 +235,7 @@ Serve any static file from an installed ware's directory.
 
 ### Config
 
-Per-ware admin-editable configuration, declared in the ware manifest's `config` schema.
+Per-ware admin-editable configuration, declared in the ware manifest's `settings` array.
 
 #### `GET /config/{slug}`
 
@@ -244,7 +246,8 @@ Retrieve the config schema and current values for a ware.
 **Response — `200 OK`**
 ```json
 {
-  "schema": { "api_key": { "type": "string", "label": "API Key" } },
+  "slug": "ledger",
+  "schema": [{ "key": "api_key", "type": "string", "label": "API Key" }],
   "values": { "api_key": "sk-…" }
 }
 ```
@@ -253,7 +256,11 @@ Retrieve the config schema and current values for a ware.
 
 #### `PATCH /config/{slug}`
 
-Update config values. Body is a flat object of key → value pairs.
+Update config values. Body must be a JSON object with a `values` key containing the key → value pairs to update.
+
+```json
+{ "values": { "api_key": "sk-new-key" } }
+```
 
 **Auth:** admin · `Content-Type: application/json`
 
@@ -273,7 +280,7 @@ Reset a single config key to its manifest default.
 
 Aggregated health status for all wares that declare a `health_check` URL in their manifest. Results are cached for 30 seconds.
 
-**Auth:** login
+**Auth:** admin
 
 **Response — `200 OK`**
 ```json
@@ -291,7 +298,7 @@ Status values: `ok` (2xx), `warn` (3xx–4xx), `error` (5xx or network failure),
 
 Check health for a single ware. Always performs a live probe (bypasses cache).
 
-**Auth:** login
+**Auth:** admin
 
 ---
 
@@ -301,13 +308,15 @@ Page-view and engagement tracking for wares.
 
 #### `POST /analytics`
 
-Record an analytics event (view, click, duration) from inside a ware.
+Record an analytics event from inside a ware.
 
-**Auth:** login · `Content-Type: application/json`
+**Auth:** admin · `Content-Type: application/json`
 
 ```json
-{ "slug": "ledger", "event_type": "view", "duration_ms": 4200 }
+{ "slug": "ledger", "event": "view", "duration_ms": 4200 }
 ```
+
+`event` must be `"view"` (default) or `"interaction"`.
 
 ---
 
@@ -343,17 +352,13 @@ Paginated audit log, most recent first.
 
 **Query params:** `?per_page=50&page=1&event=install`
 
----
-
-#### `POST /audit`
-
-Append a custom audit entry (for ware-initiated events).
-
-**Auth:** login · `Content-Type: application/json`
-
+**Response — `200 OK`**
 ```json
-{ "slug": "ledger", "event": "export", "context": { "format": "pdf" } }
+{ "entries": [...], "total": 142, "pages": 3 }
 ```
+
+> [!NOTE]
+> `POST /audit` is intentionally not exposed. Lifecycle events are recorded server-side only to prevent injection of fake audit entries.
 
 ---
 
@@ -362,6 +367,11 @@ Append a custom audit entry (for ware-initiated events).
 Audit entries for a single ware.
 
 **Auth:** admin
+
+**Response — `200 OK`**
+```json
+{ "entries": [...], "total": 14, "pages": 1 }
+```
 
 ---
 
@@ -377,7 +387,10 @@ All badge counts for the current user.
 
 **Response — `200 OK`**
 ```json
-{ "ledger": 3, "crm": 0 }
+[
+  { "slug": "ledger", "count": 3 },
+  { "slug": "crm", "count": 0 }
+]
 ```
 
 ---
@@ -428,12 +441,12 @@ Retrieve current CSP directives and the compiled header string.
 
 #### `PATCH /csp/{slug}`
 
-Update one or more CSP directives. Body is an object of `directive → value`.
+Update one or more CSP directives. Body must have a `directives` key containing an object of `directive → value`.
 
 **Auth:** admin · `Content-Type: application/json`
 
 ```json
-{ "connect-src": "'self' https://api.stripe.com" }
+{ "directives": { "connect-src": "'self' https://api.stripe.com" } }
 ```
 
 ---
@@ -456,7 +469,7 @@ Paginated error log, most recent first.
 
 **Auth:** admin
 
-**Query params:** `?per_page=50&slug=ledger`
+**Query params:** `?per_page=50&page=1&slug=ledger`
 
 ---
 
@@ -464,14 +477,14 @@ Paginated error log, most recent first.
 
 Record a client-side error from inside a ware.
 
-**Auth:** login · `Content-Type: application/json`
+**Auth:** admin · `Content-Type: application/json`
 
 ```json
 {
   "slug":    "ledger",
   "message": "TypeError: Cannot read property 'id' of undefined",
   "stack":   "…",
-  "context": { "route": "/invoices/new" }
+  "url":     "https://example.com/wp-admin/admin.php?page=bazaar-ledger"
 }
 ```
 
@@ -529,17 +542,19 @@ Manually trigger a declared job immediately, outside its schedule.
 
 #### `GET /nonce`
 
-Issue a fresh `wp_rest` nonce. Useful for wares that need to refresh the nonce before it expires (nonces are valid for 24 hours).
+Issue a fresh `wp_rest` nonce. Useful for wares that need to refresh the nonce before it expires (nonces are valid for 12 hours).
 
 **Auth:** login
 
 **Response — `200 OK`**
 ```json
 {
-  "nonce":   "a1b2c3d4e5",
-  "expires": 1713744000
+  "nonce":      "a1b2c3d4e5",
+  "expires_in": 43200
 }
 ```
+
+`expires_in` is the number of seconds until the nonce expires (43200 = 12 hours).
 
 ---
 
@@ -564,6 +579,11 @@ Read a stored value.
 **Response — `200 OK`**
 ```json
 { "key": "theme", "value": "dark" }
+```
+
+If the key does not exist, returns `200` with `"value": null` (not `404`):
+```json
+{ "key": "theme", "value": null }
 ```
 
 ---
@@ -600,19 +620,29 @@ Delete all stored values for this ware for the current user.
 
 #### `GET /stream`
 
-Server-Sent Events stream. The shell subscribes on load and receives real-time events: `health`, `badge`, `install`, `ware_update`, `error`.
+Server-Sent Events endpoint. Uses a short-polling pattern: each request drains the queued events and exits immediately. The browser's `EventSource` reconnects after a `retry` interval, giving efficient push without holding a PHP worker open.
 
 **Auth:** admin
 
-**Response:** `Content-Type: text/event-stream` (long-lived connection)
+**Response:** `Content-Type: text/event-stream`
 
 ```
-event: health
-data: {"slug":"ledger","status":"ok"}
+retry: 3000
+
+event: ware-installed
+data: {"slug":"ledger","name":"Ledger","source":"upload"}
 
 event: badge
 data: {"slug":"crm","count":7}
+
+event: health
+data: {"slug":"ledger","status":"ok"}
+
+event: toast
+data: {"message":"Ware updated successfully.","type":"success"}
 ```
+
+Event names are hyphenated: `ware-installed`, `ware-deleted`, `ware-toggled`, `ware-updated`, `health`, `badge`, `toast`.
 
 ---
 
@@ -630,7 +660,7 @@ List registered webhooks for a ware.
 ```json
 [
   {
-    "id":    "wh_1234",
+    "id":    "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "event": "invoice.paid",
     "url":   "https://example.com/hooks/bazaar"
   }
@@ -658,6 +688,40 @@ Register a new webhook.
 Remove a webhook.
 
 **Auth:** admin
+
+---
+
+### Service Worker
+
+#### `GET /sw`
+
+Serve the Bazaar zero-trust service worker script.
+
+**Auth:** Public (no authentication required). The `Service-Worker-Allowed` response header is set to `/` so the SW can intercept all page-origin requests.
+
+---
+
+### Core Apps
+
+#### `GET /core-apps`
+
+List wares available from the Bazaar core app catalog. Response is cached server-side.
+
+**Auth:** admin
+
+---
+
+#### `POST /core-apps/install`
+
+Install a ware from the core app catalog.
+
+**Auth:** admin · `Content-Type: application/json`
+
+```json
+{ "url": "https://registry.bazaar.example.com/wares/swatch.wp" }
+```
+
+The URL must be on the configured allowlist.
 
 ---
 

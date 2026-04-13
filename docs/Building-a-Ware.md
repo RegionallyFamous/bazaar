@@ -142,7 +142,7 @@ cd my-ware && npm install
   "version": "1.0.0",
   "entry": "index.html",
   "menu": { "title": "My Ware" },
-  "shared": ["react", "react-dom"]
+  "shared": ["react", "react-dom", "react/jsx-runtime"]
 }
 ```
 
@@ -316,10 +316,21 @@ const restBase = wpRoot + '/wp-json';
 
 ## iframe Sandbox Capabilities
 
-Bazaar renders wares with this sandbox policy:
+Bazaar applies one of three sandbox policies depending on the ware's trust level:
 
+**`standard` (default)**
 ```html
 sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads"
+```
+
+**`trusted`** — adds `allow-modals` (permits `alert()` / `confirm()`)
+```html
+sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads allow-modals"
+```
+
+**`verified`** — adds `allow-modals` and `allow-popups-to-escape-sandbox`
+```html
+sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads allow-popups-to-escape-sandbox allow-modals"
 ```
 
 | Permission | What It Enables |
@@ -329,9 +340,10 @@ sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-download
 | `allow-same-origin` | Make authenticated `fetch` requests to WordPress |
 | `allow-popups` | Open links in new tabs |
 | `allow-downloads` | Trigger file downloads |
+| `allow-modals` | `alert()` / `confirm()` (trusted and verified only) |
+| `allow-popups-to-escape-sandbox` | Links that open a full page context (verified only) |
 
-> [!NOTE]
-> `allow-top-navigation` and `allow-modals` are intentionally excluded. Wares cannot redirect the whole page or call `alert()` / `confirm()`.
+The trust level is set by the admin and stored in the ware registry, not declared in the manifest. `allow-top-navigation` is excluded at all trust levels. Wares cannot redirect the parent page.
 
 ---
 
@@ -386,10 +398,10 @@ const posts = await wpJson('/wp/v2/posts?per_page=5');
 import { useCurrentUser, useWpPosts } from '@bazaar/client/react';
 
 function App() {
-  const user = useCurrentUser();
+  const { user, loading: userLoading } = useCurrentUser();
   const { posts, loading } = useWpPosts({ per_page: 10 });
 
-  if (loading) return <p>Loading…</p>;
+  if (loading || userLoading) return <p>Loading…</p>;
   return <div>{posts.map(p => <h2 key={p.id}>{p.title.rendered}</h2>)}</div>;
 }
 ```

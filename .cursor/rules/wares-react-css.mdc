@@ -307,36 +307,9 @@ export function loadState(): AppState {
 ## BUILD (VITE)
 
 - `base: './'` — required. Relative asset URLs work correctly inside the iframe; absolute paths break.
-- `react`, `react-dom`, `react/jsx-runtime` must be in `rollupOptions.external` — they are injected by the shell's import map.
+- `react`, `react-dom`, `react/jsx-runtime` must be in `rollupOptions.external` — they are provided by the shell's import map at runtime (declared via `"shared"` in `manifest.json`). Without this, React ships twice and context breaks.
 - No source maps in production builds — they expose source code from a sandboxed context unnecessarily.
-
-Canonical `vite.config.ts`:
-```ts
-import { defineConfig } from 'vite';
-import react            from '@vitejs/plugin-react';
-import { resolve }      from 'path';
-
-export default defineConfig( {
-    plugins: [ react() ],
-    base:    './',
-    resolve: {
-        alias: {
-            '@bazaar/client':       resolve( __dirname, '../../packages/client/src/index.ts' ),
-            '@bazaar/client/react': resolve( __dirname, '../../packages/client/src/hooks.ts' ),
-            '@bazaar/design/css':   resolve( __dirname, '../../packages/design/src/css/index.css' ),
-            '@bazaar/design':       resolve( __dirname, '../../packages/design/src/index.ts' ),
-        },
-    },
-    build: {
-        outDir:      'dist',
-        emptyOutDir: true,
-        assetsDir:   'assets',
-        // React is bundled into the ware — the .wp archive is fully self-contained.
-        // Do NOT add rollupOptions.external for react/react-dom.
-    },
-    server: { cors: true },
-} );
-```
+- For the full canonical `vite.config.ts`, see `wares-build-system.mdc` — it is the authoritative build reference.
 
 ## VERIFICATION LOOP — run before declaring a ware done
 

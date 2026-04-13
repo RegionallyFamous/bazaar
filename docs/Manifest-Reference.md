@@ -60,20 +60,19 @@ That's all you need. Bazaar fills in sensible defaults for everything else.
     "parent": null,
     "group": "finance"
   },
-  "shared": ["react", "react-dom"],
-  "permissions": {
-    "network": [
-      "https://api.stripe.com",
-      "https://cdn.example.com"
-    ]
-  },
+  "shared": ["react", "react-dom", "react/jsx-runtime"],
+  "permissions": ["read:posts"],
+  "permissions_network": [
+    "https://api.stripe.com",
+    "https://cdn.example.com"
+  ],
   "health_check": "https://api.example.com/health",
   "jobs": [
     {
       "id":       "sync_invoices",
       "label":    "Sync invoices from payment provider",
       "interval": "hourly",
-      "endpoint": "/wp-json/bazaar/v1/jobs/ledger/sync_invoices"
+      "endpoint": "https://example.com/wp-json/bazaar/v1/jobs/ledger/sync_invoices"
     }
   ],
   "license": {
@@ -81,10 +80,8 @@ That's all you need. Bazaar fills in sensible defaults for everything else.
     "url":      "https://example.com/api/validate-license",
     "required": true
   },
-  "registry": {
-    "updateUrl": "https://registry.example.com/wares/ledger.json",
-    "homepage":  "https://example.com/wares/ledger"
-  }
+  "updateUrl": "https://registry.example.com/wares/ledger.json",
+  "homepage":  "https://example.com/wares/ledger"
 }
 ```
 
@@ -306,28 +303,59 @@ An arbitrary group label used by the Bazaar shell to visually cluster related wa
 
 | Property | Value |
 |:---|:---|
-| Type | `object` |
+| Type | `string[]` |
 | Required | No |
+| Default | `[]` |
 
-Declares what external resources this ware is allowed to access. Bazaar uses these declarations to enforce network policies via the zero-trust service worker.
-
-**`permissions.network`** — `string[]`
-
-An allowlist of origins the ware is permitted to fetch from. Any fetch request to an origin *not* in this list (and not to the WordPress site itself) will be blocked with a `403` response by the service worker.
+An array of WordPress capability tokens the ware requires. These are checked against the current user's capabilities before the ware loads.
 
 ```json
 {
-  "permissions": {
-    "network": [
-      "https://api.stripe.com",
-      "https://fonts.googleapis.com"
-    ]
-  }
+  "permissions": ["read:posts", "edit:posts"]
+}
+```
+
+---
+
+### `permissions_network`
+
+| Property | Value |
+|:---|:---|
+| Type | `string[]` \| `true` \| `null` |
+| Required | No |
+| Default | `null` |
+
+Declares what external origins the ware is permitted to fetch from. This is a **top-level field**, separate from `permissions`.
+
+- `null` (default) — no network restrictions (zero-trust not enforced for this ware)
+- `true` — ware may fetch from any HTTPS origin
+- `string[]` — an explicit allowlist of HTTPS origins
+
+When set, the zero-trust service worker intercepts all `fetch()` calls from this ware and blocks requests to unlisted origins.
+
+```json
+{
+  "permissions_network": [
+    "https://api.stripe.com",
+    "https://fonts.googleapis.com"
+  ]
 }
 ```
 
 > [!NOTE]
-> The WordPress site's own origin is always implicitly allowed regardless of this field. Zero-trust enforcement only activates if the ware declares `"zero_trust": true` or if it is enabled globally by the admin.
+> The WordPress site's own origin is always implicitly allowed. Zero-trust enforcement only activates if `permissions_network` is non-null **and** the ware also declares `"zero_trust": true`.
+
+---
+
+### `zero_trust`
+
+| Property | Value |
+|:---|:---|
+| Type | `boolean` |
+| Required | No |
+| Default | `false` |
+
+When `true`, the zero-trust service worker is activated for this ware. Must be combined with a non-null `permissions_network` to have any effect. Wares that set `zero_trust: true` without a `permissions_network` value will not have network enforcement applied.
 
 ---
 
@@ -420,7 +448,7 @@ Declares background jobs that Bazaar should schedule via WP-Cron on install. Eac
       "id":       "sync_products",
       "label":    "Sync products from API",
       "interval": "hourly",
-      "endpoint": "/wp-json/bazaar/v1/jobs/my-ware/sync_products"
+      "endpoint": "https://example.com/wp-json/bazaar/v1/jobs/my-ware/sync_products"
     }
   ]
 }
@@ -443,7 +471,7 @@ Controls license-key enforcement for paid wares.
 |:---|:---|:---:|:---|
 | `type` | `"free"` \| `"key"` | `"free"` | `"key"` enables license-key gating |
 | `url` | `string` | `""` | URL Bazaar POSTs `{ slug, key, site }` to for remote validation |
-| `required` | `boolean` | `false` | When `true`, installation is blocked until a key is stored |
+| `required` | `boolean` | `false` | When `true`, installation is blocked until a key is stored. The value is stored internally as the string `"true"` — both `true` (JSON boolean) and `"true"` (string) are accepted on input |
 
 ```json
 {
@@ -459,31 +487,76 @@ Set and validate keys with `wp bazaar license set <slug> <key>` or through the B
 
 ---
 
-### `registry`
+### `updateUrl`
 
 | Property | Value |
 |:---|:---|
-| Type | `object` |
+| Type | `string` |
 | Required | No |
 
-Metadata linking this ware to a remote registry entry so Bazaar can check for updates.
-
-| Field | Type | Description |
-|:---|:---|:---|
-| `updateUrl` | `string` | URL to a JSON file describing the latest available version |
-| `homepage` | `string` | Canonical page for this ware (shown in the gallery) |
-| `signature` | `string` | Base64-encoded RSA signature over the archive (verified on install) |
+**Top-level field.** URL to a JSON file describing the latest available version of this ware. Bazaar compares the returned `version` to the installed version and flags the ware as outdated if a newer one is available (`wp bazaar outdated`).
 
 ```json
 {
-  "registry": {
-    "updateUrl": "https://registry.example.com/wares/my-ware.json",
-    "homepage":  "https://example.com/wares/my-ware"
-  }
+  "updateUrl": "https://registry.example.com/wares/my-ware.json"
 }
 ```
 
-`updateUrl` should return a JSON object with at least a `version` field. Bazaar compares it to the installed version and flags the ware as outdated if a newer one is available (`wp bazaar outdated`).
+---
+
+### `homepage`
+
+| Property | Value |
+|:---|:---|
+| Type | `string` |
+| Required | No |
+
+**Top-level field.** Canonical page for this ware (shown in the Bazaar gallery card).
+
+---
+
+### `signature`
+
+| Property | Value |
+|:---|:---|
+| Type | `string` |
+| Required | No |
+
+**Top-level field.** Base64-encoded RSA signature over the archive contents. When present, Bazaar verifies this signature on install using the configured public key. Generated by `wp bazaar sign`.
+
+---
+
+### `trust`
+
+| Property | Value |
+|:---|:---|
+| Type | `"standard"` \| `"trusted"` \| `"verified"` |
+| Required | No |
+| Default | `"standard"` |
+
+Sandbox privilege level granted to this ware. Controls which extra `sandbox` attributes are set on the iframe. This value is set and managed by the site admin — the manifest value is a hint that may be overridden.
+
+---
+
+### `settings`
+
+| Property | Value |
+|:---|:---|
+| Type | `array` |
+| Required | No |
+
+A schema for ware-specific configuration values exposed via the Config REST API (`GET /bazaar/v1/config/{slug}`). Each entry in the array is a field definition object. Admins can set these values through the Bazaar UI or via `wp bazaar config`.
+
+---
+
+### `search_endpoint`
+
+| Property | Value |
+|:---|:---|
+| Type | `string` |
+| Required | No |
+
+An absolute REST URL that Bazaar can query for search results when this ware is the active context. Must return JSON results in a format the Bazaar shell can display.
 
 ---
 
@@ -498,7 +571,10 @@ Bazaar runs these checks on upload and rejects the ware if any fail:
 - [x] `slug` matches `[a-z0-9-]+`
 - [x] `slug` is not already installed
 - [x] The `entry` file exists in the archive
-- [x] No PHP files anywhere in the archive (`.php`, `.phtml`, `.phar`, etc.)
+- [x] No PHP files anywhere in the archive (`.php`, `.phtml`, `.phar`, `.php5`, `.php7`, etc.)
+- [x] Archive contains no more than 2,000 files
+- [x] No symlinks or path-traversal entries (e.g. `../`)
+- [x] Compression ratio does not exceed 100:1 (zip-bomb guard)
 - [x] Total uncompressed size is under the configured limit (default 50 MB)
 
 ---
@@ -513,7 +589,7 @@ Bazaar runs these checks on upload and rejects the ware if any fail:
 
 ### Remote updates
 
-If your ware declares a `registry.updateUrl`, Bazaar can check for and apply updates automatically:
+If your ware declares an `updateUrl`, Bazaar can check for and apply updates automatically:
 
 ```bash
 wp bazaar outdated                          # list wares with newer versions available
@@ -526,7 +602,7 @@ The URL should serve a JSON file like:
 ```json
 {
   "version":   "1.3.0",
-  "downloadUrl": "https://registry.example.com/wares/ledger-1.3.0.wp",
+  "download_url": "https://registry.example.com/wares/ledger-1.3.0.wp",
   "changelog": "Fixed date formatting on generated PDFs."
 }
 ```

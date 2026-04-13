@@ -1,0 +1,16 @@
+{
+  "$schema": "../../manifest.schema.json",
+  "name": "Hello",
+  "slug": "hello",
+  "version": "1.0.0",
+  "author": "Bazaar",
+  "description": "Minimal reference ware. Read the source before building your first ware.",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "menu": {
+    "title": "Hello",
+    "position": 99,
+    "capability": "manage_options"
+  },
+  "shared": ["react", "react-dom", "react/jsx-runtime"]
+}

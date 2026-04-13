@@ -28,16 +28,16 @@ Upload .wp file
   → Reject forbidden file types (.php, .phar, …)
   → Check compression ratios (zip-bomb guard)
   → Atomically extract to wp-content/bazaar/{slug}/
-  → Register manifest in wp_options
-  → Inject admin menu page via MenuManager
+  → Register manifest in wp_options (key: bazaar_index)
+  → Shell SPA dynamically renders the sidebar menu item on next load
 ```
 
 ### Loading a ware
 
 ```
 User clicks sidebar menu item
-  → WareRenderer outputs <iframe src="/wp-json/bazaar/v1/serve/{slug}/index.html?_wpnonce=…">
-  → REST permission callback: is_user_logged_in() + current_user_can(capability)
+  → BazaarShell SPA creates <iframe src="/wp-json/bazaar/v1/serve/{slug}/index.html?_wpnonce=…">
+  → REST permission callback: current_user_can(capability) + public exceptions for image assets and block embed tokens
   → WareServer reads HTML, injects <base href>, <importmap>, error reporter
   → Browser renders the app in a full-screen sandboxed iframe
   → Service worker intercepts all subsequent asset fetches and serves from cache
@@ -54,12 +54,16 @@ bazaar/
 │   ├── Plugin.php                   Hook registration, DI wiring
 │   ├── WareRegistry.php             Two-tier wp_options storage
 │   ├── WareLoader.php               ZIP validation + WP_Filesystem extraction
-│   ├── WareRenderer.php             iframe output
+│   ├── BazaarShell.php              Shell SPA registration + iframe rendering
 │   ├── WareUpdater.php              Auto-update scheduler + runner
 │   ├── WareBundler.php              .wpbundle multi-ware archives
 │   ├── WareLicense.php              License key storage + remote validation
 │   ├── WareSigner.php               RSA signature verification
-│   ├── MenuManager.php              Dynamic admin menus
+│   ├── WareRegistryInterface.php    Interface for registry (enables mocking in tests)
+│   ├── WareLoaderInterface.php      Interface for loader
+│   ├── UrlSafety.php                URL validation helpers
+│   ├── UpdateTelemetry.php          Optional anonymous update telemetry
+│   ├── WareMigration.php            Schema migration runner
 │   ├── BazaarPage.php               The Bazaar admin page (gallery + upload)
 │   ├── RemoteRegistry.php           Remote ware registry + update checks
 │   ├── Multisite.php                Multisite index merging
@@ -92,7 +96,9 @@ bazaar/
 │       ├── NonceController.php
 │       ├── StorageController.php
 │       ├── StreamController.php
-│       └── WebhooksController.php
+│       ├── WebhooksController.php
+│       ├── ServiceWorkerController.php  Serves the zero-trust service worker script
+│       └── CoreAppsController.php       Core app catalog + install
 ├── admin/src/                       Vite source (shell SPA + admin CSS)
 │   ├── shell.js                     Main shell SPA
 │   ├── shell.css
@@ -113,23 +119,24 @@ bazaar/
 │   └── ware-container.php
 └── wares/                           Built-in core wares (source + registry)
     ├── registry.json                Remote registry source
-    ├── mosaic/
-    ├── ledger/
-    ├── focus/
     ├── board/
+    ├── flow/
+    ├── ledger/
+    ├── mosaic/
+    ├── sine/
     ├── swatch/
-    └── sine/
+    └── tome/
 ```
 
 ---
 
 ## Storage model
 
-Bazaar uses WordPress's `wp_options` table with a two-tier structure. No custom tables are required for the core registry.
+Bazaar uses WordPress's `wp_options` table with a two-tier structure. No custom tables are required for the core registry (analytics, errors, and audit logs use their own tables created on plugin activation).
 
 | Option key | Contents |
 |:---|:---|
-| `bazaar_wares_index` | Compact index of all installed wares (slug, name, version, enabled flag) |
+| `bazaar_index` | Compact index of all installed wares (slug, name, version, enabled flag) |
 | `bazaar_ware_{slug}` | Full manifest + runtime fields for a single ware |
 
 The index is used for cheap list operations. The full record is loaded on demand (for serving, rendering, or CLI inspection).
@@ -199,7 +206,7 @@ After the first load, V8's bytecode cache means React is not re-parsed — it's 
 
 ### Layer 2 — Service worker cache
 
-`zero-trust-sw.js` is the Bazaar service worker. It caches every `wp-content/bazaar/` asset and every shared bundle in `admin/dist/shared/` after the first fetch. On subsequent page loads, nothing hits the network — not even a conditional request.
+`zero-trust-sw.js` is the Bazaar service worker. It uses a **cache-first** strategy for ware assets (`wp-content/bazaar/` paths) and shared bundles in `admin/dist/shared/`. After the first fetch, matching assets are served from cache with no network round-trip. Non-matching requests are passed through. The service worker is registered via `GET /bazaar/v1/sw` and reconnnects to the shell via `admin/src/modules/sw.js`.
 
 ---
 
@@ -231,7 +238,7 @@ Each ware has a CSP that is injected into the HTML response by `WareServer`. The
 - `wp bazaar csp {slug}` (view / edit from the CLI)
 - `PATCH /wp-json/bazaar/v1/csp/{slug}` (REST API)
 
-The default policy blocks inline scripts, restricts `connect-src` to the site origin, and sets `frame-ancestors` to the admin URL. The ware can request relaxations in its manifest; you can also grant them manually post-install.
+The baseline policy **allows** `'unsafe-inline'` for `script-src` and `style-src` (required by many frontend frameworks that don't use a strict CSP by default), restricts `connect-src` to `'self'`, and sets `frame-ancestors` to `'self'` (same-origin only). The ware can add additional directives or tighten the policy via its manifest; you can also adjust per-ware via the CLI or REST API post-install. Certain directives (`frame-ancestors`) are locked and cannot be overridden by the ware.
 
 ---
 

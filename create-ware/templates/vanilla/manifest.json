@@ -1,4 +1,5 @@
 {
+  "$schema": "../../../manifest.schema.json",
   "name": "__WARE_NAME__",
   "slug": "__WARE_SLUG__",
   "version": "__WARE_VERSION__",

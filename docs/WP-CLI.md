@@ -214,19 +214,19 @@ wp bazaar update --all
 Manage dev mode for a ware. In dev mode Bazaar proxies the ware's iframe to a local Vite (or any) dev server, giving you instant hot-reload without packaging.
 
 ```bash
-wp bazaar dev start <slug> [<url>] [--verbose]
+wp bazaar dev start <slug> <url> [--verbose]
 wp bazaar dev stop  <slug>
 ```
 
 | Argument | Description |
 |:---|:---|
 | `<slug>` | Ware slug |
-| `<url>` | Dev server URL (default: `http://localhost:5173`) |
-| `--verbose` | Log HMR connection events |
+| `<url>` | Dev server URL — **required** (e.g. `http://localhost:5173`) |
+| `--verbose` | Log additional status output |
 
 ```bash
 # Start dev mode pointing at Vite's default port
-wp bazaar dev start ledger
+wp bazaar dev start ledger http://localhost:5173
 
 # Use a custom port
 wp bazaar dev start ledger http://localhost:4000
@@ -332,21 +332,21 @@ wp bazaar audit --event=install --format=json
 View and manage the Content Security Policy for a ware.
 
 ```bash
-wp bazaar csp <slug> [--set=<directive=value>] [--reset] [--format=<format>]
+wp bazaar csp <slug> [--set=<json>] [--reset]
 ```
 
 | Option | Description |
 |:---|:---|
-| (none) | Display the current CSP directives |
-| `--set="connect-src 'self' https://api.stripe.com"` | Update a single directive |
+| (none) | Display the current CSP directives as text |
+| `--set=<json>` | Update directives. Value must be a **JSON object** mapping directive names to source lists |
 | `--reset` | Reset to the Bazaar baseline |
 
 ```bash
 # View current CSP
 wp bazaar csp ledger
 
-# Add Stripe to connect-src
-wp bazaar csp ledger --set="connect-src 'self' https://api.stripe.com"
+# Add Stripe to connect-src (JSON object required)
+wp bazaar csp ledger --set='{"connect-src":"'"'"'self'"'"' https://api.stripe.com"}'
 
 # Reset to defaults
 wp bazaar csp ledger --reset
@@ -376,12 +376,14 @@ wp bazaar bundle ~/Downloads/starter-pack.wpbundle --verbose
 Generate a REST endpoint stub with a matching TypeScript type helper.
 
 ```bash
-wp bazaar scaffold endpoint <name> [--namespace=<namespace>] [--route=<route>]
+wp bazaar scaffold <name> [endpoint] [--namespace=<namespace>] [--route=<route>]
 ```
 
+The first argument is the **name** and the optional second argument is the action type (default: `endpoint`).
+
 ```bash
-wp bazaar scaffold endpoint sync_orders
-wp bazaar scaffold endpoint list_products --namespace=my-ware/v1
+wp bazaar scaffold sync_orders
+wp bazaar scaffold list_products endpoint --namespace=my-ware/v1
 ```
 
 Output: a PHP file with `register_rest_route()` wired up, ready to drop into a companion plugin.
@@ -390,7 +392,7 @@ Output: a PHP file with `register_rest_route()` wired up, ready to drop into a c
 
 ### `wp bazaar types`
 
-Emit TypeScript type definitions derived from a ware's manifest (menu, permissions, config schema).
+Emit TypeScript type definitions derived from a ware's manifest. Generates types for `Config` (from `settings`), `BusEvent`, and `JobId`.
 
 ```bash
 wp bazaar types <slug> [--out=<file>]
@@ -405,7 +407,7 @@ wp bazaar types ledger --out=src/types/bazaar.d.ts
 
 ### `wp bazaar sign`
 
-Sign a `.wp` archive with an RSA private key. The resulting signature is embedded in the archive's `manifest.json` under `registry.signature` and verified on install.
+Sign a `.wp` archive with an RSA private key. The resulting signature is added to the archive as a top-level `signature` field in `manifest.json` and is verified on install.
 
 ```bash
 wp bazaar sign <file.wp> --key=<privkey.pem> [--passphrase=<pass>]
@@ -420,13 +422,13 @@ wp bazaar sign ledger.wp --key=private.pem --passphrase=hunter2
 
 ### `wp bazaar keypair`
 
-Generate an RSA-4096 keypair for ware signing.
+Generate an RSA-2048 keypair for ware signing.
 
 ```bash
 wp bazaar keypair [<output-dir>]
 ```
 
-Writes `bazaar-private.pem` and `bazaar-public.pem` to the given directory (default: current directory).
+Writes `private.pem` and `public.pem` to the given directory (default: current directory).
 
 ```bash
 wp bazaar keypair

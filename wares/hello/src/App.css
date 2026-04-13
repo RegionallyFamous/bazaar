@@ -1,0 +1,146 @@
+/*
+ * App.css — styles for the Hello reference ware.
+ *
+ * Key CSS conventions for Bazaar wares:
+ *   - Box model reset first (see below).
+ *   - Use --bw-* tokens for all theme-aware colours — never hardcode hex.
+ *   - BEM naming: .{ware-slug}__element (one level of nesting max).
+ *   - Always include :focus-visible styles for keyboard users.
+ *   - Honour prefers-reduced-motion at the bottom of the file.
+ */
+
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+/* Every ware CSS file starts with this box model reset. */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin:     0;
+  padding:    0;
+}
+
+/* ── Root container ─────────────────────────────────────────────────────────── */
+.hello {
+  display:        flex;
+  flex-direction: column;
+  gap:            2rem;
+  padding:        2rem;
+
+  /* --bw-bg is the page background token set by @bazaar/design/css.
+     It respects the data-theme attribute (light/dark). */
+  background: var(--bw-bg);
+  color:      var(--bw-text);
+
+  /* Full-height layout that fills the iframe. */
+  min-height: 100dvh;
+
+  /* System font stack — no Google Fonts (CSP blocks external origins). */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size:   1rem;
+  line-height: 1.5;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+.hello__header {
+  display:        flex;
+  flex-direction: column;
+  gap:            0.25rem;
+}
+
+.hello__title {
+  font-size:   1.75rem;
+  font-weight: 700;
+
+  /* --bw-text-strong is the high-contrast heading token. */
+  color: var(--bw-text-strong, var(--bw-text));
+}
+
+.hello__subtitle {
+  color: var(--bw-text-dim);
+}
+
+/* ── Sections ───────────────────────────────────────────────────────────────── */
+.hello__section {
+  display:        flex;
+  flex-direction: column;
+  gap:            1rem;
+
+  /* --bw-surface is the card/panel background, slightly elevated from --bw-bg. */
+  background:    var(--bw-surface);
+  border:        1px solid var(--bw-border);
+  border-radius: var(--bw-radius, 8px);
+  padding:       1.5rem;
+}
+
+.hello__section-title {
+  font-size:   1rem;
+  font-weight: 600;
+  color:       var(--bw-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Posts list ─────────────────────────────────────────────────────────────── */
+.hello__posts {
+  list-style: none;
+  display:    flex;
+  flex-direction: column;
+  gap:        0.5rem;
+}
+
+.hello__post {
+  padding:       0.75rem 1rem;
+  background:    var(--bw-bg);
+  border:        1px solid var(--bw-border);
+  border-radius: var(--bw-radius, 8px);
+
+  /* Use specific properties, not `transition: all` — it's expensive. */
+  transition: border-color 0.12s ease;
+}
+
+.hello__post:hover {
+  border-color: var(--bw-accent);
+}
+
+.hello__empty {
+  color: var(--bw-text-dim);
+  font-style: italic;
+}
+
+/* ── Loading / error states ─────────────────────────────────────────────────── */
+.hello__loading {
+  display:         flex;
+  justify-content: center;
+  padding:         2rem;
+}
+
+.hello__error {
+  color:            var(--bw-danger, #ef4444);
+  padding:          0.75rem 1rem;
+  background:       color-mix(in srgb, var(--bw-danger, #ef4444) 10%, transparent);
+  border:           1px solid color-mix(in srgb, var(--bw-danger, #ef4444) 30%, transparent);
+  border-radius:    var(--bw-radius, 8px);
+}
+
+/* ── Actions row ─────────────────────────────────────────────────────────────── */
+.hello__actions {
+  display:   flex;
+  flex-wrap: wrap;
+  gap:       0.75rem;
+}
+
+/* ── Focus styles ───────────────────────────────────────────────────────────── */
+/* Required: every interactive element needs a visible focus indicator. */
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline:        2px solid var(--bw-accent);
+  outline-offset: 2px;
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────────────── */
+/* Honour the user's OS preference — turn off all animations. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1      !important;
+    transition-duration:       0.01ms !important;
+  }
+}

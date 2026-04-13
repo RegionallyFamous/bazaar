@@ -24,7 +24,7 @@ import '@bazaar/design/css';
 
 ### Set the colour scheme
 
-When a ware has a fixed colour scheme, declare it in `main.tsx` before rendering:
+When a ware has a fixed colour scheme, set it in `main.tsx` before rendering:
 
 ```tsx
 // dark ware (most wares)
@@ -88,8 +88,12 @@ export default defineConfig( {
     outDir:      'dist',
     emptyOutDir: true,
     assetsDir:   'assets',
-    // React is bundled into the ware — the .wp archive is self-contained.
-    // Do NOT add rollupOptions.external for react/react-dom.
+    rollupOptions: {
+      // React is provided by the shell's import map — declaring it external
+      // prevents double-bundling and keeps React context consistent across wares.
+      // Must match the "shared" array in manifest.json.
+      external: [ 'react', 'react-dom', 'react/jsx-runtime' ],
+    },
   },
   server: { cors: true },
 } );
@@ -144,7 +148,7 @@ Before opening a PR or running `bin/build-zip.sh`:
 - [ ] `@bazaar/design/css` imported in `main.tsx`
 - [ ] `<ErrorBoundary>` from `@bazaar/design` wraps `<App>`
 - [ ] `data-theme` attribute set in `main.tsx`
-- [ ] `vite.config.ts` has the canonical alias map (no `rollupOptions.external`)
+- [ ] `vite.config.ts` has the canonical alias map and `rollupOptions.external` matching the `shared` array in `manifest.json`
 - [ ] `package.json` has the `package` script with the correct slug
 - [ ] Entry added to `wares/registry.json`
 - [ ] Build step added to `.github/workflows/ci.yml` `build-wares` job

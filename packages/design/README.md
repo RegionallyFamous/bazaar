@@ -6,8 +6,8 @@ Shared UI component library and design tokens for Bazaar wares.
 
 | Component | Description |
 |-----------|-------------|
-| `Button` | Action button with `default`, `primary`, `danger`, `ghost` variants and `sm`/`md`/`lg` sizes. |
-| `Input` / `Textarea` / `Select` | Controlled form inputs that inherit the Catppuccin Mocha palette. |
+| `Button` | Action button with `primary`, `secondary`, `ghost`, `danger` variants and `sm`/`md`/`lg` sizes. |
+| `Input` / `Textarea` / `Select` | Controlled form inputs that inherit the design token palette. |
 | `Modal` | Accessible dialog with `sm`/`md`/`lg`/`xl` sizes. |
 | `Badge` | Status badge with `default`, `success`, `warning`, `danger`, `info` variants. |
 | `Spinner` | Loading indicator with `sm`/`md`/`lg` sizes. |
@@ -24,10 +24,10 @@ Shared UI component library and design tokens for Bazaar wares.
 
 ```tsx
 import { Button, Modal, useToast } from '@bazaar/design';
-import '@bazaar/design/style';
+import '@bazaar/design/css';
 ```
 
-Always import the stylesheet at the ware entry point so tokens and component styles are available.
+Always import `@bazaar/design/css` at the ware entry point (`main.tsx`) so the `--bw-*` token layer and component styles are available.
 
 ## Dev / build
 

@@ -2,14 +2,30 @@
 /**
  * create-ware — scaffold a new Bazaar ware project.
  *
- * Usage:
+ * Interactive usage:
  *   npm create ware@latest
  *   npm create ware@latest my-ware
  *   npx create-ware my-invoice-app
+ *
+ * Non-interactive (agent-friendly):
+ *   npm create ware@latest my-ware -- --framework react --author "Acme" --description "Invoice app" --yes
+ *   npm create ware@latest -- --name "My Ware" --framework vue --yes
+ *   npm create ware@latest -- --config ./ware-spec.json
+ *
+ * All flags:
+ *   --name        <string>          Ware display name (overrides first positional arg)
+ *   --slug        <string>          Ware slug (derived from name if omitted)
+ *   --author      <string>          Author name (default: Unknown)
+ *   --description <string>          Short description
+ *   --version     <string>          Initial version (default: 0.1.0)
+ *   --framework   react|vue|vanilla Framework (default: react)
+ *   --storybook                     Include Storybook (React only)
+ *   --out         <path>            Output directory (default: slug)
+ *   --yes / -y                      Skip all prompts, accept defaults
+ *   --config      <path>            JSON file with any of the above fields
  */
 
 import * as p from '@clack/prompts';
-import { execSync }      from 'node:child_process';
 import { existsSync }    from 'node:fs';
 import { cp, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -54,93 +70,217 @@ async function walkFiles( dir, cb ) {
   }
 }
 
+/**
+ * Parse process.argv into a flags object.
+ * Returns { flags, positional } where positional is an array of non-flag args.
+ */
+function parseArgs( argv ) {
+  const flags      = {};
+  const positional = [];
+  let i = 2;
+  while ( i < argv.length ) {
+    const arg = argv[ i ];
+    if ( arg === '--yes' || arg === '-y' ) {
+      flags.yes = true;
+      i++;
+    } else if ( arg === '--storybook' ) {
+      flags.storybook = true;
+      i++;
+    } else if ( arg.startsWith( '--' ) ) {
+      const key   = arg.slice( 2 );
+      const value = argv[ i + 1 ];
+      if ( value !== undefined && ! value.startsWith( '--' ) ) {
+        flags[ key ] = value;
+        i += 2;
+      } else {
+        flags[ key ] = true;
+        i++;
+      }
+    } else {
+      positional.push( arg );
+      i++;
+    }
+  }
+  return { flags, positional };
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 async function main() {
-  console.log( '' );
-  p.intro( 'create-ware — scaffold a new Bazaar ware' );
+  const { flags, positional } = parseArgs( process.argv );
 
-  // 1. Project directory / ware name
-  const argName    = process.argv[ 2 ];
-  const nameAnswer = argName
-    ? argName
-    : await p.text( {
-        message:     'Ware name',
-        placeholder: 'My Awesome Ware',
-        validate:    v => ( v.trim() ? undefined : 'Name is required.' ),
-      } );
-
-  if ( p.isCancel( nameAnswer ) ) {
-    p.cancel( 'Cancelled.' );
-    process.exit( 0 );
+  // Load --config file and merge (flags take precedence over config file).
+  if ( flags.config ) {
+    const configPath = resolve( process.cwd(), String( flags.config ) );
+    if ( ! existsSync( configPath ) ) {
+      console.error( `Error: config file not found: ${ configPath }` );
+      process.exit( 1 );
+    }
+    const fileConfig = JSON.parse( await readFile( configPath, 'utf8' ) );
+    for ( const [ k, v ] of Object.entries( fileConfig ) ) {
+      if ( flags[ k ] === undefined ) flags[ k ] = v;
+    }
   }
 
-  const wareName = String( nameAnswer ).trim();
+  const nonInteractive = Boolean( flags.yes );
+  const VALID_FRAMEWORKS = [ 'react', 'vue', 'vanilla' ];
+
+  if ( ! nonInteractive ) {
+    console.log( '' );
+    p.intro( 'create-ware — scaffold a new Bazaar ware' );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 1. Ware name
+  // ---------------------------------------------------------------------------
+  let wareName;
+  if ( flags.name ) {
+    wareName = String( flags.name ).trim();
+  } else if ( positional[ 0 ] ) {
+    wareName = String( positional[ 0 ] ).trim();
+  } else if ( nonInteractive ) {
+    console.error( 'Error: --name is required when using --yes.' );
+    process.exit( 1 );
+  } else {
+    const answer = await p.text( {
+      message:     'Ware name',
+      placeholder: 'My Awesome Ware',
+      validate:    v => ( v.trim() ? undefined : 'Name is required.' ),
+    } );
+    if ( p.isCancel( answer ) ) { p.cancel( 'Cancelled.' ); process.exit( 0 ); }
+    wareName = String( answer ).trim();
+  }
+
   const defaultSlug = toSlug( wareName );
 
+  // ---------------------------------------------------------------------------
   // 2. Slug
-  const slugAnswer = await p.text( {
-    message:     'Ware slug',
-    placeholder: defaultSlug,
-    initialValue: defaultSlug,
-    validate: v => {
-      if ( ! v.trim() ) return 'Slug is required.';
-      if ( ! /^[a-z0-9-]+$/.test( v ) ) return 'Slug must be lowercase letters, numbers, and hyphens only.';
-    },
-  } );
+  // ---------------------------------------------------------------------------
+  let wareSlug;
+  if ( flags.slug ) {
+    wareSlug = String( flags.slug ).trim();
+  } else if ( nonInteractive ) {
+    wareSlug = defaultSlug;
+  } else {
+    const answer = await p.text( {
+      message:      'Ware slug',
+      placeholder:  defaultSlug,
+      initialValue: defaultSlug,
+      validate: v => {
+        if ( ! v.trim() ) return 'Slug is required.';
+        if ( ! /^[a-z0-9-]+$/.test( v ) ) return 'Slug must be lowercase letters, numbers, and hyphens only.';
+      },
+    } );
+    if ( p.isCancel( answer ) ) { p.cancel( 'Cancelled.' ); process.exit( 0 ); }
+    wareSlug = String( answer ).trim();
+  }
 
-  if ( p.isCancel( slugAnswer ) ) { p.cancel( 'Cancelled.' ); process.exit( 0 ); }
-  const wareSlug = String( slugAnswer ).trim();
-
+  // ---------------------------------------------------------------------------
   // 3. Author
-  const authorAnswer = await p.text( {
-    message: 'Author',
-    placeholder: 'Your Name',
-  } );
-  if ( p.isCancel( authorAnswer ) ) { p.cancel( 'Cancelled.' ); process.exit( 0 ); }
-  const wareAuthor = String( authorAnswer ).trim() || 'Unknown';
+  // ---------------------------------------------------------------------------
+  let wareAuthor;
+  if ( flags.author ) {
+    wareAuthor = String( flags.author ).trim();
+  } else if ( nonInteractive ) {
+    wareAuthor = 'Unknown';
+  } else {
+    const answer = await p.text( { message: 'Author', placeholder: 'Your Name' } );
+    if ( p.isCancel( answer ) ) { p.cancel( 'Cancelled.' ); process.exit( 0 ); }
+    wareAuthor = String( answer ).trim() || 'Unknown';
+  }
 
+  // ---------------------------------------------------------------------------
   // 4. Description
-  const descAnswer = await p.text( {
-    message: 'Description (optional)',
-    placeholder: 'A short description of what this ware does',
-  } );
-  if ( p.isCancel( descAnswer ) ) { p.cancel( 'Cancelled.' ); process.exit( 0 ); }
-  const wareDesc = String( descAnswer ).trim();
+  // ---------------------------------------------------------------------------
+  let wareDesc;
+  if ( flags.description ) {
+    wareDesc = String( flags.description ).trim();
+  } else if ( nonInteractive ) {
+    wareDesc = '';
+  } else {
+    const answer = await p.text( {
+      message:     'Description (optional)',
+      placeholder: 'A short description of what this ware does',
+    } );
+    if ( p.isCancel( answer ) ) { p.cancel( 'Cancelled.' ); process.exit( 0 ); }
+    wareDesc = String( answer ).trim();
+  }
 
+  // ---------------------------------------------------------------------------
   // 5. Framework
-  const framework = await p.select( {
-    message: 'Framework',
-    options: [
-      { value: 'react',   label: 'React + TypeScript',  hint: 'recommended' },
-      { value: 'vue',     label: 'Vue 3 + TypeScript' },
-      { value: 'vanilla', label: 'Vanilla TypeScript' },
-    ],
-  } );
-  if ( p.isCancel( framework ) ) { p.cancel( 'Cancelled.' ); process.exit( 0 ); }
+  // ---------------------------------------------------------------------------
+  let framework;
+  if ( flags.framework ) {
+    framework = String( flags.framework ).toLowerCase();
+    if ( ! VALID_FRAMEWORKS.includes( framework ) ) {
+      console.error( `Error: --framework must be one of: ${ VALID_FRAMEWORKS.join( ', ' ) }` );
+      process.exit( 1 );
+    }
+  } else if ( nonInteractive ) {
+    framework = 'react';
+  } else {
+    const answer = await p.select( {
+      message: 'Framework',
+      options: [
+        { value: 'react',   label: 'React + TypeScript',  hint: 'recommended' },
+        { value: 'vue',     label: 'Vue 3 + TypeScript' },
+        { value: 'vanilla', label: 'Vanilla TypeScript' },
+      ],
+    } );
+    if ( p.isCancel( answer ) ) { p.cancel( 'Cancelled.' ); process.exit( 0 ); }
+    framework = answer;
+  }
 
-  // 5b. Storybook
-  const wantStorybook = framework === 'react'
-    ? await p.confirm( { message: 'Include Storybook? (React only)', initialValue: false } )
-    : false;
-  if ( p.isCancel( wantStorybook ) ) { p.cancel( 'Cancelled.' ); process.exit( 0 ); }
+  // ---------------------------------------------------------------------------
+  // 5b. Storybook (React only)
+  // ---------------------------------------------------------------------------
+  let wantStorybook;
+  if ( framework !== 'react' ) {
+    wantStorybook = false;
+  } else if ( flags.storybook ) {
+    wantStorybook = true;
+  } else if ( nonInteractive ) {
+    wantStorybook = false;
+  } else {
+    const answer = await p.confirm( { message: 'Include Storybook? (React only)', initialValue: false } );
+    if ( p.isCancel( answer ) ) { p.cancel( 'Cancelled.' ); process.exit( 0 ); }
+    wantStorybook = answer;
+  }
 
+  // ---------------------------------------------------------------------------
   // 6. Target directory
-  const dirAnswer = await p.text( {
-    message:      'Output directory',
-    initialValue: wareSlug,
-    placeholder:  wareSlug,
-    validate: v => {
-      if ( ! v.trim() ) return 'Directory is required.';
-      if ( existsSync( resolve( process.cwd(), v ) ) ) {
-        return `"${ v }" already exists. Choose a different name.`;
-      }
-    },
-  } );
-  if ( p.isCancel( dirAnswer ) ) { p.cancel( 'Cancelled.' ); process.exit( 0 ); }
-  const outDir = resolve( process.cwd(), String( dirAnswer ).trim() );
+  // ---------------------------------------------------------------------------
+  let outDirRelative;
+  if ( flags.out ) {
+    outDirRelative = String( flags.out ).trim();
+  } else if ( nonInteractive ) {
+    outDirRelative = wareSlug;
+  } else {
+    const answer = await p.text( {
+      message:      'Output directory',
+      initialValue: wareSlug,
+      placeholder:  wareSlug,
+      validate: v => {
+        if ( ! v.trim() ) return 'Directory is required.';
+        if ( existsSync( resolve( process.cwd(), v ) ) ) {
+          return `"${ v }" already exists. Choose a different name.`;
+        }
+      },
+    } );
+    if ( p.isCancel( answer ) ) { p.cancel( 'Cancelled.' ); process.exit( 0 ); }
+    outDirRelative = String( answer ).trim();
+  }
+
+  const outDir = resolve( process.cwd(), outDirRelative );
+
+  if ( existsSync( outDir ) ) {
+    if ( nonInteractive ) {
+      console.error( `Error: output directory already exists: ${ outDir }` );
+      process.exit( 1 );
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Copy template
@@ -151,11 +291,12 @@ async function main() {
     WARE_SLUG:    wareSlug,
     WARE_AUTHOR:  wareAuthor,
     WARE_DESC:    wareDesc,
-    WARE_VERSION: '0.1.0',
+    WARE_VERSION: flags.version ? String( flags.version ) : '0.1.0',
   };
 
-  const s = p.spinner();
-  s.start( 'Scaffolding project…' );
+  const s = nonInteractive ? null : p.spinner();
+  if ( s ) s.start( 'Scaffolding project…' );
+  else process.stdout.write( 'Scaffolding project…' );
 
   // Copy template directory to target.
   await cp( templateDir, outDir, { recursive: true } );
@@ -204,28 +345,32 @@ async function main() {
     }
   }
 
-  s.stop( 'Project scaffolded.' );
+  if ( s ) s.stop( 'Project scaffolded.' );
+  else console.log( ' done.' );
 
   const sbHint = wantStorybook ? '\n  npm run storybook        # open Storybook' : '';
+  const nextSteps = [
+    `\nYour ware is ready in ./${ outDirRelative }\n`,
+    'Next steps:\n',
+    `  cd ${ outDirRelative }`,
+    '  npm install',
+    '  npm run dev              # start Vite dev server',
+    `  wp bazaar dev start ${ wareSlug } http://localhost:5173`,
+    '                           # link dev server to wp-admin (in another terminal)',
+    sbHint,
+    '\nWhen ready to ship:',
+    '  npm run package          # build + zip → ' + wareSlug + '.wp',
+    '  wp bazaar install ' + wareSlug + '.wp',
+  ].filter( l => l !== '' ).join( '\n' );
 
   // ---------------------------------------------------------------------------
   // Next steps
   // ---------------------------------------------------------------------------
-  p.outro(
-    [
-      `\nYour ware is ready in ./${ String( dirAnswer ).trim() }\n`,
-      'Next steps:\n',
-      `  cd ${ String( dirAnswer ).trim() }`,
-      '  npm install',
-      '  npm run dev              # start Vite dev server',
-      `  wp bazaar dev start ${ wareSlug } http://localhost:5173`,
-      '                           # link dev server to wp-admin (in another terminal)',
-      sbHint,
-      '\nWhen ready to ship:',
-      '  npm run package          # build + zip → ' + wareSlug + '.wp',
-      '  wp bazaar install ' + wareSlug + '.wp',
-    ].filter( l => l !== '' ).join( '\n' ),
-  );
+  if ( nonInteractive ) {
+    console.log( nextSteps );
+  } else {
+    p.outro( nextSteps );
+  }
 }
 
 main().catch( err => {
