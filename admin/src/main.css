@@ -854,8 +854,65 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 	}
 
 	html.bazaar-in-shell .bazaar-gallery-section {
-		padding-left: 16px;
-		padding-right: 16px;
+		padding: 24px 16px 32px;
+	}
+
+	/* ── Shell mobile: tighten vertical rhythm ─────────────────────────────── */
+
+	/* Header: 52px top → 28px; drop the large horizontal padding */
+	html.bazaar-in-shell .bazaar-header {
+		padding: 28px 16px 0;
+	}
+
+	html.bazaar-in-shell .bazaar-title {
+		font-size: 22px;
+	}
+
+	html.bazaar-in-shell .bazaar-tagline {
+		font-size: 13px;
+	}
+
+	/* App Directory: 40px top → 20px */
+	html.bazaar-in-shell .bazaar-core-section {
+		padding-top: 20px;
+	}
+
+	/* Upload section: 40px top margin → 24px */
+	html.bazaar-in-shell .bazaar-upload-section {
+		margin-top: 24px;
+	}
+
+	/* Core app cards: tighter padding, smaller icon, 2-line desc clamp */
+	.bazaar-core-card {
+		padding: 14px 14px 12px;
+		gap: 10px;
+	}
+
+	.bazaar-core-card__icon-wrap {
+		width: 44px;
+		height: 44px;
+		border-radius: 10px;
+	}
+
+	.bazaar-core-card__initial {
+		font-size: 20px;
+	}
+
+	.bazaar-core-card__icon {
+		border-radius: 10px;
+	}
+
+	.bazaar-core-card__name {
+		font-size: 14px;
+	}
+
+	/* Clamp description to 2 lines on narrow screens — 3 is too tall */
+	.bazaar-core-card__desc {
+		-webkit-line-clamp: 2;
+	}
+
+	.bazaar-core-card__cta {
+		padding: 10px 16px;   /* taller touch target on the Install button */
 	}
 }
 
