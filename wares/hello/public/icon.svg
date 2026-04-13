@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="14" fill="#1a2e1a"/>
+  <!-- Waving hand / hello mark — a stylized "hi" speech bubble with wave -->
+  <!-- Speech bubble body -->
+  <path d="M12 16 Q12 12 16 12 L48 12 Q52 12 52 16 L52 38 Q52 42 48 42 L36 42 L28 52 L28 42 L16 42 Q12 42 12 38 Z"
+    fill="#1e4d1e"/>
+  <!-- Wave line inside bubble -->
+  <path d="M18 27 Q22 20 27 27 Q32 34 37 27 Q42 20 46 27"
+    stroke="#4ade80" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

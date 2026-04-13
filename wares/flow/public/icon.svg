@@ -1,9 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
-  <rect width="24" height="24" rx="6" fill="#d97706"/>
-  <circle cx="12" cy="12" r="7" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/>
-  <circle cx="12" cy="12" r="7" stroke="white" stroke-width="1.5"
-    stroke-dasharray="22 22" stroke-dashoffset="0" stroke-linecap="round"/>
-  <line x1="12" y1="12" x2="12" y2="7" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="12" y1="12" x2="15" y2="12" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-  <circle cx="12" cy="12" r="1" fill="white"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="14" fill="#1f1008"/>
+  <!-- Stem / nub at top of timer -->
+  <rect x="28" y="8" width="8" height="5" rx="2.5" fill="#ef4444"/>
+  <!-- Outer timer ring track -->
+  <circle cx="32" cy="36" r="20" stroke="#3d2010" stroke-width="4.5"/>
+  <!-- Timer progress arc: ~78% full, counting down -->
+  <circle cx="32" cy="36" r="20"
+    stroke="#ef4444" stroke-width="4.5" stroke-linecap="round"
+    stroke-dasharray="98 27" stroke-dashoffset="0"
+    transform="rotate(-90 32 36)"/>
+  <!-- Inner face -->
+  <circle cx="32" cy="36" r="13" fill="#2d1810"/>
+  <!-- Minute hand (pointing up-left) -->
+  <line x1="32" y1="36" x2="25" y2="25" stroke="#fca5a5" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Hour hand (pointing right) -->
+  <line x1="32" y1="36" x2="41" y2="38" stroke="#fca5a5" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Center dot -->
+  <circle cx="32" cy="36" r="2.5" fill="#ef4444"/>
 </svg>

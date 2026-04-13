@@ -3063,8 +3063,9 @@
 	background: var(--bsh-surface);
 	border: 1px solid var(--bsh-border);
 	border-radius: var(--bsh-radius-lg);
-	padding: 18px 20px;
+	padding: 16px 20px 14px;
 	margin-bottom: 28px;
+	max-width: 640px;
 	box-shadow: var(--bsh-shadow-sm);
 	animation: bsh-pop-in 0.28s cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
@@ -3082,7 +3083,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin-bottom: 14px;
+	margin-bottom: 12px;
 }
 
 .bsh-gs__title {
@@ -3113,7 +3114,7 @@
 	padding: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 10px;
+	gap: 8px;
 }
 
 .bsh-gs__step {
@@ -3158,22 +3159,20 @@
 	gap: 10px;
 }
 
-.bsh-gs__progress-bar {
+/* Full-width track; the fill bar sits inside it */
+.bsh-gs__progress-track {
 	flex: 1;
 	height: 4px;
+	background: var(--bsh-border);
+	border-radius: 2px;
+	overflow: hidden;
+}
+
+.bsh-gs__progress-bar {
+	height: 100%;
 	background: var(--bsh-accent);
 	border-radius: 2px;
 	transition: width 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
-	position: relative;
-}
-
-.bsh-gs__progress-bar::before {
-	content: '';
-	position: absolute;
-	inset: 0;
-	background: var(--bsh-border);
-	border-radius: 2px;
-	z-index: -1;
 }
 
 .bsh-gs__progress-label {

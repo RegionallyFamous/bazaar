@@ -783,15 +783,18 @@ export class HomeScreen {
 		const progress = document.createElement( 'div' );
 		progress.className = 'bsh-gs__progress';
 		const done = [ hasWare, hasOpened ].filter( Boolean ).length;
+		const track = document.createElement( 'div' );
+		track.className = 'bsh-gs__progress-track';
 		const bar = document.createElement( 'div' );
 		bar.className = 'bsh-gs__progress-bar';
 		bar.style.width = `${ ( done / 2 ) * 100 }%`;
+		track.appendChild( bar );
 		const label = Object.assign( document.createElement( 'span' ), {
 			className: 'bsh-gs__progress-label',
 			/* translators: %1$d: completed steps, %2$d: total steps */
 			textContent: sprintf( __( '%1$d / %2$d complete', 'bazaar' ), done, 2 ),
 		} );
-		progress.append( bar, label );
+		progress.append( track, label );
 
 		card.append( hdr, steps, progress );
 		return card;
