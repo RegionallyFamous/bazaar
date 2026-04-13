@@ -4,7 +4,7 @@ Tags: admin, apps, marketplace, tools, dashboard
 Requires at least: 6.6
 Tested up to: 6.7
 Requires PHP: 8.2
-Stable tag: 1.2.3
+Stable tag: 1.2.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,9 @@ Yes. Wares run in an iframe with `allow-same-origin` in the sandbox, so they can
 2. An installed ware rendered as a full-bleed iframe in wp-admin
 
 == Changelog ==
+
+= 1.2.4 =
+* Fix: welcome screen install now correctly registers the app in the shell and navigates to it
 
 = 1.2.3 =
 * Feature: activation redirect — plugin now lands new users on the Bazaar screen immediately after activation
