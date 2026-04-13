@@ -242,6 +242,12 @@ final class Plugin {
 	 * @param string               $source   Install source ('upload', 'cli', 'core-app', etc.).
 	 */
 	public function on_ware_installed_sse( string $slug, array $manifest, string $source = '' ): void {
+		// CLI installs run with no live browser session — queuing the event would
+		// cause the shell to auto-navigate to this ware the next time an admin
+		// opens the page (e.g. after a blueprint run in WordPress Playground).
+		if ( 'cli' === $source ) {
+			return;
+		}
 		bazaar_push_sse_event(
 			'ware-installed',
 			array(
