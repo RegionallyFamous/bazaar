@@ -212,6 +212,78 @@ final class WareLoaderTest extends TestCase {
 		$this->assertSame( 'slug_exists', $result->get_error_code() );
 	}
 
+	// ─── install() ───────────────────────────────────────────────────────────
+
+	public function test_install_returns_wp_error_when_lock_already_held(): void {
+		Functions\when( 'sanitize_key' )->returnArg();
+		Functions\when( 'esc_html__' )->returnArg();
+		Functions\when( 'esc_html' )->returnArg();
+		Functions\when( 'absint' )->alias( 'intval' );
+		Functions\when( 'number_format_i18n' )->alias( 'number_format' );
+		Functions\when( 'get_option' )->justReturn( BAZAAR_MAX_UNCOMPRESSED_SIZE );
+		// Simulate lock already held by returning false from add_option.
+		Functions\when( 'add_option' )->justReturn( false );
+
+		$registry = new WareRegistry();
+		$loader   = new WareLoader( $registry );
+		$path     = $this->make_wp_archive();
+		$result   = $loader->install( $path, 'test-ware.wp' );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'install_in_progress', $result->get_error_code() );
+	}
+
+	// ─── delete() ────────────────────────────────────────────────────────────
+
+	public function test_delete_returns_true_when_directory_does_not_exist(): void {
+		Functions\when( 'sanitize_key' )->returnArg();
+
+		$loader = new WareLoader( $this->make_registry() );
+		// 'nonexistent-ware' has no directory under BAZAAR_WARES_DIR in temp.
+		$result = $loader->delete( 'nonexistent-ware' );
+
+		$this->assertTrue( $result );
+	}
+
+	public function test_delete_returns_true_after_removing_ware_directory(): void {
+		Functions\when( 'sanitize_key' )->returnArg();
+		Functions\when( 'esc_html__' )->returnArg();
+		Functions\when( 'esc_html' )->returnArg();
+		Functions\when( 'request_filesystem_credentials' )->justReturn( true );
+		Functions\when( 'WP_Filesystem' )->alias(
+			static function (): bool {
+				global $wp_filesystem;
+				$wp_filesystem = new class() extends \WP_Filesystem_Base {
+					/** @param bool $recursive */
+					public function delete( string $path, bool $recursive = false ): bool {
+						if ( ! is_dir( $path ) ) {
+							return false;
+						}
+						foreach ( glob( "$path/*" ) ?: array() as $f ) {
+							unlink( $f );
+						}
+						return rmdir( $path );
+					}
+				};
+				return true;
+			}
+		);
+
+		// Create a real ware directory to delete.
+		$slug     = 'delete-test-ware';
+		$ware_dir = BAZAAR_WARES_DIR . $slug;
+		if ( ! is_dir( $ware_dir ) ) {
+			mkdir( $ware_dir, 0755, true );
+		}
+		file_put_contents( $ware_dir . '/index.html', '<html></html>' );
+
+		$loader = new WareLoader( $this->make_registry() );
+		$result = $loader->delete( $slug );
+
+		$this->assertTrue( $result );
+		$this->assertDirectoryDoesNotExist( $ware_dir );
+	}
+
 	public function test_rejects_archive_with_path_traversal(): void {
 		$loader = new WareLoader( $this->make_registry() );
 

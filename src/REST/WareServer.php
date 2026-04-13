@@ -376,8 +376,27 @@ final class WareServer {
 			exit;
 		}
 
-		// Non-HTML assets: stream directly without loading into PHP memory.
-		// This avoids exhausting PHP's memory limit for large fonts/images/videos.
+		// SVG files are sanitized before serving to strip any embedded scripts or
+		// event handlers that could execute when opened directly in a browser tab.
+		// All other assets are streamed directly without loading into PHP memory.
+		if ( 'svg' === $ext ) {
+			global $wp_filesystem;
+			if ( empty( $wp_filesystem ) ) {
+				if ( ! function_exists( 'WP_Filesystem' ) ) {
+					require_once ABSPATH . 'wp-admin/includes/file.php';
+				}
+				WP_Filesystem();
+			}
+			$svg_raw = ! empty( $wp_filesystem ) ? $wp_filesystem->get_contents( $full_path ) : false;
+			if ( false === $svg_raw ) {
+				return new WP_Error( 'file_read_error', esc_html__( 'Could not read SVG file.', 'bazaar' ), array( 'status' => 500 ) );
+			}
+			$svg_safe = $this->sanitize_svg( $svg_raw );
+			header( 'Content-Type: image/svg+xml' );
+			echo $svg_safe;
+			exit;
+		}
+
 		header( 'Content-Type: ' . $mime_type );
 		header( 'Content-Length: ' . $file_size );
 		readfile( $full_path );
@@ -449,11 +468,49 @@ final class WareServer {
 	 * @param array<string, mixed> $ware Full ware record from the registry.
 	 * @return string
 	 */
+	/**
+	 * Strip dangerous content from SVG markup before serving.
+	 *
+	 * Removes <script> elements, on* event-handler attributes, and
+	 * javascript: href values so the SVG is safe when opened directly in a
+	 * browser tab. The SVG remains fully renderable for use in <img> tags.
+	 *
+	 * @param string $svg Raw SVG markup.
+	 * @return string Sanitized SVG markup.
+	 */
+	private function sanitize_svg( string $svg ): string {
+		// Strip XML declaration and DOCTYPE — neither is needed for inline/img SVGs.
+		$svg = (string) preg_replace( '/<\?xml[^>]*\?>/i', '', $svg );
+		$svg = (string) preg_replace( '/<!DOCTYPE[^>]*>/i', '', $svg );
+		// Strip <script> elements and their content.
+		$svg = (string) preg_replace( '/<script\b[^>]*>.*?<\/script>/si', '', $svg );
+		// Strip on* event-handler attributes (onclick, onload, etc.).
+		$svg = (string) preg_replace( '/\bon\w+\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>\/]*)/i', '', $svg );
+		// Strip javascript: URI values in href/xlink:href attributes.
+		$svg = (string) preg_replace( '/\bhref\s*=\s*["\']?\s*javascript:[^"\'>\s]*/i', 'href="#"', $svg );
+		return $svg;
+	}
+
+	/**
+	 * Inject a shared-module importmap into the ware HTML, replacing any existing one.
+	 *
+	 * @param string               $html HTML string for the ware shell.
+	 * @param array<string, mixed> $ware Ware manifest array.
+	 * @return string Modified HTML with the importmap injected.
+	 */
 	private function inject_importmap( string $html, array $ware ): string {
 		$requested = $ware['shared'] ?? array();
 		if ( empty( $requested ) || ! is_array( $requested ) ) {
 			return $html;
 		}
+
+		// Remove any existing importmap from the ware's raw HTML to prevent
+		// duplicate import maps, which produce undefined browser behaviour.
+		$html = (string) preg_replace(
+			'/<script\s[^>]*type=["\']importmap["\'][^>]*>.*?<\/script>/si',
+			'',
+			$html
+		);
 
 		$registry = $this->get_shared_registry();
 		if ( empty( $registry ) ) {

@@ -112,7 +112,14 @@ export class WareInspector {
 
 	_startTick() {
 		this._stopTick();
-		this._ticker = setInterval( () => this._renderContext(), 1000 );
+		this._ticker = setInterval( () => {
+			try {
+				this._renderContext();
+			} catch ( err ) {
+				// eslint-disable-next-line no-console
+				console.error( '[bazaar] inspector tick error', err );
+			}
+		}, 1000 );
 	}
 
 	_stopTick() {

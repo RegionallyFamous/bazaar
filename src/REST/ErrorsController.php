@@ -41,6 +41,9 @@ final class ErrorsController extends BazaarController {
 	 */
 	private const MAX_ERRORS_PER_SLUG = 500;
 
+	/** Maximum allowed byte-length for the stack field (64 KB). */
+	private const MAX_STACK_BYTES = 65535;
+
 	/**
 	 * REST API namespace.
 	 *
@@ -142,13 +145,23 @@ final class ErrorsController extends BazaarController {
 	/**
 	 * Create error.
 	 *
-	 * @param WP_REST_Request $request Description.
-	 * @return WP_REST_Response
+	 * @param WP_REST_Request $request REST request.
+	 * @return WP_REST_Response|WP_Error
 	 */
-	public function create_error( WP_REST_Request $request ): WP_REST_Response {
+	public function create_error( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		global $wpdb;
-		$table = $wpdb->prefix . Tables::ERRORS;
-		$slug  = sanitize_key( $request->get_param( 'slug' ) );
+		$table     = $wpdb->prefix . Tables::ERRORS;
+		$slug      = sanitize_key( $request->get_param( 'slug' ) );
+		$stack_raw = (string) ( $request->get_param( 'stack' ) ?? '' );
+
+		// Reject oversized stack payloads before any DB interaction.
+		if ( strlen( $stack_raw ) > self::MAX_STACK_BYTES ) {
+			return new WP_Error(
+				'payload_too_large',
+				esc_html__( 'The stack field exceeds the maximum allowed size (64KB).', 'bazaar' ),
+				array( 'status' => 413 )
+			);
+		}
 
 		// Rolling cap: keep at most MAX_ERRORS_PER_SLUG rows per ware so a
 		// noisy ware cannot grow the table unboundedly.
@@ -173,7 +186,7 @@ final class ErrorsController extends BazaarController {
 				'slug'       => $slug,
 				'user_id'    => get_current_user_id(),
 				'message'    => sanitize_text_field( (string) $request->get_param( 'message' ) ),
-				'stack'      => wp_kses( (string) ( $request->get_param( 'stack' ) ?? '' ), array() ),
+				'stack'      => wp_kses( $stack_raw, array() ),
 				'url'        => esc_url_raw( (string) ( $request->get_param( 'url' ) ?? '' ) ),
 				'created_at' => current_time( 'mysql', true ),
 			)

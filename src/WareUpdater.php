@@ -16,6 +16,7 @@ namespace Bazaar;
 
 defined( 'ABSPATH' ) || exit;
 
+use Bazaar\REST\JobsController;
 use WP_Error;
 
 /**
@@ -156,7 +157,10 @@ final class WareUpdater {
 	public function get_outdated(): array {
 		$raw = get_option( self::OUTDATED_KEY, '{}' );
 		$dec = json_decode( (string) $raw, true );
-		return is_array( $dec ) ? $dec : array();
+		if ( json_last_error() !== JSON_ERROR_NONE || ! is_array( $dec ) ) {
+			return array();
+		}
+		return $dec;
 	}
 
 	/**
@@ -179,15 +183,36 @@ final class WareUpdater {
 		// Snapshot the current registry manifest before touching anything.
 		$old_manifest = $this->registry->get( $slug );
 
-		// Delete the old ware files (keep registry entry temporarily).
-		$del = $this->loader->delete( $slug );
-		if ( is_wp_error( $del ) ) {
-			return $del;
+		// Snapshot the ware files to a backup directory before deletion so we
+		// can restore them if the new version fails to install.
+		$ware_dir   = BAZAAR_WARES_DIR . $slug;
+		$backup_dir = BAZAAR_WARES_DIR . '.backup-' . $slug . '-' . time();
+		$has_backup = false;
+
+		if ( is_dir( $ware_dir ) ) {
+			if ( ! function_exists( 'WP_Filesystem' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+			}
+			WP_Filesystem();
+			global $wp_filesystem;
+			if ( ! empty( $wp_filesystem ) && $wp_filesystem->move( $ware_dir, $backup_dir ) ) {
+				$has_backup = true;
+			} else {
+				// Could not move to backup — fall back to delete-only (old behaviour).
+				$del = $this->loader->delete( $slug );
+				if ( is_wp_error( $del ) ) {
+					return $del;
+				}
+			}
 		}
+
 		// Remove from registry so the installer can re-register.
 		if ( ! $this->registry->unregister( $slug ) ) {
-			// The registry record is still present; abort to avoid a corrupted
-			// state where files are gone but the registry still points to them.
+			// Restore backup files if present so the site remains functional.
+			if ( $has_backup && is_dir( $backup_dir ) ) {
+				global $wp_filesystem;
+				$wp_filesystem?->move( $backup_dir, $ware_dir );
+			}
 			return new WP_Error(
 				'unregister_failed',
 				esc_html__( 'Could not unregister ware before update. Please try again.', 'bazaar' )
@@ -197,13 +222,34 @@ final class WareUpdater {
 		// Re-install from registry.
 		$manifest = $this->remote->install( $slug, $this->loader, $this->registry );
 		if ( is_wp_error( $manifest ) ) {
-			// Install failed: files are gone but we can restore the registry
-			// entry so the ware remains visible and re-installable.
+			// Install failed: restore the backed-up files and re-register so
+			// the ware remains visible and fully servable.
+			if ( $has_backup && is_dir( $backup_dir ) ) {
+				global $wp_filesystem;
+				if ( ! empty( $wp_filesystem ) ) {
+					$wp_filesystem->move( $backup_dir, $ware_dir );
+				}
+			}
 			if ( is_array( $old_manifest ) ) {
-				$this->registry->register( $old_manifest );
+				$restored = $this->registry->register( $old_manifest );
+				if ( ! $restored ) {
+					return new WP_Error(
+						'rollback_failed',
+						esc_html__( 'Update failed and the previous version could not be restored. The ware is in an inconsistent state.', 'bazaar' )
+					);
+				}
 			}
 			return $manifest;
 		}
+
+		// Install succeeded — clean up the file backup.
+		if ( $has_backup && is_dir( $backup_dir ) ) {
+			global $wp_filesystem;
+			$wp_filesystem?->delete( $backup_dir, true );
+		}
+
+		// Schedule any manifest-declared background jobs from the new version.
+		JobsController::register_ware_jobs( $manifest );
 
 		// Remove from outdated list.
 		$outdated = $this->get_outdated();

@@ -34,11 +34,22 @@ export async function wpFetch( path: string, init?: RequestInit ): Promise<Respo
 }
 
 /**
+ * Options for `wpJson`, extending standard `RequestInit`.
+ *
+ * The optional `validate` callback provides runtime type-narrowing for the
+ * parsed JSON before it is returned. When omitted, the response is cast to
+ * `T` with no runtime validation.
+ */
+export interface WpJsonOptions<T> extends RequestInit {
+  validate?: ( raw: unknown ) => T;
+}
+
+/**
  * Fetch a WordPress REST endpoint and parse the JSON response.
  *
  * @throws {WpApiError} If the response status is not in the 2xx range.
  */
-export async function wpJson<T>( path: string, init?: RequestInit ): Promise<T> {
+export async function wpJson<T>( path: string, init?: WpJsonOptions<T> ): Promise<T> {
   const response = await wpFetch( path, init );
 
   if ( ! response.ok ) {
@@ -52,7 +63,8 @@ export async function wpJson<T>( path: string, init?: RequestInit ): Promise<T> 
     throw new WpApiError( message, response.status, response );
   }
 
-  return response.json() as Promise<T>;
+  const raw = await response.json() as unknown;
+  return init?.validate ? init.validate( raw ) : ( raw as T );
 }
 
 /** Error thrown by `wpJson` when the server returns a non-2xx status. */

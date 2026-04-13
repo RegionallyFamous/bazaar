@@ -461,4 +461,50 @@ final class WareRegistryTest extends TestCase {
 		// Must succeed even though update_option returned false.
 		$this->assertTrue( $result, 'enable() must succeed when the stored value is unchanged.' );
 	}
+
+	// -------------------------------------------------------------------------
+	// Corrupt JSON resilience
+	// -------------------------------------------------------------------------
+
+	/**
+	 * load_index() must return an empty index when bazaar_index contains
+	 * invalid JSON (corrupt database row), rather than crashing.
+	 */
+	public function test_get_index_returns_empty_when_stored_index_json_is_corrupt(): void {
+		$this->store['bazaar_index'] = '{not valid json';
+		$registry                    = new WareRegistry();
+		$index                       = $registry->get_index();
+
+		$this->assertSame( array(), $index, 'Corrupt bazaar_index must yield an empty index, not a PHP error.' );
+	}
+
+	/**
+	 * get() must return null when the per-ware option contains invalid JSON.
+	 * A corrupt ware option must not propagate to callers as a crash.
+	 */
+	public function test_get_returns_null_when_ware_option_json_is_corrupt(): void {
+		// Seed the index so the slug looks registered.
+		$this->store['bazaar_index']      = (string) json_encode( array(
+			'crm' => array(
+				'slug'        => 'crm',
+				'name'        => 'CRM',
+				'enabled'     => true,
+				'version'     => '1.0.0',
+				'icon'        => '',
+				'entry'       => 'index.html',
+				'menu_title'  => 'CRM',
+				'capability'  => 'manage_options',
+				'group'       => null,
+				'dev_url'     => null,
+				'permissions' => array(),
+			),
+		) );
+		// But the ware-specific option is corrupt.
+		$this->store['bazaar_ware_crm']   = '{not valid json';
+
+		$registry = new WareRegistry();
+		$result   = $registry->get( 'crm' );
+
+		$this->assertNull( $result, 'Corrupt per-ware option must return null, not crash.' );
+	}
 }

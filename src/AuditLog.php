@@ -41,6 +41,9 @@ final class AuditLog {
 		'ware_event',
 	);
 
+	/** Maximum JSON-encoded size of meta (8KB). */
+	private const META_MAX_BYTES = 8192;
+
 	/**
 	 * Append one audit log entry.
 	 *
@@ -51,13 +54,15 @@ final class AuditLog {
 	public static function record( string $slug, string $event, array $meta = array() ): void {
 		global $wpdb;
 
+		$safe_meta = self::cap_meta( $meta );
+
 		$inserted = $wpdb->insert(
 			$wpdb->prefix . Tables::AUDIT_LOG,
 			array(
 				'slug'       => substr( $slug, 0, 100 ),
 				'event'      => substr( $event, 0, 50 ),
 				'user_id'    => get_current_user_id(),
-				'meta'       => (string) wp_json_encode( $meta ),
+				'meta'       => (string) wp_json_encode( $safe_meta ),
 				'created_at' => current_time( 'mysql', true ),
 			)
 		);
@@ -65,6 +70,40 @@ final class AuditLog {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'Bazaar AuditLog: failed to insert audit record. Check database configuration.' );
 		}
+	}
+
+	/**
+	 * Cap meta to depth 2 and 8KB JSON-encoded size before storage.
+	 * Prevents a compromised REST caller from inserting unbounded data.
+	 *
+	 * @param array<string, mixed> $meta Raw meta.
+	 * @return array<string, mixed>
+	 */
+	private static function cap_meta( array $meta ): array {
+		$capped = array();
+		foreach ( $meta as $key => $value ) {
+			if ( is_array( $value ) ) {
+				// Flatten sub-arrays to scalar strings (depth 2 limit).
+				$flat = array();
+				foreach ( $value as $k => $v ) {
+					$flat[ (string) $k ] = is_scalar( $v ) ? $v : (string) wp_json_encode( $v );
+				}
+				$capped[ (string) $key ] = $flat;
+			} else {
+				$capped[ (string) $key ] = $value;
+			}
+		}
+
+		// Enforce 8KB encoded size.
+		$encoded = wp_json_encode( $capped );
+		if ( false !== $encoded && strlen( $encoded ) > self::META_MAX_BYTES ) {
+			return array(
+				'__truncated'     => true,
+				'__original_keys' => array_keys( $meta ),
+			);
+		}
+
+		return $capped;
 	}
 
 	/**

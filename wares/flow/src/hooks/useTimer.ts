@@ -98,13 +98,15 @@ export function useTimer() {
 
 		intervalRef.current = setInterval( () => {
 			setSecondsLeft( prev => {
-				if ( prev <= 1 ) {
-					clearInterval( intervalRef.current! );
-					intervalRef.current = null;
-					setRunning( false );
-					completeSession().catch( () => {} );
-					return 0;
-				}
+			if ( prev <= 1 ) {
+				clearInterval( intervalRef.current! );
+				intervalRef.current = null;
+				setRunning( false );
+				completeSession().catch( () => {
+					bzr.toast( 'Session could not be saved.', 'warning' );
+				} );
+				return 0;
+			}
 				return prev - 1;
 			} );
 		}, 1000 );
@@ -130,7 +132,9 @@ export function useTimer() {
 	const skip = useCallback( () => {
 		setRunning( false );
 		if ( mode === 'work' ) {
-			completeSession().catch( () => {} );
+			completeSession().catch( () => {
+				bzr.toast( 'Session could not be saved.', 'warning' );
+			} );
 		} else {
 			setMode( 'work' );
 			setSecondsLeft( modeDuration( 'work', settings ) );

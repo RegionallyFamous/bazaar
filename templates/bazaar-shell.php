@@ -84,15 +84,35 @@ defined( 'ABSPATH' ) || exit;
 				<!-- Rendered by home.js -->
 			</div>
 
-			<!-- Skeleton loader (replaces spinner while iframe content loads) -->
-			<div class="bsh-loading" id="bsh-loading" aria-hidden="true">
-				<div class="bsh-skeleton">
-					<div class="bsh-skeleton__bar bsh-skeleton__bar--header"></div>
-					<div class="bsh-skeleton__bar bsh-skeleton__bar--wide"></div>
-					<div class="bsh-skeleton__bar"></div>
-					<div class="bsh-skeleton__bar bsh-skeleton__bar--short"></div>
+		<!-- Skeleton loader (replaces spinner while iframe content loads) -->
+		<div class="bsh-loading" id="bsh-loading" aria-hidden="true">
+			<div class="bsh-skeleton">
+				<div class="bsh-skeleton--card">
+					<div class="bsh-skeleton__circle"></div>
+					<div class="bsh-skeleton__lines">
+						<div class="bsh-skeleton__bar bsh-skeleton__bar--header"></div>
+						<div class="bsh-skeleton__bar bsh-skeleton__bar--wide"></div>
+						<div class="bsh-skeleton__bar bsh-skeleton__bar--short"></div>
+					</div>
+				</div>
+				<div class="bsh-skeleton--card">
+					<div class="bsh-skeleton__circle"></div>
+					<div class="bsh-skeleton__lines">
+						<div class="bsh-skeleton__bar bsh-skeleton__bar--header"></div>
+						<div class="bsh-skeleton__bar"></div>
+						<div class="bsh-skeleton__bar bsh-skeleton__bar--wide"></div>
+					</div>
+				</div>
+				<div class="bsh-skeleton--card">
+					<div class="bsh-skeleton__circle"></div>
+					<div class="bsh-skeleton__lines">
+						<div class="bsh-skeleton__bar bsh-skeleton__bar--header"></div>
+						<div class="bsh-skeleton__bar bsh-skeleton__bar--short"></div>
+						<div class="bsh-skeleton__bar bsh-skeleton__bar--wide"></div>
+					</div>
 				</div>
 			</div>
+		</div>
 		</main>
 
 		<!-- Running-app taskbar: shows LRU-resident wares -->

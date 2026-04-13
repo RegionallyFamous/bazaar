@@ -181,7 +181,8 @@ final class Plugin {
 		add_action( 'bazaar_bus_event', array( WebhookDispatcher::class, 'dispatch' ), 10, 3 );
 
 		// Audit log lifecycle events.
-		add_action( 'bazaar_ware_installed', fn( $slug ) => AuditLog::record( $slug, 'install' ) );
+		// Hook signature: (string $slug, array $manifest, string $source).
+		add_action( 'bazaar_ware_installed', fn( string $slug ) => AuditLog::record( $slug, 'install' ), 10, 1 );
 		add_action( 'bazaar_ware_deleted', fn( $slug ) => AuditLog::record( $slug, 'uninstall' ) );
 		add_action( 'bazaar_ware_toggled', fn( $slug, $enabled ) => AuditLog::record( $slug, $enabled ? 'enable' : 'disable' ), 10, 2 );
 
@@ -192,8 +193,11 @@ final class Plugin {
 		$this->updater = new WareUpdater( $this->registry, new RemoteRegistry(), new WareLoader( $this->registry ) );
 		$this->updater->register_hooks();
 
+		// Anonymous update-check telemetry (no-op when BAZAAR_TELEMETRY_ENDPOINT is not set).
+		UpdateTelemetry::register();
+
 		// Push SSE events for lifecycle actions (fired by UploadController / WareController).
-		add_action( 'bazaar_ware_installed', array( $this, 'on_ware_installed_sse' ), 10, 2 );
+		add_action( 'bazaar_ware_installed', array( $this, 'on_ware_installed_sse' ), 10, 3 );
 		add_action( 'bazaar_ware_deleted', array( $this, 'on_ware_deleted_sse' ), 10, 1 );
 		add_action( 'bazaar_ware_toggled', array( $this, 'on_ware_toggled_sse' ), 10, 2 );
 		add_action( 'bazaar_ware_updated', array( $this, 'on_ware_updated_sse' ), 10, 2 );
@@ -207,6 +211,7 @@ final class Plugin {
 		}
 
 		add_action( 'admin_init', array( self::class, 'ensure_wares_directory' ) );
+		add_action( 'admin_init', array( self::class, 'register_privacy_policy_content' ) );
 		add_action( 'admin_menu', array( $this, 'register_admin_menus' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_assets' ) );
 
@@ -230,13 +235,15 @@ final class Plugin {
 	 *
 	 * @param string               $slug     Installed ware slug.
 	 * @param array<string, mixed> $manifest Installed ware manifest.
+	 * @param string               $source   Install source ('upload', 'cli', 'core-app', etc.).
 	 */
-	public function on_ware_installed_sse( string $slug, array $manifest ): void {
+	public function on_ware_installed_sse( string $slug, array $manifest, string $source = '' ): void {
 		bazaar_push_sse_event(
 			'ware-installed',
 			array(
-				'slug' => $slug,
-				'name' => $manifest['name'] ?? $slug,
+				'slug'   => $slug,
+				'name'   => $manifest['name'] ?? $slug,
+				'source' => $source,
 			)
 		);
 	}
@@ -385,16 +392,32 @@ final class Plugin {
 			$wp_filesystem->put_contents( $index, "<?php\n// Silence is golden.\n", FS_CHMOD_FILE );
 		}
 
-		$htaccess = BAZAAR_WARES_DIR . '.htaccess';
+		$htaccess         = BAZAAR_WARES_DIR . '.htaccess';
+		$htaccess_content = self::htaccess_content();
 		if ( ! empty( $wp_filesystem ) ) {
-			// Always write (or overwrite) so the rules stay current even when
-			// the plugin is updated with a changed policy.
-			$wp_filesystem->put_contents(
-				$htaccess,
-				self::htaccess_content(),
-				FS_CHMOD_FILE
-			);
+			// Only write when content has changed so we avoid a disk write on
+			// every admin_init when nothing needs updating.
+			if ( ! $wp_filesystem->exists( $htaccess ) || $wp_filesystem->get_contents( $htaccess ) !== $htaccess_content ) {
+				$wp_filesystem->put_contents( $htaccess, $htaccess_content, FS_CHMOD_FILE );
+			}
 		}
+	}
+
+	/**
+	 * Register Bazaar's contribution to the WordPress privacy policy guide page.
+	 *
+	 * Called on admin_init. Discloses what the update-check telemetry collects
+	 * and how to opt out — standard practice per the WordPress Plugin Handbook.
+	 */
+	public static function register_privacy_policy_content(): void {
+		if ( ! function_exists( 'wp_add_privacy_policy_content' ) ) {
+			return;
+		}
+		$policy_text =
+			'<p>' . esc_html__( 'Bazaar may send anonymous usage data — including plugin version, WordPress version, PHP version, site locale, and a one-way (SHA-256) hash of your site URL — to the plugin author as part of its routine update-check process. No personally identifiable information is collected, and no data is shared with third parties.', 'bazaar' ) . '</p>' .
+			'<p>' . esc_html__( 'To opt out, run the following WP-CLI command or add it to your site\'s initialisation code:', 'bazaar' ) . '</p>' .
+			'<pre><code>wp option update bazaar_analytics_enabled 0</code></pre>';
+		wp_add_privacy_policy_content( 'Bazaar', $policy_text );
 	}
 
 	/**

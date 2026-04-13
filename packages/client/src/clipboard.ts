@@ -14,7 +14,16 @@
 
 type JsonValue = unknown;
 
-let _pasteSeq = 0;
+/**
+ * Generate a random correlation ID for paste requests.
+ * Uses crypto.randomUUID() when available; falls back to a random hex string.
+ */
+function randomId(): string {
+	if ( typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ) {
+		return crypto.randomUUID();
+	}
+	return Array.from( { length: 4 }, () => Math.floor( Math.random() * 0x10000 ).toString( 16 ).padStart( 4, '0' ) ).join( '-' );
+}
 
 /**
  * Copy `data` to the inter-ware clipboard.
@@ -32,10 +41,13 @@ export function copy( data: JsonValue, mime = 'application/json' ): void {
  */
 export async function paste<T = JsonValue>( mime?: string ): Promise<T | null> {
 	return new Promise( ( resolve, reject ) => {
-		const id      = `paste_${ ++_pasteSeq }`;
+		const id      = randomId();
 		const timeout = setTimeout( () => { window.removeEventListener( 'message', handler ); reject( new Error( 'bzr.paste timed out' ) ); }, 3000 );
 
 		const handler = ( e: MessageEvent ) => {
+			// Only accept responses from the parent shell frame to prevent a
+			// rogue ware from spoofing a paste-response with a fake payload.
+			if ( e.source !== window.parent ) return;
 			if ( e.data?.type !== 'bazaar:paste-response' || e.data?.id !== id ) return;
 			clearTimeout( timeout );
 			window.removeEventListener( 'message', handler );

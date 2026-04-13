@@ -30,6 +30,9 @@ $_bazaar_options = array(
 	'bazaar_last_update_check',
 	'bazaar_outdated_wares',
 	'bazaar_site_overrides',
+	'bazaar_webhooks',
+	'bazaar_csp_policy',
+	'bazaar_analytics_enabled',
 );
 foreach ( $_bazaar_options as $_opt ) {
 	delete_option( $_opt );
@@ -60,14 +63,21 @@ $wpdb->query(
 		$wpdb->esc_like( '_transient_bazaar_badges_' ) . '%'
 	)
 );
-// Drop the analytics table.
-$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}bazaar_analytics" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+// Drop all custom tables.
+// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}bazaar_analytics" );
+// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}bazaar_errors" );
+// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}bazaar_audit_log" );
 // phpcs:enable
 
-// Unschedule the update cron job.
-$_ts = wp_next_scheduled( 'bazaar_check_updates' );
-if ( $_ts ) {
-	wp_unschedule_event( $_ts, 'bazaar_check_updates' );
+// Unschedule all Bazaar cron jobs.
+foreach ( array( 'bazaar_check_updates', 'bazaar_health_refresh' ) as $_hook ) {
+	$_ts = wp_next_scheduled( $_hook );
+	if ( $_ts ) {
+		wp_unschedule_event( $_ts, $_hook );
+	}
 }
 
 // Remove wp-content/bazaar/ and all installed wares.

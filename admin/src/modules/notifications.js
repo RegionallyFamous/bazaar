@@ -13,14 +13,15 @@ const MAX_ITEMS = 100;
 
 export class NotificationCenter {
 	/**
-	 * @param {{ root: HTMLElement, toolbar: HTMLElement }} opts
+	 * @param {{ root: HTMLElement, toolbar: HTMLElement, navigateTo?: (slug: string) => void }} opts
 	 */
-	constructor( { root, toolbar } ) {
+	constructor( { root, toolbar, navigateTo } ) {
 		this._items = this._loadItems();
 		this._unread = 0;
 		this._open = false;
 		this._dnd = this._loadDnd();
 		this._root = root;
+		this._navigateTo = navigateTo ?? null;
 
 		this._bellBtn = this._buildBell( toolbar );
 		this._drawer = this._buildDrawer( root );
@@ -284,9 +285,11 @@ export class NotificationCenter {
 			info: 'dashicons-info',
 		};
 
+		let notifIdx = 0;
 		for ( const item of this._items ) {
 			const li = document.createElement( 'li' );
 			li.className = `bsh-notif-drawer__item bsh-notif-drawer__item--${ item.level }`;
+			li.style.setProperty( '--i', String( notifIdx++ ) );
 
 			const icon = Object.assign( document.createElement( 'span' ), {
 				className: `bsh-notif-drawer__icon dashicons ${ ICONS[ item.level ] ?? 'dashicons-info' }`,
@@ -316,6 +319,20 @@ export class NotificationCenter {
 			} );
 
 			body.append( msg, meta );
+
+			// Jump-to-ware link (only for notifications from a real ware, not 'system').
+			if ( item.slug && item.slug !== 'system' && this._navigateTo ) {
+				const jumpBtn = document.createElement( 'button' );
+				jumpBtn.type = 'button';
+				jumpBtn.className = 'bsh-notif-drawer__jump';
+				jumpBtn.textContent = __( 'Go to ware', 'bazaar' );
+				const jumpSlug = item.slug;
+				jumpBtn.addEventListener( 'click', () => {
+					this.close();
+					this._navigateTo( jumpSlug );
+				} );
+				body.appendChild( jumpBtn );
+			}
 
 			const dismiss = document.createElement( 'button' );
 			dismiss.type = 'button';

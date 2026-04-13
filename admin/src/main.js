@@ -476,6 +476,7 @@ function insertWareCard( ware ) {
 	card.dataset.name = ware.name;
 	card.dataset.status = isEnabled ? 'enabled' : 'disabled';
 	card.setAttribute( 'role', 'listitem' );
+	card.style.setProperty( '--i', '0' );
 
 	card.innerHTML = `
 		<div class="bazaar-card__content">

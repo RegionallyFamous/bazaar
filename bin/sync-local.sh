@@ -70,9 +70,32 @@ rsync -a --delete \
   "${TARGET}/"
 
 # ---------------------------------------------------------------------------
-# 3. Sync autoloader shims + packages needed at runtime
+# 3. Sync built wares to wp-content/bazaar/ (the live install directory)
 # ---------------------------------------------------------------------------
-echo "  [3/3] Syncing autoloader shims and runtime packages…"
+# TARGET = .../wp-content/plugins/bazaar → content dir is two levels up
+WP_CONTENT_DIR="$(cd "${TARGET}/../.." && pwd)"
+WARES_INSTALL_DIR="${WP_CONTENT_DIR}/bazaar"
+
+if [[ -d "${WARES_INSTALL_DIR}" ]]; then
+  echo "  [3/4] Syncing wares to ${WARES_INSTALL_DIR}…"
+  for ware_dist in "${REPO_ROOT}"/wares/*/dist; do
+    ware="$(basename "$(dirname "${ware_dist}")")"
+    dest="${WARES_INSTALL_DIR}/${ware}"
+    if [[ -d "${dest}" ]]; then
+      rsync -a --delete "${ware_dist}/" "${dest}/"
+      cp "${REPO_ROOT}/wares/${ware}/manifest.json" "${dest}/manifest.json"
+      [[ -f "${REPO_ROOT}/wares/${ware}/icon.svg" ]] && cp "${REPO_ROOT}/wares/${ware}/icon.svg" "${dest}/icon.svg"
+      echo "    ✓ ${ware}"
+    fi
+  done
+else
+  echo "  [3/4] Skipping wares sync — ${WARES_INSTALL_DIR} not found"
+fi
+
+# ---------------------------------------------------------------------------
+# 4. Sync autoloader shims + packages needed at runtime
+# ---------------------------------------------------------------------------
+echo "  [4/4] Syncing autoloader shims and runtime packages…"
 rsync -a \
   "${REPO_ROOT}/vendor/autoload.php" \
   "${TARGET}/vendor/"

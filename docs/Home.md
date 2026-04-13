@@ -12,6 +12,7 @@ Welcome to the Bazaar developer documentation. Bazaar is a WordPress plugin that
 | [WP-CLI](WP-CLI) | Full CLI command reference with lifecycle, dev mode, signing, and scripting recipes |
 | [WordPress Shell](WordPress-Shell) | `wp shell`, PsySH, `wp eval`, and admin automation patterns |
 | [Architecture](Architecture) | Plugin structure, storage model, security design, shared library system, and service worker |
+| [10-pass audit todos](10-pass-audit-todos) | Checklist of security, perf, types, a11y, and test work from the codebase audit |
 
 ---
 

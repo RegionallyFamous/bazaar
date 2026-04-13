@@ -64,7 +64,12 @@ export function connectHmr( slug, devUrl, onReload ) {
 			// Both 'update' (HMR patch) and 'full-reload' (no HMR possible)
 			// should trigger an iframe reload.
 			if ( msg.type === 'update' || msg.type === 'full-reload' ) {
-				onReload( slug );
+				try {
+					onReload( slug );
+				} catch ( err ) {
+				// eslint-disable-next-line no-console
+					console.error( '[bazaar] HMR reload error', err );
+				}
 			}
 		} );
 

@@ -47,18 +47,20 @@ export default function App() {
 						<strong>{ timer.totalSessions }</strong> total
 					</span>
 				</div>
-				<button
-					className="flow-header__settings-btn"
-					onClick={ () => timer.setShowSettings( s => ! s ) }
-					title="Settings"
-				>
-					⚙
-				</button>
+			<button
+				className="flow-header__settings-btn"
+				onClick={ () => timer.setShowSettings( s => ! s ) }
+				title="Settings"
+				aria-expanded={ timer.showSettings }
+				aria-controls="flow-settings-panel"
+			>
+				⚙
+			</button>
 			</header>
 
 			{ /* ── Settings panel ── */ }
-			{ timer.showSettings && (
-				<div className="settings-panel">
+		{ timer.showSettings && (
+			<div className="settings-panel" id="flow-settings-panel">
 					{ (
 						[
 							[ 'workMinutes',       'Focus',       1, 120 ],

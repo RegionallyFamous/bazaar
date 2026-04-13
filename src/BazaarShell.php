@@ -94,7 +94,16 @@ final class BazaarShell {
 		list( $js_file, $css_file, $version ) = $this->resolve_assets();
 
 		if ( '' !== $css_file ) {
-			wp_enqueue_style( self::HANDLE, BAZAAR_URL . 'admin/dist/' . $css_file, array(), $version );
+			// Inter Variable — loaded before the shell stylesheet so the font is
+			// available when the CSS custom property is applied.
+			wp_enqueue_style(
+				'bazaar-inter-font',
+				'https://rsms.me/inter/inter.css',
+				array(),
+				BAZAAR_VERSION
+			);
+
+			wp_enqueue_style( self::HANDLE, BAZAAR_URL . 'admin/dist/' . $css_file, array( 'bazaar-inter-font' ), $version );
 
 			/*
 			 * Suppress the WP admin sidebar so Bazaar's own nav rail is the sole

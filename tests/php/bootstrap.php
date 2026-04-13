@@ -96,6 +96,32 @@ if ( ! defined( 'BAZAAR_SECRET' ) ) {
 	define( 'BAZAAR_SECRET', 'test-secret-key' );
 }
 
+if ( ! function_exists( 'wp_prime_option_caches' ) ) {
+	/**
+	 * Minimal wp_prime_option_caches stub — no-op in tests since Brain Monkey
+	 * stubs individual get_option() calls per test.
+	 *
+	 * @param string[] $option_names Option names to prime.
+	 */
+	function wp_prime_option_caches( array $option_names ): void {
+		// In tests the options object cache is already seeded by Brain Monkey
+		// stubs, so this batch-prime is a no-op.
+	}
+}
+
+if ( ! function_exists( 'wp_parse_url' ) ) {
+	/**
+	 * Minimal wp_parse_url stub — delegates to parse_url.
+	 *
+	 * @param string   $url       URL to parse.
+	 * @param int      $component Optional PHP_URL_* constant.
+	 * @return mixed
+	 */
+	function wp_parse_url( string $url, int $component = -1 ): mixed {
+		return parse_url( $url, $component );
+	}
+}
+
 // ─── WordPress REST API stubs ─────────────────────────────────────────────────
 
 if ( ! class_exists( 'WP_REST_Server' ) ) {
@@ -174,6 +200,20 @@ if ( ! class_exists( 'WP_REST_Request' ) ) {
 		/** @return array<string, mixed> */
 		public function get_file_params(): array {
 			return $this->file_params; }
+	}
+}
+
+if ( ! class_exists( 'WP_Filesystem_Base' ) ) {
+	/**
+	 * Minimal WP_Filesystem_Base stub — enough for return-type satisfaction.
+	 */
+	abstract class WP_Filesystem_Base {
+		/** @var string */
+		public $method = 'stub';
+		/** @var string */
+		public $errors = '';
+		/** @param bool $recursive */
+		abstract public function delete( string $path, bool $recursive = false ): bool;
 	}
 }
 

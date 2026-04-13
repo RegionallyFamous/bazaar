@@ -25,7 +25,7 @@ use Bazaar\WareLicense;
  * - Atomic extraction: extract to temp dir then rename to final location
  * - Writing the protective .htaccess on first install
  */
-final class WareLoader {
+final class WareLoader implements WareLoaderInterface {
 
 	/** File extensions that are never allowed inside a .wp archive. */
 	private const FORBIDDEN_EXTENSIONS = array( 'php', 'phtml', 'phar', 'php3', 'php4', 'php5', 'php7', 'phps', 'cgi', 'pl', 'py', 'rb', 'sh', 'bash' );
@@ -78,10 +78,29 @@ final class WareLoader {
 			return $manifest;
 		}
 
+		// Hash the validated archive immediately to detect any TOCTOU swap
+		// between validate() and extract() on shared hosts with predictable temp paths.
+		$validated_hash = hash_file( 'sha256', $tmp_path );
+		if ( false === $validated_hash ) {
+			return new WP_Error( 'hash_failed', esc_html__( 'Could not hash archive for integrity verification.', 'bazaar' ) );
+		}
+
+		// Atomic install lock: add_option() is a no-op (returns false) when the
+		// key already exists, so two concurrent requests for the same slug will
+		// not both proceed past this point.
+		$lock_key = 'bazaar_install_lock_' . sanitize_key( $manifest['slug'] );
+		if ( ! add_option( $lock_key, '1', '', false ) ) {
+			return new WP_Error(
+				'install_in_progress',
+				esc_html__( 'Another installation of this ware is already in progress. Please try again.', 'bazaar' )
+			);
+		}
+
 		// Optional signature verification.
 		$signer = new WareSigner();
 		$sig_ok = $signer->verify( $tmp_path, $manifest );
 		if ( is_wp_error( $sig_ok ) ) {
+			delete_option( $lock_key );
 			return $sig_ok;
 		}
 
@@ -93,6 +112,7 @@ final class WareLoader {
 			$lic    = new WareLicense();
 			$stored = $lic->get_key( sanitize_key( $manifest['slug'] ) );
 			if ( '' === $stored ) {
+				delete_option( $lock_key );
 				return new WP_Error(
 					'license_required',
 					sprintf(
@@ -104,7 +124,17 @@ final class WareLoader {
 			}
 		}
 
+		// Re-verify archive integrity immediately before extraction to close
+		// the TOCTOU window — abort if the file was swapped.
+		$current_hash = hash_file( 'sha256', $tmp_path );
+		if ( false === $current_hash || ! hash_equals( $validated_hash, $current_hash ) ) {
+			delete_option( $lock_key );
+			return new WP_Error( 'archive_tampered', esc_html__( 'Archive file changed since validation. Installation aborted.', 'bazaar' ) );
+		}
+
 		$result = $this->extract( $tmp_path, $manifest['slug'] );
+		delete_option( $lock_key );
+
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
@@ -171,7 +201,11 @@ final class WareLoader {
 		for ( $i = 0; $i < $file_count; $i++ ) {
 			$stat = $zip->statIndex( $i );
 			if ( false === $stat ) {
-				continue;
+				$zip->close();
+				return new WP_Error(
+					'corrupt_archive',
+					esc_html__( 'Archive contains an unreadable entry. The file may be corrupt.', 'bazaar' )
+				);
 			}
 
 			$name = $stat['name'];
@@ -184,6 +218,25 @@ final class WareLoader {
 					sprintf(
 						/* translators: %s: filename inside the archive */
 						esc_html__( 'Archive contains a path-traversal entry: %s', 'bazaar' ),
+						esc_html( $name )
+					)
+				);
+			}
+
+			// Unix symlink detection: read external attributes via the dedicated
+			// ZipArchive API to avoid accessing an undocumented stat key.
+			// Upper 16 bits of external_attr are the Unix file mode;
+			// bit mask 0xF000 == 0xA000 indicates a symlink entry.
+			$opsys   = 0;
+			$extattr = 0;
+			$zip->getExternalAttributesIndex( $i, $opsys, $extattr );
+			if ( ( ( $extattr >> 16 ) & 0xF000 ) === 0xA000 ) {
+				$zip->close();
+				return new WP_Error(
+					'symlink_in_archive',
+					sprintf(
+						/* translators: %s: filename inside the archive */
+						esc_html__( 'Archive contains a symlink entry which is not allowed: %s', 'bazaar' ),
 						esc_html( $name )
 					)
 				);
@@ -253,7 +306,7 @@ final class WareLoader {
 
 		// 7. Parse manifest.
 		$manifest = json_decode( $manifest_raw, true );
-		if ( ! is_array( $manifest ) ) {
+		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $manifest ) ) {
 			$zip->close();
 			return new WP_Error(
 				'invalid_manifest',
@@ -298,8 +351,22 @@ final class WareLoader {
 			);
 		}
 
-		// 11. Entry file exists in archive.
+		// 11. Entry path validation: no '..' components, no leading slash, safe
+		// characters only (same rules applied to zip member names above).
 		$entry = $manifest['entry'] ?? 'index.html';
+		if (
+			str_contains( $entry, '..' ) ||
+			str_starts_with( $entry, '/' ) ||
+			! preg_match( '#^[a-zA-Z0-9._-]+(/[a-zA-Z0-9._-]+)*$#', $entry )
+		) {
+			$zip->close();
+			return new WP_Error(
+				'invalid_entry',
+				esc_html__( 'Manifest entry path contains invalid characters or path traversal.', 'bazaar' )
+			);
+		}
+
+		// 12. Entry file exists in archive.
 		if ( false === $zip->getFromName( $entry ) ) {
 			$zip->close();
 			return new WP_Error(
@@ -392,6 +459,11 @@ final class WareLoader {
 			return $result;
 		}
 
+		// Post-extract safety walk: remove any symlinks that a non-Unix zip
+		// tool may have written even though the validate() loop rejected the
+		// Unix external_attr signature. Defence-in-depth.
+		$this->remove_symlinks( rtrim( $temp_dir, '/' ) );
+
 		// Remove stale destination if it exists (e.g. a --force reinstall).
 		if ( $filesystem->is_dir( $dest_dir ) ) {
 			$filesystem->delete( $dest_dir, true );
@@ -407,6 +479,34 @@ final class WareLoader {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Recursively remove any symlinks found under $dir.
+	 * Called after extraction as a defence-in-depth measure against symlink
+	 * entries that bypass the external_attr check (e.g. created by non-Unix tools).
+	 *
+	 * @param string $dir Absolute path to the directory to scan.
+	 */
+	private function remove_symlinks( string $dir ): void {
+		if ( ! is_dir( $dir ) ) {
+			return;
+		}
+		$items = scandir( $dir );
+		if ( false === $items ) {
+			return;
+		}
+		foreach ( $items as $item ) {
+			if ( '.' === $item || '..' === $item ) {
+				continue;
+			}
+			$path = $dir . DIRECTORY_SEPARATOR . $item;
+			if ( is_link( $path ) ) {
+				wp_delete_file( $path );
+			} elseif ( is_dir( $path ) ) {
+				$this->remove_symlinks( $path );
+			}
+		}
 	}
 
 	/**

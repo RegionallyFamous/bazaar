@@ -26,7 +26,9 @@ namespace Bazaar\REST;
 
 defined( 'ABSPATH' ) || exit;
 
+use Bazaar\WareLoaderInterface;
 use Bazaar\WareLoader;
+use Bazaar\WareRegistryInterface;
 use Bazaar\WareRegistry;
 use Bazaar\REST\JobsController;
 use WP_REST_Server;
@@ -49,25 +51,26 @@ final class CoreAppsController extends BazaarController {
 	/**
 	 * WareRegistry instance.
 	 *
-	 * @var WareRegistry
+	 * @var WareRegistryInterface
 	 */
-	private WareRegistry $registry;
+	private WareRegistryInterface $registry;
 
 	/**
 	 * WareLoader instance.
 	 *
-	 * @var WareLoader
+	 * @var WareLoaderInterface
 	 */
-	private WareLoader $loader;
+	private WareLoaderInterface $loader;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param WareRegistry $registry Registry instance.
+	 * @param WareRegistryInterface    $registry Registry instance.
+	 * @param WareLoaderInterface|null $loader   Loader; defaults to a new WareLoader.
 	 */
-	public function __construct( WareRegistry $registry ) {
+	public function __construct( WareRegistryInterface $registry, ?WareLoaderInterface $loader = null ) {
 		$this->registry = $registry;
-		$this->loader   = new WareLoader( $registry );
+		$this->loader   = $loader ?? new WareLoader( $registry );
 	}
 
 	/**
@@ -239,8 +242,9 @@ final class CoreAppsController extends BazaarController {
 		$response = wp_remote_get(
 			$url,
 			array(
-				'timeout'   => 30,
-				'sslverify' => true,
+				'timeout'     => 30,
+				'redirection' => 0,
+				'sslverify'   => true,
 			)
 		);
 
@@ -262,12 +266,34 @@ final class CoreAppsController extends BazaarController {
 			);
 		}
 
+		// Reject responses that exceed the maximum ware size before buffering.
+		$content_length = (int) wp_remote_retrieve_header( $response, 'content-length' );
+		$max_size       = absint( get_option( 'bazaar_max_ware_size', BAZAAR_MAX_UNCOMPRESSED_SIZE ) );
+		if ( $content_length > 0 && $content_length > $max_size ) {
+			return new WP_Error(
+				'download_too_large',
+				/* translators: %d: file size in bytes */
+				sprintf( __( 'Ware download exceeds the maximum allowed size (%d bytes).', 'bazaar' ), $max_size ),
+				array( 'status' => 413 )
+			);
+		}
+
 		$body = wp_remote_retrieve_body( $response );
 		if ( '' === $body ) {
 			return new WP_Error(
 				'empty_download',
 				__( 'Downloaded file is empty.', 'bazaar' ),
 				array( 'status' => 502 )
+			);
+		}
+
+		// Final size check on the actual body in case Content-Length was absent.
+		if ( strlen( $body ) > $max_size ) {
+			return new WP_Error(
+				'download_too_large',
+				/* translators: %d: file size in bytes */
+				sprintf( __( 'Ware download exceeds the maximum allowed size (%d bytes).', 'bazaar' ), $max_size ),
+				array( 'status' => 413 )
 			);
 		}
 
@@ -307,6 +333,8 @@ final class CoreAppsController extends BazaarController {
 
 		$registered = $this->registry->register( $manifest );
 		if ( ! $registered ) {
+			// Roll back on-disk files to avoid orphaned ware directories.
+			$this->loader->delete( $manifest['slug'] );
 			return new WP_Error(
 				'registry_failed',
 				__( 'Ware was installed but could not be added to the registry.', 'bazaar' ),
@@ -323,10 +351,11 @@ final class CoreAppsController extends BazaarController {
 		/**
 		 * Fires after a core app is installed via the REST API.
 		 *
-		 * @param string $slug Ware slug.
+		 * @param string               $slug     Ware slug.
 		 * @param array<string, mixed> $manifest Parsed manifest.
+		 * @param string               $source   Install source identifier.
 		 */
-		do_action( 'bazaar_ware_installed', $manifest['slug'], $manifest );
+		do_action( 'bazaar_ware_installed', $manifest['slug'], $manifest, 'core-app' );
 
 		return new WP_REST_Response(
 			array(
@@ -334,7 +363,7 @@ final class CoreAppsController extends BazaarController {
 				'message' => sprintf(
 					/* translators: %s: ware display name */
 					__( '"%s" installed successfully.', 'bazaar' ),
-					$manifest['name']
+					esc_html( $manifest['name'] ?? '' )
 				),
 				'ware'    => $ware,
 			),

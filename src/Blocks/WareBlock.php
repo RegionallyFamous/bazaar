@@ -103,8 +103,11 @@ final class WareBlock {
 		}
 
 		$token = $this->generate_token( $slug );
-		$src   = rest_url( "bazaar/v1/serve/{$slug}/index.html" );
-		$src   = add_query_arg( '_bazaar_block_token', rawurlencode( $token ), $src );
+		if ( '' === $token ) {
+			return '';
+		}
+		$src = rest_url( "bazaar/v1/serve/{$slug}/index.html" );
+		$src = add_query_arg( '_bazaar_block_token', rawurlencode( $token ), $src );
 
 		$unique_id = 'bwb-' . wp_unique_id();
 
@@ -148,7 +151,7 @@ final class WareBlock {
 		$payload = $slug . '|' . $site . '|' . $exp;
 		$sig     = hash_hmac( 'sha256', $payload, BAZAAR_SECRET );
 
-		$token = (string) wp_json_encode(
+		$encoded = wp_json_encode(
 			array(
 				'slug' => $slug,
 				'site' => $site,
@@ -157,7 +160,11 @@ final class WareBlock {
 			)
 		);
 
-		return rtrim( strtr( base64_encode( $token ), '+/', '-_' ), '=' );
+		if ( false === $encoded ) {
+			return '';
+		}
+
+		return rtrim( strtr( base64_encode( $encoded ), '+/', '-_' ), '=' );
 	}
 
 	/**

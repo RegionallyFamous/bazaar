@@ -66,6 +66,9 @@ final class AuditController extends BazaarController {
 	 * Register all REST routes for this controller.
 	 */
 	public function register_routes(): void {
+		// POST /audit is intentionally not exposed — lifecycle events are recorded
+		// server-internally via AuditLog::record(). Removing the public write
+		// surface prevents admins from inserting arbitrary fake audit entries.
 		register_rest_route(
 			$this->namespace,
 			"/{$this->rest_base}",
@@ -74,23 +77,6 @@ final class AuditController extends BazaarController {
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'list_log' ),
 					'permission_callback' => $this->require_admin(),
-				),
-				array(
-					'methods'             => WP_REST_Server::CREATABLE,
-					'callback'            => array( $this, 'create_entry' ),
-					'permission_callback' => $this->require_admin(),
-					'args'                => array(
-						'slug'  => array(
-							'required' => true,
-							'type'     => 'string',
-						),
-						'event' => array(
-							'required' => true,
-							'type'     => 'string',
-							'enum'     => self::EVENTS,
-						),
-						'meta'  => array( 'type' => 'object' ),
-					),
 				),
 			)
 		);

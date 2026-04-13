@@ -61,6 +61,9 @@ final class Multisite {
 
 		// When a blog is deleted, clean up any site-specific wares.
 		add_action( 'delete_blog', array( $this, 'on_blog_deleted' ), 10, 1 );
+
+		// Merge network-activated wares into every site's index.
+		add_filter( 'bazaar_ware_index', array( __CLASS__, 'merge_index' ) );
 	}
 
 	/**
@@ -99,17 +102,16 @@ final class Multisite {
 	}
 
 	/**
-	 * Return a merged ware index that combines network-level wares with
-	 * site-level overrides.
+	 * Merge network-activated wares into a site-level index.
 	 *
-	 * If Bazaar is not network-activated, returns the standard site index.
+	 * Hooked to `bazaar_ware_index` so `WareRegistry::get_index()` returns the
+	 * combined view on multisite. On single-site installs the hook is never
+	 * registered, so this method is never called.
 	 *
-	 * @param WareRegistry $registry Local site registry.
+	 * @param array<string, array<string, mixed>> $index Site-level ware index.
 	 * @return array<string, array<string, mixed>>
 	 */
-	public static function merge_index( WareRegistry $registry ): array {
-		$index = $registry->get_index();
-
+	public static function merge_index( array $index ): array {
 		if ( ! self::is_network() ) {
 			return $index;
 		}

@@ -81,7 +81,7 @@ export class WareInfo {
 			textContent: ware.menu_title ?? ware.name,
 		} );
 
-		// ── Version + author
+		// ── Version + author + last-updated
 		const meta = document.createElement( 'div' );
 		meta.className = 'bsh-ware-info__meta';
 		if ( ware.version ) {
@@ -95,6 +95,24 @@ export class WareInfo {
 				textContent: ware.author,
 			} );
 			meta.appendChild( a );
+		}
+		if ( ware.installed ) {
+			try {
+				const date = new Date( ware.installed );
+				if ( ! isNaN( date.getTime() ) ) {
+					const dateStr = date.toLocaleDateString( undefined, {
+						year: 'numeric',
+						month: 'short',
+						day: 'numeric',
+					} );
+					const updatedEl = Object.assign( document.createElement( 'span' ), {
+						className: 'bsh-ware-info__updated',
+						textContent: dateStr,
+					} );
+					updatedEl.title = date.toISOString();
+					meta.appendChild( updatedEl );
+				}
+			} catch { /* non-fatal — skip if date is unparseable */ }
 		}
 
 		// ── Trust badge

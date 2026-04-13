@@ -131,6 +131,9 @@ final class StreamController extends BazaarController {
 		// Drain any pending events for this user.
 		$events = $this->dequeue( $uid );
 		foreach ( $events as $event ) {
+			if ( ! is_array( $event ) || ! isset( $event['type'], $event['data'] ) ) {
+				continue;
+			}
 			$this->send( $event['type'], $event['data'] );
 		}
 

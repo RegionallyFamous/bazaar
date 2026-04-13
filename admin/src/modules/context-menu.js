@@ -12,10 +12,11 @@ export class NavContextMenu {
 	 *   popOut:     (url: string, slug: string) => void,
 	 *   serveUrl:   (ware: Object) => string,
 	 *   wareMap:    Map<string, Object>,
+	 *   wareInfo?:  { toggle: (ware: Object, anchor: HTMLElement) => void },
 	 * }} deps
 	 */
-	constructor( { navigateTo, popOut, serveUrl, wareMap } ) {
-		this._deps = { navigateTo, popOut, serveUrl, wareMap };
+	constructor( { navigateTo, popOut, serveUrl, wareMap, wareInfo } ) {
+		this._deps = { navigateTo, popOut, serveUrl, wareMap, wareInfo };
 		this._el = this._build();
 		this._attached = new WeakSet();
 
@@ -55,7 +56,7 @@ export class NavContextMenu {
 	// ── Private ─────────────────────────────────────────────────────────────
 
 	_show( slug, x, y ) {
-		const { popOut, serveUrl, wareMap } = this._deps;
+		const { popOut, serveUrl, wareMap, wareInfo } = this._deps;
 		const ware = wareMap.get( slug );
 
 		this._el.innerHTML = '';
@@ -95,6 +96,19 @@ export class NavContextMenu {
 			},
 		} );
 
+		if ( ware && wareInfo ) {
+			const perms = ware.permissions
+				? Object.keys( ware.permissions ).filter( ( k ) => ware.permissions[ k ] )
+				: [];
+			if ( perms.length > 0 ) {
+				items.push( {
+					icon: 'dashicons-lock',
+					label: __( 'Permissions', 'bazaar' ),
+					action: ( btn ) => wareInfo.toggle( ware, btn ),
+				} );
+			}
+		}
+
 		if ( recentList.includes( slug ) ) {
 			items.push( {
 				icon: 'dashicons-trash',
@@ -124,7 +138,12 @@ export class NavContextMenu {
 			btn.addEventListener( 'click', ( e ) => {
 				e.stopPropagation();
 				this.hide();
-				action();
+				try {
+					action( btn );
+				} catch ( err ) {
+					// eslint-disable-next-line no-console
+					console.error( '[bazaar] context menu action error', err );
+				}
 			} );
 			this._el.appendChild( btn );
 		}

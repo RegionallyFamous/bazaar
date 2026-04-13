@@ -21,14 +21,17 @@
 
 export { getBazaarContext, setBazaarContext, resetBazaarContext, refreshNonce, startNonceRefresh, stopNonceRefresh } from './context.js';
 export { wpFetch, wpJson, WpApiError }                           from './fetch.js';
+export type { WpJsonOptions }                                     from './fetch.js';
 export { bzr, onShellRoute }                                      from './bus.js';
 export { wpCachedFetch }                                          from './cache.js';
 export { createStore }                                            from './store.js';
+export { createWaredStore }                                       from './local-store.js';
+export type { WaredStore, WaredStoreOptions }                     from './local-store.js';
 export { createConfig }                                           from './config.js';
 export { createWebhooks }                                         from './webhooks.js';
 export { createJobs }                                             from './jobs.js';
 export { copy as bzrCopy, paste as bzrPaste }                    from './clipboard.js';
-export type { BazaarContext, WpUser, WpPost, WpPostQuery }       from './types.js';
+export type { BazaarClientConfig, BazaarContext, WpUser, WpPost, WpPostQuery } from './types.js';
 export type { BazaarShellAPI }                                    from './bus.js';
 export type { WareStore }                                         from './store.js';
 export type { WareConfig, ConfigField }                           from './config.js';

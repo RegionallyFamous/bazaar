@@ -12,6 +12,7 @@ namespace Bazaar\REST;
 defined( 'ABSPATH' ) || exit;
 
 use Bazaar\WareLoader;
+use Bazaar\WareLoaderInterface;
 use Bazaar\WareRegistry;
 use Bazaar\WareRegistryInterface;
 use Bazaar\REST\JobsController;
@@ -39,18 +40,19 @@ final class UploadController extends BazaarController {
 	/**
 	 * Loader used to validate and extract the archive.
 	 *
-	 * @var WareLoader
+	 * @var WareLoaderInterface
 	 */
-	private WareLoader $loader;
+	private WareLoaderInterface $loader;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param WareRegistryInterface $registry Registry instance.
+	 * @param WareRegistryInterface    $registry Registry instance.
+	 * @param WareLoaderInterface|null $loader   Loader instance; defaults to a new one backed by $registry.
 	 */
-	public function __construct( WareRegistryInterface $registry ) {
+	public function __construct( WareRegistryInterface $registry, ?WareLoaderInterface $loader = null ) {
 		$this->registry = $registry;
-		$this->loader   = new WareLoader( $registry );
+		$this->loader   = $loader ?? new WareLoader( $registry );
 	}
 
 	/**
@@ -126,6 +128,8 @@ final class UploadController extends BazaarController {
 
 		$registered = $this->registry->register( $manifest );
 		if ( ! $registered ) {
+			// Roll back the on-disk installation so no orphaned files remain.
+			$this->loader->delete( $manifest['slug'] );
 			return new WP_Error(
 				'registry_failed',
 				esc_html__( 'Ware was installed but could not be added to the registry.', 'bazaar' ),
@@ -139,6 +143,8 @@ final class UploadController extends BazaarController {
 		if ( is_array( $ware ) ) {
 			JobsController::register_ware_jobs( $ware );
 		}
+
+		do_action( 'bazaar_ware_installed', $manifest['slug'], $manifest, 'upload' );
 
 		return new WP_REST_Response(
 			array(

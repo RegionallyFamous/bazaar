@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { rgbaToHex }                      from '../hooks/usePixelEditor.ts';
+import { rgbaToHex }                       from '../hooks/usePixelEditor.ts';
 import type { ZoomLevel }                  from '../types.ts';
 
 interface Props {
@@ -80,11 +80,24 @@ export default function Canvas( {
 	onPointerDown, onPointerMove, onPointerUp, onHover,
 }: Props ) {
 	const canvasRef = useRef<HTMLCanvasElement>( null );
+	const rafRef    = useRef<number | null>( null );
 
 	useEffect( () => {
-		if ( canvasRef.current ) {
-			renderPixels( canvasRef.current, pixels, size, zoom, showGrid );
-		}
+		if ( ! canvasRef.current ) return;
+		const canvas = canvasRef.current;
+		// Coalesce rapid pixel updates into a single animation frame to avoid
+		// blocking the main thread on every pointer-move event.
+		if ( rafRef.current !== null ) cancelAnimationFrame( rafRef.current );
+		rafRef.current = requestAnimationFrame( () => {
+			renderPixels( canvas, pixels, size, zoom, showGrid );
+			rafRef.current = null;
+		} );
+		return () => {
+			if ( rafRef.current !== null ) {
+				cancelAnimationFrame( rafRef.current );
+				rafRef.current = null;
+			}
+		};
 	}, [ pixels, size, zoom, showGrid ] );
 
 	const wrapDown = useCallback( ( e: React.PointerEvent<HTMLCanvasElement> ) => {

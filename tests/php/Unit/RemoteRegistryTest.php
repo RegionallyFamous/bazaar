@@ -30,7 +30,7 @@ final class RemoteRegistryTest extends TestCase {
 	private function make_registry(): RemoteRegistry {
 		Functions\when( 'get_option' )->justReturn( '' ); // No override URL.
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg(); // Returns second arg (the URL).
+		Functions\when( 'apply_filters' )->returnArg( 2 ); // Passthrough — return the value, not the hook name.
 		return new RemoteRegistry();
 	}
 
@@ -40,7 +40,7 @@ final class RemoteRegistryTest extends TestCase {
 		$deleted_key = null;
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg();
+		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'delete_transient' )->alias(
 			function ( string $key ) use ( &$deleted_key ): bool {
 				$deleted_key = $key;
@@ -59,7 +59,7 @@ final class RemoteRegistryTest extends TestCase {
 	public function test_check_update_returns_no_update_when_ware_not_in_registry(): void {
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg();
+		Functions\when( 'apply_filters' )->returnArg( 2 );
 		// Cache miss → make fetch() return WP_Error (e.g. network failure).
 		Functions\when( 'get_transient' )->justReturn( false );
 		$wp_error = new \WP_Error( 'http_request_failed', 'Network error' );
@@ -93,7 +93,7 @@ final class RemoteRegistryTest extends TestCase {
 
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg();
+		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'get_transient' )->justReturn( $cached_index );
 		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
 
@@ -122,7 +122,7 @@ final class RemoteRegistryTest extends TestCase {
 
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg();
+		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'get_transient' )->justReturn( $cached_index );
 		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
 
@@ -150,7 +150,7 @@ final class RemoteRegistryTest extends TestCase {
 
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg();
+		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'get_transient' )->justReturn( $cached_index );
 		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
 		Functions\when( 'esc_html__' )->returnArg();
@@ -175,7 +175,7 @@ final class RemoteRegistryTest extends TestCase {
 
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg();
+		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'get_transient' )->justReturn( $cached_index );
 		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
 		Functions\when( 'esc_html__' )->returnArg();
@@ -209,7 +209,7 @@ final class RemoteRegistryTest extends TestCase {
 
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg();
+		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'get_transient' )->justReturn( $cached_index );
 		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
 
@@ -230,7 +230,7 @@ final class RemoteRegistryTest extends TestCase {
 	public function test_install_returns_no_download_url_when_missing(): void {
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg();
+		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'esc_html__' )->returnArg();
 		Functions\when( 'sanitize_key' )->returnArg();
 		Functions\when( 'sanitize_text_field' )->returnArg();
@@ -277,7 +277,7 @@ final class RemoteRegistryTest extends TestCase {
 
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg();
+		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'get_transient' )->justReturn( $cached_index );
 		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
 
@@ -285,5 +285,94 @@ final class RemoteRegistryTest extends TestCase {
 		$results  = $registry->search( '' );
 
 		$this->assertCount( 2, $results );
+	}
+
+	// ─── fetch() error matrix ────────────────────────────────────────────────
+
+	/**
+	 * Helper: set up stubs that make fetch() trigger a live HTTP call.
+	 * Tests override individual stubs to produce the scenario they need.
+	 */
+	private function stub_for_live_fetch( string $body, int $code, bool $is_wp_error_response = false ): void {
+		Functions\when( 'get_option' )->justReturn( '' );
+		Functions\when( 'esc_url_raw' )->returnArg();
+		Functions\when( 'apply_filters' )->returnArg( 2 );
+		Functions\when( 'get_bloginfo' )->justReturn( '6.6' );
+		Functions\when( 'get_transient' )->justReturn( false ); // Cache miss.
+		Functions\when( 'set_transient' )->justReturn( true );
+		Functions\when( 'esc_html__' )->returnArg();
+		Functions\when( 'esc_html' )->returnArg();
+		Functions\when( 'sprintf' )->alias( 'sprintf' );
+		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
+
+		if ( $is_wp_error_response ) {
+			Functions\when( 'wp_remote_get' )->justReturn( new \WP_Error( 'http_request_failed', 'cURL error' ) );
+		} else {
+			Functions\when( 'wp_remote_get' )->justReturn(
+				array( 'response' => array( 'code' => $code ), 'body' => $body )
+			);
+			Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( $code );
+			Functions\when( 'wp_remote_retrieve_body' )->justReturn( $body );
+		}
+	}
+
+	public function test_fetch_returns_wp_error_when_remote_get_fails(): void {
+		$this->stub_for_live_fetch( '', 0, true );
+
+		$registry = new RemoteRegistry();
+		$result   = $registry->search( 'crm' ); // search() → fetch() internally.
+
+		// When wp_remote_get returns WP_Error (e.g. cURL failure), fetch()
+		// propagates it directly — the original error code is preserved.
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'http_request_failed', $result->get_error_code() );
+	}
+
+	public function test_fetch_returns_wp_error_on_non_200_http_status(): void {
+		$this->stub_for_live_fetch( '', 503 );
+
+		$registry = new RemoteRegistry();
+		$result   = $registry->search( 'crm' );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'registry_http_error', $result->get_error_code() );
+	}
+
+	public function test_fetch_returns_wp_error_for_invalid_json_body(): void {
+		$this->stub_for_live_fetch( '{not valid json', 200 );
+
+		$registry = new RemoteRegistry();
+		$result   = $registry->search( 'crm' );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'registry_invalid', $result->get_error_code() );
+	}
+
+	public function test_fetch_returns_wp_error_when_wares_key_missing(): void {
+		$this->stub_for_live_fetch( '{"data":[]}', 200 );
+
+		$registry = new RemoteRegistry();
+		$result   = $registry->search( 'crm' );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'registry_invalid', $result->get_error_code() );
+	}
+
+	public function test_fetch_caches_result_on_success(): void {
+		$cached_key  = null;
+		$valid_body  = (string) json_encode( array( 'wares' => array( array( 'slug' => 'crm', 'name' => 'CRM', 'version' => '1.0.0' ) ) ) );
+
+		$this->stub_for_live_fetch( $valid_body, 200 );
+		Functions\when( 'set_transient' )->alias(
+			function ( string $key, mixed $val, int $ttl ) use ( &$cached_key ): bool {
+				$cached_key = $key;
+				return true;
+			}
+		);
+
+		$registry = new RemoteRegistry();
+		$registry->search( '' );
+
+		$this->assertSame( 'bazaar_remote_registry', $cached_key );
 	}
 }

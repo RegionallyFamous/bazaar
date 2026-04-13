@@ -23,16 +23,17 @@ export default function Toolbar( { tool, onTool, canUndo, canRedo, onUndo, onRed
 	return (
 		<aside className="toolbar">
 			<div className="toolbar__section">
-				{ TOOLS.map( t => (
-					<button
-						key={ t.id }
-						className={ `${ BTN }${ tool === t.id ? ` ${ BTN }--active` : '' }` }
-						title={ t.title }
-						onClick={ () => onTool( t.id ) }
-					>
-						<span className="toolbar__icon">{ t.icon }</span>
-					</button>
-				) ) }
+			{ TOOLS.map( t => (
+				<button
+					key={ t.id }
+					className={ `${ BTN }${ tool === t.id ? ` ${ BTN }--active` : '' }` }
+					title={ t.title }
+					aria-pressed={ tool === t.id }
+					onClick={ () => onTool( t.id ) }
+				>
+					<span className="toolbar__icon">{ t.icon }</span>
+				</button>
+			) ) }
 			</div>
 
 			<div className="toolbar__divider" />

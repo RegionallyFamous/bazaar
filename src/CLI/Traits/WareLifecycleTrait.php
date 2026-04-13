@@ -17,6 +17,7 @@ use Bazaar\WareLoader;
 use Bazaar\WareRegistry;
 use Bazaar\RemoteRegistry;
 use Bazaar\WareBundler;
+use Bazaar\REST\JobsController;
 use WP_CLI;
 use WP_CLI\Utils;
 
@@ -147,6 +148,9 @@ trait WareLifecycleTrait {
 			WP_CLI::error( __( 'Ware installed but could not be added to the registry.', 'bazaar' ) );
 		}
 
+		JobsController::register_ware_jobs( $result );
+		do_action( 'bazaar_ware_installed', $result['slug'], $result, 'cli' );
+
 		WP_CLI::success(
 			sprintf(
 				/* translators: 1: ware display name, 2: ware slug, 3: version number */
@@ -189,6 +193,8 @@ trait WareLifecycleTrait {
 			);
 		}
 
+		do_action( 'bazaar_ware_toggled', $slug, true );
+
 		WP_CLI::success(
 			sprintf(
 				/* translators: %s: ware slug */
@@ -228,6 +234,8 @@ trait WareLifecycleTrait {
 				)
 			);
 		}
+
+		do_action( 'bazaar_ware_toggled', $slug, false );
 
 		WP_CLI::success(
 			sprintf(
@@ -271,6 +279,8 @@ trait WareLifecycleTrait {
 			$assoc_args
 		);
 
+		JobsController::deregister_ware_jobs( $slug, (array) ( $ware['jobs'] ?? array() ) );
+
 		$deleted = $this->loader->delete( $slug );
 		if ( is_wp_error( $deleted ) ) {
 			WP_CLI::error( $deleted->get_error_message() );
@@ -285,6 +295,9 @@ trait WareLifecycleTrait {
 				)
 			);
 		}
+
+		do_action( 'bazaar_ware_deleted', $slug, $ware );
+
 		WP_CLI::success(
 			sprintf(
 				/* translators: %s: ware slug */

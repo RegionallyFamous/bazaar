@@ -15,10 +15,11 @@ export class HomeScreen {
 	 *   iconUrl:       (ware: Object) => string,
 	 *   sortedEnabled: (wareMap: Map) => Object[],
 	 *   badgeMap:      Map<string, number>,
+	 *   pinnedSet:     Set<string>,
 	 * }} deps
 	 */
-	constructor( { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap } ) {
-		this._deps = { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap };
+	constructor( { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap, pinnedSet } ) {
+		this._deps = { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap, pinnedSet };
 		this._widgets = new Map(); // slug → { count?, label? }
 		this._el = null;
 	}
@@ -54,7 +55,7 @@ export class HomeScreen {
 	// ── Private ─────────────────────────────────────────────────────────────
 
 	_render() {
-		const { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap } = this._deps;
+		const { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap, pinnedSet } = this._deps;
 		const el = this._el;
 		if ( ! el ) {
 			return;
@@ -88,6 +89,68 @@ export class HomeScreen {
 			return;
 		}
 
+		// ── Pinned quick-launch row
+		const pinned = enabled.filter( ( w ) => pinnedSet?.has( w.slug ) );
+		if ( pinned.length > 0 ) {
+			const pinnedRow = document.createElement( 'div' );
+			pinnedRow.className = 'bsh-home__pinned';
+
+			const pinnedTitle = Object.assign( document.createElement( 'h2' ), {
+				className: 'bsh-home__pinned-title',
+				textContent: __( 'Pinned', 'bazaar' ),
+			} );
+			pinnedRow.appendChild( pinnedTitle );
+
+			const pinnedList = document.createElement( 'div' );
+			pinnedList.className = 'bsh-home__pinned-list';
+
+			for ( const w of pinned ) {
+				const btn = document.createElement( 'button' );
+				btn.type = 'button';
+				btn.className = 'bsh-home__pinned-item';
+				btn.setAttribute( 'aria-label', w.menu_title ?? w.name );
+
+				const imgWrap = document.createElement( 'span' );
+				imgWrap.className = 'bsh-home__pinned-icon-wrap';
+				imgWrap.setAttribute( 'aria-hidden', 'true' );
+
+				const img = document.createElement( 'img' );
+				img.src = iconUrl( w );
+				img.alt = '';
+				img.className = 'bsh-home__pinned-icon';
+				img.onerror = () =>
+					img.replaceWith(
+						Object.assign( document.createElement( 'span' ), {
+							className: 'dashicons dashicons-admin-plugins bsh-home__pinned-icon-fallback',
+						} )
+					);
+				imgWrap.appendChild( img );
+
+				const lbl = Object.assign( document.createElement( 'span' ), {
+					className: 'bsh-home__pinned-label',
+					textContent: w.menu_title ?? w.name,
+				} );
+
+				const badge = badgeMap.get( w.slug );
+				btn.append( imgWrap, lbl );
+
+				if ( badge > 0 ) {
+					const b = Object.assign( document.createElement( 'span' ), {
+						className: 'bsh-home__pinned-badge',
+						textContent: badge > 99 ? '99+' : String( badge ),
+					} );
+					b.setAttribute( 'aria-label', String( badge ) + ' ' + __( 'notifications', 'bazaar' ) );
+					btn.appendChild( b );
+				}
+
+				btn.addEventListener( 'click', () => navigateTo( w.slug ) );
+				pinnedList.appendChild( btn );
+			}
+
+			pinnedRow.appendChild( pinnedList );
+			el.appendChild( pinnedRow );
+		}
+
 		// ── Widget tiles (populated via bazaar:widget postMessages)
 		const activeWidgets = [ ...this._widgets.entries() ].filter(
 			( [ slug ] ) => wareMap.get( slug )?.enabled
@@ -96,11 +159,13 @@ export class HomeScreen {
 			const widgetRow = document.createElement( 'div' );
 			widgetRow.className = 'bsh-home__widgets';
 
+			let widgetIdx = 0;
 			for ( const [ slug, data ] of activeWidgets ) {
 				const ware = wareMap.get( slug );
 				const tile = document.createElement( 'button' );
 				tile.type = 'button';
 				tile.className = 'bsh-home__widget';
+				tile.style.setProperty( '--i', String( widgetIdx++ ) );
 
 				const wHdr = document.createElement( 'div' );
 				wHdr.className = 'bsh-home__widget-header';
@@ -157,11 +222,14 @@ export class HomeScreen {
 		const grid = document.createElement( 'div' );
 		grid.className = 'bsh-home__grid';
 
+		let cardIdx = 0;
 		for ( const w of enabled ) {
 			const card = document.createElement( 'button' );
 			card.type = 'button';
 			card.className = 'bsh-home__card';
+			card.dataset.slug = w.slug;
 			card.setAttribute( 'aria-label', w.menu_title ?? w.name );
+			card.style.setProperty( '--i', String( cardIdx++ ) );
 
 			const iconWrap = document.createElement( 'span' );
 			iconWrap.className = 'bsh-home__card-icon-wrap';

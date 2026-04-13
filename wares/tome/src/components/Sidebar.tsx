@@ -55,13 +55,14 @@ function PageNode( {
 				style={ { paddingLeft: `${ 12 + depth * 16 }px` } }
 			>
 				{ hasChildren ? (
-					<button
-						className={ `tome-tree__toggle${ expanded ? ' tome-tree__toggle--open' : '' }` }
-						onClick={ ( e ) => { e.stopPropagation(); setExpanded( v => ! v ); } }
-						aria-label={ expanded ? 'Collapse' : 'Expand' }
-					>
-						›
-					</button>
+				<button
+					className={ `tome-tree__toggle${ expanded ? ' tome-tree__toggle--open' : '' }` }
+					onClick={ ( e ) => { e.stopPropagation(); setExpanded( v => ! v ); } }
+					aria-label={ expanded ? 'Collapse' : 'Expand' }
+					aria-expanded={ expanded }
+				>
+					›
+				</button>
 				) : (
 					<span className="tome-tree__toggle-placeholder" />
 				) }
@@ -81,13 +82,18 @@ function PageNode( {
 					>
 						+
 					</button>
-					<button
-						className="tome-tree__action tome-tree__action--danger"
-						onClick={ ( e ) => { e.stopPropagation(); onDelete( node.page.id ); } }
-						title="Delete page"
-					>
-						×
-					</button>
+				<button
+					className="tome-tree__action tome-tree__action--danger"
+					onClick={ ( e ) => {
+						e.stopPropagation();
+						if ( window.confirm( `Delete "${ node.page.title || 'Untitled' }"? This cannot be undone.` ) ) {
+							onDelete( node.page.id );
+						}
+					} }
+					title="Delete page"
+				>
+					×
+				</button>
 				</div>
 			</div>
 

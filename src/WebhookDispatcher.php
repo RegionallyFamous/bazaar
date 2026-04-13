@@ -77,6 +77,9 @@ final class WebhookDispatcher {
 	private static function load_all(): array {
 		$raw = get_option( 'bazaar_webhooks', '[]' );
 		$dec = json_decode( (string) $raw, true );
-		return is_array( $dec ) ? $dec : array();
+		if ( json_last_error() !== JSON_ERROR_NONE || ! is_array( $dec ) ) {
+			return array();
+		}
+		return $dec;
 	}
 }

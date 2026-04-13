@@ -314,17 +314,25 @@ Canonical `vite.config.ts`:
 ```ts
 import { defineConfig } from 'vite';
 import react            from '@vitejs/plugin-react';
+import { resolve }      from 'path';
 
 export default defineConfig( {
     plugins: [ react() ],
     base:    './',
+    resolve: {
+        alias: {
+            '@bazaar/client':       resolve( __dirname, '../../packages/client/src/index.ts' ),
+            '@bazaar/client/react': resolve( __dirname, '../../packages/client/src/hooks.ts' ),
+            '@bazaar/design/css':   resolve( __dirname, '../../packages/design/src/css/index.css' ),
+            '@bazaar/design':       resolve( __dirname, '../../packages/design/src/index.ts' ),
+        },
+    },
     build: {
         outDir:      'dist',
         emptyOutDir: true,
-        sourcemap:   false,
-        rollupOptions: {
-            external: [ 'react', 'react-dom', 'react/jsx-runtime' ],
-        },
+        assetsDir:   'assets',
+        // React is bundled into the ware — the .wp archive is fully self-contained.
+        // Do NOT add rollupOptions.external for react/react-dom.
     },
     server: { cors: true },
 } );

@@ -3,7 +3,7 @@
  * Plugin Name:       Bazaar
  * Plugin URI:        https://github.com/RegionallyFamous/bazaar
  * Description:       Your WordPress dashboard is an operating system you didn't know you had. Bazaar unlocks it.
- * Version:           1.1.1
+ * Version:           1.2.0
  * Requires at least: 6.6
  * Requires PHP:      8.2
  * Author:            Regionally Famous
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'BAZAAR_VERSION', '1.1.0' );
+define( 'BAZAAR_VERSION', '1.2.0' );
 define( 'BAZAAR_FILE', __FILE__ );
 define( 'BAZAAR_PLUGIN_FILE', __FILE__ );
 define( 'BAZAAR_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -33,9 +33,19 @@ define( 'BAZAAR_WARES_DIR', WP_CONTENT_DIR . '/bazaar/' );
 define( 'BAZAAR_MAX_UNCOMPRESSED_SIZE', 50 * 1024 * 1024 );
 
 /**
+ * Endpoint for anonymous update-check telemetry (Cloudflare Worker URL).
+ * Leave empty to disable collection entirely — safe default for open-source distribution.
+ * To enable, set your Worker URL here or override in wp-config.php:
+ *   define( 'BAZAAR_TELEMETRY_ENDPOINT', 'https://bazaar-telemetry.<yourname>.workers.dev' );
+ */
+if ( ! defined( 'BAZAAR_TELEMETRY_ENDPOINT' ) ) {
+	define( 'BAZAAR_TELEMETRY_ENDPOINT', '' );
+}
+
+/**
  * HMAC secret for block tokens and other signed payloads.
- * Generated once on activation and stored in the bazaar_secret option.
- * Falls back to the WordPress auth key if not yet initialised.
+ * Generated once on first request via wp_generate_password(64) and stored
+ * permanently in the bazaar_secret option. There is no AUTH_KEY fallback.
  */
 if ( ! defined( 'BAZAAR_SECRET' ) ) {
 	$_bazaar_secret = get_option( 'bazaar_secret' );

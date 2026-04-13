@@ -1,51 +1,14 @@
-import { getBazaarContext, createStore, bzr } from '@bazaar/client';
-import type { Page } from './types.ts';
+import { createWaredStore } from '@bazaar/client';
+import type { Page }         from './types.ts';
 
-const LS_KEY = 'bzr-tome-pages';
-
-let _store: ReturnType<typeof createStore> | null = null;
-
-function getStore() {
-	if ( ! _store ) {
-		try {
-			const ctx = getBazaarContext();
-			_store    = createStore( 'tome', ctx );
-		} catch {
-			return null;
-		}
-	}
-	return _store;
-}
-
-function lsGet(): Page[] {
-	try {
-		const raw = localStorage.getItem( LS_KEY );
-		return raw ? ( JSON.parse( raw ) as Page[] ) : [];
-	} catch {
-		return [];
-	}
-}
-
-function lsSet( pages: Page[] ): void {
-	try {
-		localStorage.setItem( LS_KEY, JSON.stringify( pages ) );
-	} catch { /* noop */ }
-}
+const store = createWaredStore( { slug: 'tome', lsPrefix: 'bzr-tome-' } );
 
 export async function loadPages(): Promise<Page[]> {
-	const store = getStore();
-	if ( store ) return ( await store.get<Page[]>( 'pages' ) ) ?? [];
-	return lsGet();
+	return ( await store.load<Page[]>( 'pages' ) ) ?? [];
 }
 
 export async function savePages( pages: Page[] ): Promise<void> {
-	const store = getStore();
-	if ( store ) {
-		try { await store.set( 'pages', pages as never ); return; } catch {
-			bzr.toast( 'Saved locally — server unreachable', 'warning' );
-		}
-	}
-	lsSet( pages );
+	return store.save( 'pages', pages );
 }
 
 export function newPage( parentId: string | null = null ): Page {

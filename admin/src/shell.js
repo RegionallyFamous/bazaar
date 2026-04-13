@@ -62,16 +62,11 @@ const {
 	swUrl = null,
 } = D;
 
-/**
- * Current REST nonce — refreshed automatically when a 401 is detected.
- * All fetch calls read this via _nonce or the apiFetch() helper.
- */
+// REST nonce; refreshed on 401 via /wp-json/ X-WP-Nonce.
 let _nonce = _initialNonce;
 
-/** Prevents concurrent nonce-refresh requests from stacking. */
 let _nonceRefreshing = false;
 
-/** Refresh the WP REST nonce from the wp-json root endpoint. */
 async function refreshNonce() {
 	if ( _nonceRefreshing ) {
 		return;
@@ -91,14 +86,7 @@ async function refreshNonce() {
 	}
 }
 
-/**
- * Thin wrapper around fetch() that injects the current nonce and retries
- * once after refreshing if the server returns a 401.
- *
- * @param {string} url  Absolute URL to fetch.
- * @param {Object} init Optional fetch init options (method, body, etc.).
- * @return {Promise<Response>} The fetch Response (possibly after a retry).
- */
+// Adds X-WP-Nonce; on 401 refreshes nonce and retries once.
 async function apiFetch( url, init = {} ) {
 	const withNonce = ( n ) => ( { ...( init.headers ?? {} ), 'X-WP-Nonce': n } );
 	const r = await fetch( url, { ...init, headers: withNonce( _nonce ) } );
@@ -123,9 +111,7 @@ let navFilterQuery = '';
 /** @type {ReturnType<typeof setTimeout>|null} */
 let _loadTimer = null;
 
-/** True while a view-transition navigation is in flight. */
 let _navInFlight = false;
-/** Last-wins pending navigation queued during an in-flight transition. */
 let _navPending = /** @type {{ slug: string, route?: string }|null} */ ( null );
 
 /** @type {Map<string, Object>} slug → index entry */
@@ -133,12 +119,7 @@ const wareMap = new Map( ( initialWares ?? [] ).map( ( w ) => [ w.slug, w ] ) );
 /** @type {Map<string, number>} slug → badge count */
 const badgeMap = new Map();
 
-/**
- * True when a badge-render rAF has been requested but not yet flushed.
- * Prevents a flood of badge postMessages from triggering one DOM reflow
- * per message — all changes within a single frame are coalesced.
- */
-let _badgeRafPending = false;
+let _badgeRafPending = false; // badge postMessage → one rAF flush
 
 // ===========================================================================
 // DOM
@@ -350,6 +331,13 @@ class ToastManager {
 // ===========================================================================
 // Event Bus
 // ===========================================================================
+//
+// Open-bus contract: all events are GLOBAL. Any subscribed ware receives every
+// event it subscribes to regardless of which ware emitted it. Ware authors
+// MUST namespace their event names with their slug (e.g. "crm:contact-updated")
+// to avoid collisions with other wares. The broker enforces this convention at
+// emit time: events that do not start with "{emitter-slug}:" are rejected.
+// Built-in shell events prefixed with "bazaar:" are reserved.
 
 class EventBus {
 	constructor() {
@@ -366,7 +354,21 @@ class EventBus {
 			s.delete( slug );
 		}
 	}
+	/**
+	 * Broadcast an event to all subscribers.
+	 * Enforces slug-prefix convention: the event name must start with
+	 * "{fromSlug}:" so wares cannot impersonate each other's event namespaces.
+	 * Returns false when the event name violates the convention.
+	 *
+	 * @param {string} event    Namespaced event name (e.g. "flow:task-added").
+	 * @param {*}      data     Payload forwarded to each subscriber.
+	 * @param {string} fromSlug Slug of the ware sending the event.
+	 * @return {boolean} False when the event name violates the slug-prefix convention.
+	 */
 	broadcast( event, data, fromSlug ) {
+		if ( fromSlug && ! event.startsWith( fromSlug + ':' ) ) {
+			return false;
+		}
 		for ( const slug of this.subs.get( event ) ?? [] ) {
 			if ( slug === fromSlug ) {
 				continue;
@@ -380,6 +382,7 @@ class EventBus {
 					);
 			}
 		}
+		return true;
 	}
 }
 
@@ -387,17 +390,26 @@ class EventBus {
 // Clipboard
 // ===========================================================================
 
+// Clipboard entries are namespaced by the writing ware's slug so that a ware
+// can only paste data it (or the same slug) wrote. Cross-ware reads are
+// rejected to prevent one ware from silently exfiltrating another's clipboard.
 class ShellClipboard {
 	constructor() {
 		this._data = null;
 		this._mime = null;
+		this._fromSlug = null;
 	}
-	copy( data, mime = 'application/json' ) {
+	copy( data, mime = 'application/json', fromSlug = null ) {
 		this._data = data;
 		this._mime = mime;
+		this._fromSlug = fromSlug;
 	}
-	paste( mime ) {
+	paste( mime, requestingSlug = null ) {
 		if ( mime && mime !== this._mime ) {
+			return null;
+		}
+		// Reject cross-ware reads: the requesting slug must match the writing slug.
+		if ( this._fromSlug !== null && requestingSlug !== null && requestingSlug !== this._fromSlug ) {
 			return null;
 		}
 		return this._data;
@@ -431,6 +443,7 @@ const homeScreen = new HomeScreen( {
 	iconUrl,
 	sortedEnabled,
 	badgeMap,
+	pinnedSet,
 } );
 if ( homePanel ) {
 	homeScreen.mount( homePanel );
@@ -448,6 +461,7 @@ const launchpad = new Launchpad( {
 const notifCenter = new NotificationCenter( {
 	root,
 	toolbar: document.getElementById( 'bsh-toolbar' ),
+	navigateTo,
 } );
 
 // Patch toasts to also log to the notification center.
@@ -465,6 +479,7 @@ const ctxMenu = new NavContextMenu( {
 	popOut,
 	serveUrl,
 	wareMap,
+	wareInfo,
 } );
 
 // Shortcut overlay state
@@ -740,6 +755,24 @@ function renderNav() {
 	}
 
 	for ( const [ gName, gWares ] of groups ) {
+		// A group with one member would show the same name twice (header + item).
+		// Render it as a plain ungrouped item instead.
+		if ( gWares.length === 1 ) {
+			const w = gWares[ 0 ];
+			navList.appendChild(
+				buildItem(
+					w.slug,
+					{
+						label: w.menu_title ?? w.name,
+						icon: iconUrl( w ),
+						devMode: !! w.dev_url,
+					},
+					activeSlug,
+					badgeMap
+				)
+			);
+			continue;
+		}
 		navList.appendChild( buildGroupHeader( gName ) );
 		for ( const w of gWares ) {
 			navList.appendChild(
@@ -899,7 +932,6 @@ function _renderToolbarContextInner( slug ) {
 // Navigation
 // ===========================================================================
 
-/** Called when the active navigation transition finishes. */
 function _navDone() {
 	_navInFlight = false;
 	if ( _navPending ) {
@@ -919,8 +951,7 @@ function navigateTo( slug, route ) {
 		return;
 	}
 
-	// If a view-transition is already running, queue this call (last-wins)
-	// rather than interleaving two transitions simultaneously.
+	// Last-wins queue while a view transition is running.
 	if ( _navInFlight ) {
 		_navPending = { slug, route };
 		return;
@@ -997,10 +1028,22 @@ function navigateTo( slug, route ) {
 			delete root.dataset.vtDir;
 		}
 		const t = document.startViewTransition( () => iframes.activate( slug, url ) );
-		t.finished.finally( () => {
-			delete root.dataset.vtDir;
-			_navDone();
-		} );
+		t.finished
+			.catch( ( e ) => {
+			// AbortError is expected when a navigation supersedes an in-flight
+			// transition (e.g. a deep-link triggers navigation on page load while
+			// the opening transition is still running). Log anything unexpected
+			// but do not rethrow — navigation has already completed and _navDone
+			// must always run regardless of transition outcome.
+				if ( e?.name !== 'AbortError' ) {
+				// eslint-disable-next-line no-console
+					console.error( '[bazaar] view transition error', e );
+				}
+			} )
+			.finally( () => {
+				delete root.dataset.vtDir;
+				_navDone();
+			} );
 	} else {
 		iframes.activate( slug, url );
 		_navDone();
@@ -1150,7 +1193,6 @@ function applyWareToggled( slug, enabled ) {
 
 const sseDeps = {
 	restUrl,
-	// Getter so reconnects automatically pick up a refreshed nonce (fix 7).
 	get nonce() {
 		return _nonce;
 	},
@@ -1174,7 +1216,6 @@ const sseDeps = {
 // badge and health updates trigger the correct targeted patch, not a full rebuild.
 const badgePollDeps = {
 	restUrl,
-	// Getter so each poll call reads the current nonce (fix 1).
 	get nonce() {
 		return _nonce;
 	},
@@ -1184,7 +1225,6 @@ const badgePollDeps = {
 
 const healthPollDeps = {
 	restUrl,
-	// Getter so each poll call reads the current nonce (fix 1).
 	get nonce() {
 		return _nonce;
 	},
@@ -1246,7 +1286,7 @@ async function cacheQuery( id, path, targetWindow ) {
 		}
 		const contentType = r.headers.get( 'content-type' ) ?? '';
 		if ( ! contentType.includes( 'application/json' ) ) {
-			// Non-JSON response — notify requester so it does not hang forever.
+			// reply or the waiting iframe hangs.
 			replyError( r.status );
 			return;
 		}
@@ -1280,134 +1320,135 @@ window.addEventListener( 'message', ( event ) => {
 	const { type, ...p } = event.data ?? {};
 	const fromSlug = slugForWindow( event.source );
 
-	switch ( type ) {
+	try {
+		switch ( type ) {
 		// Lifecycle — only the manage iframe is trusted to report these events.
 		// Any ware that can post same-origin messages cannot spoof installs/deletes.
-		case 'bazaar:ware-installed':
-			if ( fromSlug === 'manage' && p.ware?.slug ) {
-				applyWareInstalled( p.ware );
-			}
-			break;
-		case 'bazaar:ware-deleted':
-			if ( fromSlug === 'manage' && p.slug ) {
-				applyWareDeleted( p.slug );
-			}
-			break;
-		case 'bazaar:ware-toggled':
-			if ( fromSlug === 'manage' ) {
-				applyWareToggled( p.slug, p.enabled );
-			}
-			break;
-
-		// Event bus
-		case 'bazaar:subscribe':
-			if ( fromSlug ) {
-				bus.subscribe( fromSlug, p.event );
-			}
-			break;
-		case 'bazaar:emit':
-			if ( fromSlug ) {
-				bus.broadcast( p.event, p.data, fromSlug );
-			}
-			break;
-		case 'bazaar:unsubscribe-all':
-			if ( fromSlug ) {
-				bus.unsubscribeAll( fromSlug );
-			}
-			break;
-
-		// UI
-		case 'bazaar:toast':
-			toasts.show( p.message ?? '', p.level ?? 'info', p.duration ?? 4000 );
-			break;
-		case 'bazaar:notify':
-			notifCenter.add(
-				fromSlug ?? 'system',
-				p.message ?? '',
-				p.level ?? 'info',
-				fromSlug ? wareMap.get( fromSlug ) : null
-			);
-			break;
-		case 'bazaar:badge':
-			if ( fromSlug ) {
-				badgeMap.set( fromSlug, p.count ?? 0 );
-				// Coalesce all badge changes arriving within the same frame into
-				// one render pass to avoid per-message layout reflows.
-				if ( ! _badgeRafPending ) {
-					_badgeRafPending = true;
-					requestAnimationFrame( () => {
-						_badgeRafPending = false;
-						renderNav();
-						renderTaskbar();
-						homeScreen.refresh();
-					} );
+			case 'bazaar:ware-installed':
+				if ( fromSlug === 'manage' && p.ware?.slug ) {
+					applyWareInstalled( p.ware );
 				}
-			}
-			break;
-		case 'bazaar:navigate':
-			// Only act on navigation requests from known, registered frames.
-			// fromSlug is null when the source window is not a recognised ware
-			// or the manage iframe, so this silently drops spoofed messages.
-			if ( fromSlug ) {
-				navigateTo( p.ware, p.route, p.secondary ?? false );
-			}
-			break;
-		case 'bazaar:widget':
-			if ( fromSlug ) {
-				homeScreen.addWidget( fromSlug, p.data ?? {} );
-			}
-			break;
-		case 'bazaar:shortcuts':
-			if ( fromSlug && p.shortcuts ) {
-				updateWareShortcuts( fromSlug, wareMap.get( fromSlug ), p.shortcuts );
-			}
-			break;
+				break;
+			case 'bazaar:ware-deleted':
+				if ( fromSlug === 'manage' && p.slug ) {
+					applyWareDeleted( p.slug );
+				}
+				break;
+			case 'bazaar:ware-toggled':
+				if ( fromSlug === 'manage' ) {
+					applyWareToggled( p.slug, p.enabled );
+				}
+				break;
 
-		// Data cache
-		case 'bazaar:query':
-			if ( p.id && p.path ) {
-				cacheQuery( p.id, p.path, event.source );
-			}
-			break;
+				// Event bus
+			case 'bazaar:subscribe':
+				if ( fromSlug ) {
+					bus.subscribe( fromSlug, p.event );
+				}
+				break;
+			case 'bazaar:emit':
+				if ( fromSlug ) {
+					bus.broadcast( p.event, p.data, fromSlug );
+				}
+				break;
+			case 'bazaar:unsubscribe-all':
+				if ( fromSlug ) {
+					bus.unsubscribeAll( fromSlug );
+				}
+				break;
 
-		// Clipboard
-		case 'bazaar:copy':
-			clipboard.copy( p.data, p.mime );
-			break;
-		case 'bazaar:paste':
-			event.source.postMessage(
-				{
-					type: 'bazaar:paste-response',
-					id: p.id,
-					data: clipboard.paste( p.mime ),
-				},
-				window.location.origin
-			);
-			break;
+				// UI
+			case 'bazaar:toast':
+				toasts.show( p.message ?? '', p.level ?? 'info', p.duration ?? 4000 );
+				break;
+			case 'bazaar:notify':
+				notifCenter.add(
+					fromSlug ?? 'system',
+					p.message ?? '',
+					p.level ?? 'info',
+					fromSlug ? wareMap.get( fromSlug ) : null
+				);
+				break;
+			case 'bazaar:badge':
+				if ( fromSlug ) {
+					badgeMap.set( fromSlug, p.count ?? 0 );
+					if ( ! _badgeRafPending ) {
+						_badgeRafPending = true;
+						requestAnimationFrame( () => {
+							_badgeRafPending = false;
+							renderNav();
+							renderTaskbar();
+							homeScreen.refresh();
+						} );
+					}
+				}
+				break;
+			case 'bazaar:navigate':
+				// Unknown frame → no fromSlug; ignore.
+				if ( fromSlug ) {
+					navigateTo( p.ware, p.route, p.secondary ?? false );
+				}
+				break;
+			case 'bazaar:widget':
+				if ( fromSlug ) {
+					homeScreen.addWidget( fromSlug, p.data ?? {} );
+				}
+				break;
+			case 'bazaar:shortcuts':
+				if ( fromSlug && p.shortcuts ) {
+					updateWareShortcuts( fromSlug, wareMap.get( fromSlug ), p.shortcuts );
+				}
+				break;
 
-		// Error reporting
-		case 'bazaar:error':
-			if ( fromSlug ) {
-				showError( fromSlug, p.message, p.stack, main, ( slug ) => {
-					iframes.reload( slug );
-				} );
-				// POST to error log endpoint.
-				fetch( `${ restUrl }/errors`, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						'X-WP-Nonce': _nonce,
+				// Data cache
+			case 'bazaar:query':
+				if ( p.id && p.path ) {
+					cacheQuery( p.id, p.path, event.source );
+				}
+				break;
+
+				// Clipboard
+			case 'bazaar:copy':
+				clipboard.copy( p.data, p.mime, fromSlug );
+				break;
+			case 'bazaar:paste':
+				event.source.postMessage(
+					{
+						type: 'bazaar:paste-response',
+						id: p.id,
+						data: clipboard.paste( p.mime, fromSlug ),
 					},
-					body: JSON.stringify( {
-						slug: fromSlug,
-						message: p.message,
-						stack: p.stack,
-						url: p.url,
-					} ),
-					keepalive: true,
-				} ).catch( () => {} );
-			}
-			break;
+					window.location.origin
+				);
+				break;
+
+				// Error reporting
+			case 'bazaar:error':
+				if ( fromSlug ) {
+					showError( fromSlug, p.message, p.stack, main, ( slug ) => {
+						iframes.reload( slug );
+					} );
+					// POST to error log endpoint.
+					fetch( `${ restUrl }/errors`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							'X-WP-Nonce': _nonce,
+						},
+						body: JSON.stringify( {
+							slug: fromSlug,
+							message: p.message,
+							stack: p.stack,
+							url: p.url,
+						} ),
+						keepalive: true,
+					} ).catch( () => {} );
+				}
+				break;
+		}
+	} catch ( err ) {
+		// eslint-disable-next-line no-console
+		console.error( '[bazaar] message handler error', err );
 	}
 } );
 
@@ -1605,8 +1646,17 @@ function renderWinBar( slug ) {
 	reloadBtn.addEventListener( 'click', () => iframes.reload( slug ) );
 	winbarEl.appendChild( reloadBtn );
 
-	// Info (real wares only)
+	// Info + Pop-out (real wares only)
 	if ( ware ) {
+		const popOutBtn = document.createElement( 'button' );
+		popOutBtn.type = 'button';
+		popOutBtn.className = 'bsh-winbar__btn';
+		popOutBtn.setAttribute( 'aria-label', __( 'Pop out', 'bazaar' ) );
+		popOutBtn.title = __( 'Pop out', 'bazaar' );
+		popOutBtn.innerHTML = '<span class="dashicons dashicons-external" aria-hidden="true"></span>';
+		popOutBtn.addEventListener( 'click', () => popOut( serveUrl( ware ), slug ) );
+		winbarEl.appendChild( popOutBtn );
+
 		const infoBtn = document.createElement( 'button' );
 		infoBtn.type = 'button';
 		infoBtn.className = 'bsh-winbar__btn';
@@ -1657,6 +1707,15 @@ function renderStatusBar( slug ) {
 			trustEl.innerHTML =
 				`<span class="dashicons ${ TRUST_ICONS[ trust ] ?? 'dashicons-unlock' }" aria-hidden="true"></span>`;
 			statusbarLeft.appendChild( trustEl );
+
+			// Dev-mode indicator when ware is running from a Vite dev server.
+			if ( ware.dev_url ) {
+				const devEl = document.createElement( 'span' );
+				devEl.className = 'bsh-statusbar__dev';
+				devEl.title = __( 'Dev mode — running from local server', 'bazaar' );
+				devEl.textContent = 'DEV';
+				statusbarLeft.appendChild( devEl );
+			}
 		}
 	}
 }
@@ -2007,6 +2066,10 @@ let _badgeTimer;
 let _healthTimer;
 
 function startPolling() {
+	// Clear any existing intervals before creating new ones so that calling
+	// startPolling() more than once (e.g. initial load + visibilitychange)
+	// never leaves orphaned timers running in the background.
+	stopPolling();
 	_badgeTimer = setInterval( () => {
 		if ( ! sseConnected ) {
 			void pollBadges( badgePollDeps );
@@ -2027,10 +2090,8 @@ function stopPolling() {
 document.addEventListener( 'visibilitychange', () => {
 	if ( document.hidden ) {
 		stopPolling();
-		// Flush the active view's duration before the tab may be discarded.
 		recordView( null );
 	} else {
-		// Resume tracking from the current active view when the tab regains focus.
 		if ( activeSlug ) {
 			_viewSlug = activeSlug;
 			_viewStart = Date.now();
@@ -2039,7 +2100,6 @@ document.addEventListener( 'visibilitychange', () => {
 	}
 } );
 
-// Flush the final view's duration when the user closes or reloads the page.
 window.addEventListener( 'pagehide', () => recordView( null ) );
 
 startPolling();
@@ -2059,7 +2119,7 @@ for ( const ware of wareMap.values() ) {
 	}
 
 	try {
-		const reg = await navigator.serviceWorker.register(
+		await navigator.serviceWorker.register(
 			swUrl ??
 				`${ window.location.origin }/wp-json/bazaar/v1/sw`,
 			{ scope: '/' }
@@ -2067,34 +2127,23 @@ for ( const ware of wareMap.values() ) {
 
 		// Send zero-trust permissions for wares that require network enforcement.
 		const ztWares = [ ...wareMap.values() ].filter(
-			( w ) => w.zero_trust && w.permissions?.network
+			( w ) => w.zero_trust && w.permissions_network
 		);
 		if ( ! ztWares.length ) {
 			return;
 		}
 
-		const sendInit = () => {
-			const permissions = Object.fromEntries(
-				ztWares.map( ( w ) => [ w.slug, w.permissions.network ] )
-			);
-			reg.active?.postMessage( {
-				type: 'bazaar:zt-init',
-				permissions,
-				origin: window.location.origin,
-			} );
-		};
-
-		if ( reg.active ) {
-			sendInit();
-		} else {
-			reg.addEventListener( 'updatefound', () =>
-				reg.installing?.addEventListener( 'statechange', () => {
-					if ( reg.active ) {
-						sendInit();
-					}
-				} )
-			);
-		}
+		// Await the service worker being fully active before sending zt-init
+		// to eliminate the race condition where the SW is still installing.
+		const activeSw = await navigator.serviceWorker.ready;
+		const permissions = Object.fromEntries(
+			ztWares.map( ( w ) => [ w.slug, w.permissions_network ] )
+		);
+		activeSw.active?.postMessage( {
+			type: 'bazaar:zt-init',
+			permissions,
+			origin: window.location.origin,
+		} );
 	} catch {
 		// SW registration failure is non-fatal.
 	}

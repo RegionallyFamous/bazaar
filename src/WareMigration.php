@@ -66,7 +66,10 @@ final class WareMigration {
 
 				if ( is_dir( $old_dir ) && ! is_dir( $new_dir ) ) {
 					// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
-					rename( $old_dir, $new_dir );
+					if ( ! rename( $old_dir, $new_dir ) ) {
+						// Abort — do not update the registry with stale paths.
+						return;
+					}
 				}
 			}
 

@@ -39,6 +39,8 @@ export default function App() {
 
   function deletePalette( id: string ) {
     if ( palettes.length <= 1 ) return;
+    const name = palettes.find( p => p.id === id )?.name ?? 'this palette';
+    if ( ! window.confirm( `Delete "${ name }"?` ) ) return;
     update( d => {
       const idx = d.findIndex( p => p.id === id );
       if ( idx >= 0 ) d.splice( idx, 1 );

@@ -2,18 +2,35 @@ import type { Palette } from './types.ts';
 
 const KEY = 'bazaar-swatch-v1';
 
+function isValidPalette( v: unknown ): v is Palette {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    typeof ( v as Palette ).id === 'string' &&
+    typeof ( v as Palette ).name === 'string' &&
+    Array.isArray( ( v as Palette ).swatches )
+  );
+}
+
 export function loadPalettes(): Palette[] {
   try {
     const raw = localStorage.getItem( KEY );
-    if ( raw ) return JSON.parse( raw ) as Palette[];
+    if ( raw ) {
+      const parsed: unknown = JSON.parse( raw );
+      if ( Array.isArray( parsed ) && parsed.every( isValidPalette ) ) {
+        return parsed;
+      }
+    }
   } catch {
-    // corrupt — fall through
+    // corrupt or unavailable — fall through
   }
   return [ defaultPalette() ];
 }
 
 export function savePalettes( palettes: Palette[] ): void {
-  localStorage.setItem( KEY, JSON.stringify( palettes ) );
+  try {
+    localStorage.setItem( KEY, JSON.stringify( palettes ) );
+  } catch { /* quota exceeded or storage unavailable — ignore */ }
 }
 
 export function uid(): string {

@@ -90,8 +90,11 @@ export function usePixelEditor() {
 	const [ saveSlots, setSaveSlots ]   = useState<SaveSlot[]>( [] );
 	const [ saveName, setSaveName ]     = useState( 'My Artwork' );
 
-	const isDrawing = useRef( false );
-	const storeRef  = useRef<ReturnType<typeof createStore> | null>( null );
+	const isDrawing  = useRef( false );
+	const storeRef   = useRef<ReturnType<typeof createStore> | null>( null );
+	// Ref tracking current pixels so callbacks that push to undo don't need
+	// to close over pixels state, avoiding identity churn on every pixel change.
+	const pixelsRef = useRef( pixels );
 
 	useEffect( () => {
 		try {
@@ -100,36 +103,48 @@ export function usePixelEditor() {
 			storeRef.current = store;
 			store.get<SaveSlot[]>( 'slots' ).then( slots => {
 				if ( slots ) setSaveSlots( slots );
-			} ).catch( () => {} );
+			} ).catch( () => {
+				bzr.toast( 'Could not load saved slots — starting fresh', 'warning' );
+			} );
 		} catch {
 			// Running outside Bazaar (dev mode without context)
 		}
 	}, [] );
 
+	// Keep the ref in sync so stable callbacks can read the latest pixels
+	// without closing over state (which would cause identity churn).
+	useEffect( () => {
+		pixelsRef.current = pixels;
+	} );
+
 	const commit = useCallback( ( next: Uint8Array ) => {
-		setUndoStack( prev => [ ...prev.slice( -MAX_HISTORY ), pixels ] );
+		setUndoStack( prev => [ ...prev.slice( -MAX_HISTORY ), pixelsRef.current ] );
 		setRedoStack( [] );
 		setPixels( next );
-	}, [ pixels ] );
+	}, [] );
 
 	const undo = useCallback( () => {
-		if ( undoStack.length === 0 ) return;
-		const prev = undoStack[ undoStack.length - 1 ];
-		setRedoStack( s => [ pixels, ...s ] );
-		setUndoStack( s => s.slice( 0, -1 ) );
-		setPixels( prev );
-	}, [ undoStack, pixels ] );
+		setUndoStack( prev => {
+			if ( prev.length === 0 ) return prev;
+			const undone = prev[ prev.length - 1 ];
+			setRedoStack( r => [ pixelsRef.current, ...r ] );
+			setPixels( undone );
+			return prev.slice( 0, -1 );
+		} );
+	}, [] );
 
 	const redo = useCallback( () => {
-		if ( redoStack.length === 0 ) return;
-		const next = redoStack[ 0 ];
-		setUndoStack( s => [ ...s, pixels ] );
-		setRedoStack( s => s.slice( 1 ) );
-		setPixels( next );
-	}, [ redoStack, pixels ] );
+		setRedoStack( prev => {
+			if ( prev.length === 0 ) return prev;
+			const [ next, ...rest ] = prev;
+			setUndoStack( u => [ ...u, pixelsRef.current ] );
+			setPixels( next );
+			return rest;
+		} );
+	}, [] );
 
 	const drawPixel = useCallback( ( x: number, y: number, erasing: boolean ) => {
-		const next = new Uint8Array( pixels );
+		const next = new Uint8Array( pixelsRef.current );
 		const idx  = ( y * size + x ) * 4;
 		if ( erasing ) {
 			next[ idx ] = 255; next[ idx + 1 ] = 255;
@@ -141,7 +156,7 @@ export function usePixelEditor() {
 		}
 		setPixels( next );
 		return next;
-	}, [ pixels, size, primaryColor ] );
+	}, [ size, primaryColor ] );
 
 	const handlePointerDown = useCallback( (
 		e: React.PointerEvent<HTMLCanvasElement>,
@@ -156,25 +171,26 @@ export function usePixelEditor() {
 		if ( px < 0 || px >= size || py < 0 || py >= size ) return;
 
 		if ( tool === 'eyedropper' ) {
+			const cur = pixelsRef.current;
 			const idx = ( py * size + px ) * 4;
-			if ( pixels[ idx + 3 ] > 0 ) {
-				setPrimary( rgbaToHex( pixels[ idx ], pixels[ idx + 1 ], pixels[ idx + 2 ] ) );
+			if ( cur[ idx + 3 ] > 0 ) {
+				setPrimary( rgbaToHex( cur[ idx ], cur[ idx + 1 ], cur[ idx + 2 ] ) );
 			}
 			return;
 		}
 
 		if ( tool === 'fill' ) {
-			const filled = floodFill( pixels, px, py, hexToRgba( primaryColor ), size );
+			const filled = floodFill( pixelsRef.current, px, py, hexToRgba( primaryColor ), size );
 			commit( filled );
 			return;
 		}
 
 		const next = drawPixel( px, py, tool === 'eraser' );
 		// Store start-of-stroke state in undo at mousedown
-		setUndoStack( prev => [ ...prev.slice( -MAX_HISTORY ), pixels ] );
+		setUndoStack( prev => [ ...prev.slice( -MAX_HISTORY ), pixelsRef.current ] );
 		setRedoStack( [] );
 		setPixels( next );
-	}, [ tool, zoom, size, pixels, primaryColor, commit, drawPixel ] );
+	}, [ tool, zoom, size, primaryColor, commit, drawPixel ] );
 
 	const handlePointerMove = useCallback( (
 		e: React.PointerEvent<HTMLCanvasElement>,
@@ -207,37 +223,37 @@ export function usePixelEditor() {
 	}, [ commit, size ] );
 
 	const exportPNG = useCallback( () => {
-		const canvas = document.createElement( 'canvas' );
+		const cur     = pixelsRef.current;
+		const canvas  = document.createElement( 'canvas' );
 		canvas.width  = size;
 		canvas.height = size;
 		const ctx2d   = canvas.getContext( '2d' )!;
 		const imgData = ctx2d.createImageData( size, size );
-		imgData.data.set( pixels );
+		imgData.data.set( cur );
 		ctx2d.putImageData( imgData, 0, 0 );
 		const a    = document.createElement( 'a' );
 		a.href     = canvas.toDataURL( 'image/png' );
 		a.download = `${ saveName.replace( /\s+/g, '-' ).toLowerCase() }.png`;
 		a.click();
-	}, [ pixels, size, saveName ] );
+	}, [ size, saveName ] );
 
 	const saveSlot = useCallback( async ( name: string ) => {
 		const slot: SaveSlot = {
 			name,
-			data:    Array.from( pixels ),
+			data:    Array.from( pixelsRef.current ),
 			size,
 			savedAt: new Date().toISOString(),
 		};
-		const updated = [
-			slot,
-			...saveSlots.filter( s => s.name !== name ),
-		].slice( 0, 10 );
-		setSaveSlots( updated );
-		if ( storeRef.current ) {
-			await storeRef.current.set( 'slots', updated as never ).catch( () => {
-				bzr.toast( 'Saved locally — server unreachable', 'warning' );
-			} );
-		}
-	}, [ pixels, size, saveSlots ] );
+		setSaveSlots( prev => {
+			const updated = [ slot, ...prev.filter( s => s.name !== name ) ].slice( 0, 10 );
+			if ( storeRef.current ) {
+				storeRef.current.set( 'slots', updated ).catch( () => {
+					bzr.toast( 'Saved locally — server unreachable', 'warning' );
+				} );
+			}
+			return updated;
+		} );
+	}, [ size ] );
 
 	const loadSlot = useCallback( ( slot: SaveSlot ) => {
 		const loaded = new Uint8Array( slot.data );

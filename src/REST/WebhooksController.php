@@ -123,7 +123,8 @@ final class WebhooksController extends BazaarController {
 		if ( is_wp_error( $all ) ) {
 			return new WP_REST_Response( array(), 200 );
 		}
-		return new WP_REST_Response( array_values( array_filter( $all, fn( $w ) => isset( $w['slug'] ) && $w['slug'] === $slug ) ), 200 );
+		$filtered = array_values( array_filter( $all, fn( $w ) => isset( $w['slug'] ) && $w['slug'] === $slug ) );
+		return new WP_REST_Response( array_map( array( $this, 'without_secret' ), $filtered ), 200 );
 	}
 
 	/**
@@ -141,6 +142,22 @@ final class WebhooksController extends BazaarController {
 		// Validate URL scheme.
 		if ( ! in_array( wp_parse_url( $url, PHP_URL_SCHEME ), array( 'http', 'https' ), true ) ) {
 			return new WP_Error( 'bad_url', __( 'Webhook URL must use http or https.', 'bazaar' ), array( 'status' => 422 ) );
+		}
+
+		// Enforce minimum secret length. When no secret is provided, auto-generate
+		// a secure 40-character secret and return it once in the creation response —
+		// it is never retrievable again. Webhooks without a secret fire unsigned,
+		// which means the receiver cannot verify the payload origin.
+		$generated_secret = false;
+		if ( '' === $sec ) {
+			$sec              = wp_generate_password( 40, false );
+			$generated_secret = true;
+		} elseif ( strlen( $sec ) < 32 ) {
+			return new WP_Error(
+				'secret_too_short',
+				__( 'Webhook secret must be at least 32 characters.', 'bazaar' ),
+				array( 'status' => 422 )
+			);
 		}
 
 		$all = $this->load_all();
@@ -164,7 +181,14 @@ final class WebhooksController extends BazaarController {
 
 		$all[] = $entry;
 		$this->save_all( $all );
-		return new WP_REST_Response( $entry, 201 );
+
+		$response = $this->without_secret( $entry );
+		if ( $generated_secret ) {
+			// Return the auto-generated secret exactly once so the operator can
+			// configure their receiver. It is never returned again after creation.
+			$response['secret'] = $sec;
+		}
+		return new WP_REST_Response( $response, 201 );
 	}
 
 	/**
@@ -190,6 +214,18 @@ final class WebhooksController extends BazaarController {
 	}
 
 	// ─── Helpers ──────────────────────────────────────────────────────────
+
+	/**
+	 * Return a webhook entry with the HMAC signing secret omitted.
+	 * The secret is write-only: accepted on creation, never returned to callers.
+	 *
+	 * @param array<string, mixed> $entry Webhook entry.
+	 * @return array<string, mixed>
+	 */
+	private function without_secret( array $entry ): array {
+		unset( $entry['secret'] );
+		return $entry;
+	}
 
 	/**
 	 * Load all persisted webhooks from options.

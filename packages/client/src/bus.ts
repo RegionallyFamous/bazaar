@@ -65,11 +65,24 @@ if ( typeof window !== 'undefined' ) {
     const { type, event: eventName, data } = ( event.data ?? {} ) as Record<string, unknown>;
 
     if ( type === 'bazaar:event' && typeof eventName === 'string' ) {
-      _handlers.get( eventName )?.forEach( h => h( data ) );
+      _handlers.get( eventName )?.forEach( h => {
+        try {
+          h( data );
+        } catch ( err ) {
+          // One failing subscriber must not prevent others from receiving the event.
+          console.error( '[bazaar] event subscriber error', err );
+        }
+      } );
     }
 
     if ( type === 'bazaar:route' && typeof data === 'string' ) {
-      _handlers.get( '__route__' )?.forEach( h => h( data ) );
+      _handlers.get( '__route__' )?.forEach( h => {
+        try {
+          h( data );
+        } catch ( err ) {
+          console.error( '[bazaar] route subscriber error', err );
+        }
+      } );
     }
   } );
 }

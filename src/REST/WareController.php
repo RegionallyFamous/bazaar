@@ -216,6 +216,8 @@ final class WareController extends BazaarController {
 			);
 		}
 
+		do_action( 'bazaar_ware_toggled', $slug, $enabled );
+
 		return new WP_REST_Response(
 			array(
 				'success' => true,
@@ -260,12 +262,14 @@ final class WareController extends BazaarController {
 		if ( ! $this->registry->unregister( $slug ) ) {
 			// Files are already gone; the registry must also be cleaned up or the
 			// ware will appear as installed without any files backing it.
-			return new \WP_Error(
+			return new WP_Error(
 				'unregister_failed',
 				esc_html__( 'Files deleted but registry update failed. Please try again.', 'bazaar' ),
 				array( 'status' => 500 )
 			);
 		}
+
+		do_action( 'bazaar_ware_deleted', $slug, $ware );
 
 		return new WP_REST_Response(
 			array(

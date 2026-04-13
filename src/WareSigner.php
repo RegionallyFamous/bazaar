@@ -65,13 +65,12 @@ final class WareSigner {
 			return new WP_Error( 'invalid_signature_encoding', esc_html__( 'Signature is not valid base64.', 'bazaar' ) );
 		}
 
-		// Resolve public key.
-		$pubkey_pem = '';
-		if ( ! empty( $manifest['signingKey'] ) ) {
-			// Per-ware embedded public key (allowed for testing; prod setups should use site key).
+		// Resolve public key. In production the site-wide key is always used.
+		// A per-ware embedded signingKey is only honoured when WP_DEBUG is active
+		// to prevent a malicious author from self-signing with their own key.
+		$pubkey_pem = (string) get_option( self::PUBKEY_OPTION, '' );
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $manifest['signingKey'] ) ) {
 			$pubkey_pem = sanitize_textarea_field( $manifest['signingKey'] );
-		} else {
-			$pubkey_pem = (string) get_option( self::PUBKEY_OPTION, '' );
 		}
 
 		if ( '' === $pubkey_pem ) {

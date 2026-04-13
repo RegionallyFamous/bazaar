@@ -233,14 +233,29 @@ trait WareOpsTrait {
 
 			// 6. Health-check URL reachable (if declared).
 			if ( ! empty( $ware['health_check'] ) ) {
-				$r      = wp_remote_get( $ware['health_check'], array( 'timeout' => 5 ) );
-				$ok     = ! is_wp_error( $r ) && (int) wp_remote_retrieve_response_code( $r ) < 300;
-				$rows[] = array(
-					'ware'   => $s,
-					'check'  => 'health_check',
-					'status' => $ok ? 'ok' : 'error',
-					'detail' => $ok ? 'Reachable' : ( is_wp_error( $r ) ? $r->get_error_message() : 'HTTP ' . wp_remote_retrieve_response_code( $r ) ),
-				);
+				if ( ! \Bazaar\UrlSafety::is_safe_url( $ware['health_check'] ) ) {
+					$rows[] = array(
+						'ware'   => $s,
+						'check'  => 'health_check',
+						'status' => 'error',
+						'detail' => 'URL targets a disallowed host (SSRF guard)',
+					);
+				} else {
+					$r      = wp_remote_get(
+						$ware['health_check'],
+						array(
+							'timeout'     => 5,
+							'redirection' => 0,
+						)
+					);
+					$ok     = ! is_wp_error( $r ) && (int) wp_remote_retrieve_response_code( $r ) < 300;
+					$rows[] = array(
+						'ware'   => $s,
+						'check'  => 'health_check',
+						'status' => $ok ? 'ok' : 'error',
+						'detail' => $ok ? 'Reachable' : ( is_wp_error( $r ) ? $r->get_error_message() : 'HTTP ' . wp_remote_retrieve_response_code( $r ) ),
+					);
+				}
 			}
 
 			// 7. Jobs next run.

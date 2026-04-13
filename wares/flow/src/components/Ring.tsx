@@ -27,15 +27,17 @@ export default function Ring( { progress, mode, secondsLeft, running, onToggle }
 
 	return (
 		<div className="ring-wrap">
-			<svg
-				width="220"
-				height="220"
-				viewBox="0 0 220 220"
-				className="ring-svg"
-				onClick={ onToggle }
-				role="button"
-				aria-label={ running ? 'Pause' : 'Start' }
-			>
+		<svg
+			width="220"
+			height="220"
+			viewBox="0 0 220 220"
+			className="ring-svg"
+			onClick={ onToggle }
+			onKeyDown={ ( e ) => { if ( e.key === 'Enter' || e.key === ' ' ) { e.preventDefault(); onToggle(); } } }
+			role="button"
+			tabIndex={ 0 }
+			aria-label={ running ? 'Pause' : 'Start' }
+		>
 				{ /* Track */ }
 				<circle
 					cx={ CX } cy={ CY } r={ R }

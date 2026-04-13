@@ -1,0 +1,151 @@
+---
+description: Ware design system and build pipeline requirements — @bazaar/design usage, canonical vite.config.ts, package script, CI registration, and new-ware checklist
+globs: "wares/**"
+alwaysApply: false
+---
+
+# Ware Design System & Build Pipeline
+
+Every ware is a first-class app in the Bazaar ecosystem. These rules are non-negotiable for consistency, theming, and CI reliability.
+
+---
+
+## DESIGN SYSTEM — `@bazaar/design`
+
+### Required imports in every `main.tsx`
+
+```tsx
+import { ErrorBoundary } from '@bazaar/design';
+import '@bazaar/design/css';
+```
+
+- `@bazaar/design/css` activates the full token layer (`--bw-bg`, `--bw-surface`, `--bw-accent`, etc.)
+- `<ErrorBoundary>` must wrap `<App>` — do **not** write a hand-rolled boundary class
+
+### Set the colour scheme
+
+When a ware has a fixed colour scheme, declare it in `main.tsx` before rendering:
+
+```tsx
+// dark ware (most wares)
+document.documentElement.setAttribute( 'data-theme', 'dark' );
+
+// light ware
+document.documentElement.setAttribute( 'data-theme', 'light' );
+```
+
+### Use design components for UI chrome
+
+Do not re-implement these — import from `@bazaar/design`:
+
+| Need | Component |
+|---|---|
+| Clickable action | `Button` |
+| Text field | `Input` / `Textarea` / `Select` |
+| Overlay | `Modal` |
+| Status chip | `Badge` |
+| Loading state | `Spinner` |
+| Ephemeral notification | `ToastProvider` + `useToast` |
+
+### CSS tokens — no hardcoded hex colours in theme-aware UI
+
+```css
+/* ❌ hardcoded — breaks dark/light switching */
+.panel { background: #1e1e2e; color: #cdd6f4; }
+
+/* ✅ token-driven */
+.panel { background: var(--bw-bg); color: var(--bw-text); }
+```
+
+Canvas rendering colours (Matrix rain green, star white, etc.) are exempt — they are intentional and not theme-driven.
+
+---
+
+## BUILD PIPELINE
+
+### `vite.config.ts` — canonical alias map (required)
+
+Every ware's `vite.config.ts` must include this exact `resolve.alias` block so TypeScript and Vite both resolve monorepo packages from source:
+
+```ts
+import { defineConfig } from 'vite';
+import react            from '@vitejs/plugin-react';
+import { resolve }      from 'path';
+
+export default defineConfig( {
+  plugins: [ react() ],
+  base: './',
+  resolve: {
+    alias: {
+      '@bazaar/client':       resolve( __dirname, '../../packages/client/src/index.ts' ),
+      '@bazaar/client/react': resolve( __dirname, '../../packages/client/src/hooks.ts' ),
+      '@bazaar/design/theme': resolve( __dirname, '../../packages/design/src/theme/adminColor.ts' ),
+      '@bazaar/design/css':   resolve( __dirname, '../../packages/design/src/css/index.css' ),
+      '@bazaar/design':       resolve( __dirname, '../../packages/design/src/index.ts' ),
+    },
+  },
+  build: {
+    outDir:      'dist',
+    emptyOutDir: true,
+    assetsDir:   'assets',
+    // React is bundled into the ware — the .wp archive is self-contained.
+    // Do NOT add rollupOptions.external for react/react-dom.
+  },
+  server: { cors: true },
+} );
+```
+
+### `package.json` — required `package` script
+
+Replace `{slug}` with the ware's slug:
+
+```json
+"scripts": {
+  "dev":     "vite",
+  "build":   "tsc -b && vite build",
+  "preview": "vite preview",
+  "package": "npm run build && cp manifest.json dist/ && cd dist && zip -r ../../{slug}.wp . && echo 'Packaged: {slug}.wp'"
+}
+```
+
+### Register in `wares/registry.json`
+
+Add an entry before the ware can be released:
+
+```json
+{
+  "slug":         "{slug}",
+  "name":         "{Name}",
+  "description":  "One punchy sentence.",
+  "version":      "1.0.0",
+  "author":       "Regionally Famous",
+  "icon_url":     "https://github.com/RegionallyFamous/bazaar/releases/latest/download/{slug}-icon.svg",
+  "download_url": "https://github.com/RegionallyFamous/bazaar/releases/latest/download/{slug}.wp",
+  "tags":         ["tag1", "tag2"]
+}
+```
+
+### Register in CI — `.github/workflows/ci.yml`
+
+Add a build step inside the `build-wares` job, after the last existing ware:
+
+```yaml
+- name: Build {slug}
+  working-directory: wares/{slug}
+  run: npm run package
+```
+
+---
+
+## NEW WARE CHECKLIST
+
+Before opening a PR or running `bin/build-zip.sh`:
+
+- [ ] `@bazaar/design/css` imported in `main.tsx`
+- [ ] `<ErrorBoundary>` from `@bazaar/design` wraps `<App>`
+- [ ] `data-theme` attribute set in `main.tsx`
+- [ ] `vite.config.ts` has the canonical alias map (no `rollupOptions.external`)
+- [ ] `package.json` has the `package` script with the correct slug
+- [ ] Entry added to `wares/registry.json`
+- [ ] Build step added to `.github/workflows/ci.yml` `build-wares` job
+- [ ] `npm run package` exits 0 from the ware directory

@@ -1,13 +1,18 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { Task }                        from '../types.ts';
 import { loadTasks, saveTasks }             from '../hooks/useStore.ts';
+import { bzr }                              from '@bazaar/client';
 
 export default function TaskList() {
 	const [ tasks, setTasks ]   = useState<Task[]>( [] );
 	const [ input, setInput ]   = useState( '' );
 
 	useEffect( () => {
-		loadTasks().then( setTasks ).catch( () => {} );
+		loadTasks()
+			.then( setTasks )
+			.catch( () => {
+				bzr.toast( 'Could not load tasks. Please refresh.', 'error' );
+			} );
 	}, [] );
 
 	const persist = useCallback( async ( next: Task[] ) => {
@@ -35,8 +40,9 @@ export default function TaskList() {
 	}, [ tasks, persist ] );
 
 	const clearDone = useCallback( async () => {
+		if ( ! window.confirm( `Remove ${ done } completed task${ done !== 1 ? 's' : '' }?` ) ) return;
 		await persist( tasks.filter( t => ! t.done ) );
-	}, [ tasks, persist ] );
+	}, [ tasks, done, persist ] );
 
 	const done  = tasks.filter( t => t.done ).length;
 	const total = tasks.length;

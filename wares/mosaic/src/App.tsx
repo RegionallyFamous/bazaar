@@ -104,15 +104,17 @@ export default function App() {
 
 			{ /* ── Main workspace ── */ }
 			<div className="editor__workspace">
-				<Toolbar
-					tool={ editor.tool }
-					onTool={ editor.setTool }
-					canUndo={ editor.canUndo }
-					canRedo={ editor.canRedo }
-					onUndo={ editor.undo }
-					onRedo={ editor.redo }
-					onClear={ editor.clearCanvas }
-				/>
+			<Toolbar
+				tool={ editor.tool }
+				onTool={ editor.setTool }
+				canUndo={ editor.canUndo }
+				canRedo={ editor.canRedo }
+				onUndo={ editor.undo }
+				onRedo={ editor.redo }
+				onClear={ () => {
+					if ( window.confirm( 'Clear the canvas? This cannot be undone.' ) ) editor.clearCanvas();
+				} }
+			/>
 
 				<main className="editor__canvas-area">
 					<div className="editor__canvas-wrap">

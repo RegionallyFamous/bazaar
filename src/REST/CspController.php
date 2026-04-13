@@ -123,7 +123,13 @@ final class CspController extends BazaarController {
 			$directives[ $directive ] = sanitize_text_field( (string) $sources );
 		}
 
-		CspPolicy::save( $slug, $directives );
+		if ( ! CspPolicy::save( $slug, $directives ) ) {
+			return new WP_Error(
+				'save_failed',
+				esc_html__( 'CSP policy could not be saved. Please try again.', 'bazaar' ),
+				array( 'status' => 500 )
+			);
+		}
 		$directives = CspPolicy::load( $slug ); // Re-read to get enforced invariants.
 		return new WP_REST_Response(
 			array(

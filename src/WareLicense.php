@@ -129,6 +129,10 @@ final class WareLicense {
 			return true;
 		}
 
+		if ( ! UrlSafety::is_safe_url( $url ) ) {
+			return new WP_Error( 'unsafe_url', esc_html__( 'License validation URL targets a disallowed host.', 'bazaar' ) );
+		}
+
 		$body = wp_json_encode(
 			array(
 				'slug' => $slug,
@@ -144,9 +148,10 @@ final class WareLicense {
 		$response = wp_remote_post(
 			$url,
 			array(
-				'timeout' => 10,
-				'headers' => array( 'Content-Type' => 'application/json' ),
-				'body'    => $body,
+				'timeout'     => 10,
+				'redirection' => 0,
+				'headers'     => array( 'Content-Type' => 'application/json' ),
+				'body'        => $body,
 			)
 		);
 

@@ -1,0 +1,11 @@
+name                = "bazaar-telemetry"
+main                = "worker.js"
+compatibility_date  = "2024-01-01"
+
+# D1 database binding — database_id is filled in automatically by the setup
+# script (bin/setup-telemetry.sh) after `wrangler d1 create bazaar-telemetry`.
+# You can also paste it manually from `wrangler d1 list`.
+[[d1_databases]]
+binding       = "DB"
+database_name = "bazaar-telemetry"
+database_id   = "54266322-70df-43de-a7f8-e5698d1a5a31"

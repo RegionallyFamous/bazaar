@@ -75,26 +75,27 @@ final class WareRegistry implements WareRegistryInterface {
 		}
 
 		$ware = array(
-			'name'            => sanitize_text_field( $manifest['name'] ),
-			'slug'            => $slug,
-			'version'         => sanitize_text_field( $manifest['version'] ),
-			'author'          => sanitize_text_field( $manifest['author'] ?? '' ),
-			'description'     => sanitize_textarea_field( $manifest['description'] ?? '' ),
-			'icon'            => sanitize_text_field( $manifest['icon'] ?? 'icon.svg' ),
-			'entry'           => sanitize_text_field( $manifest['entry'] ?? 'index.html' ),
-			'menu'            => $this->sanitize_menu( is_array( $manifest['menu'] ?? null ) ? $manifest['menu'] : array() ),
-			'permissions'     => $this->sanitize_permissions( $manifest['permissions'] ?? array() ),
-			'license'         => $this->sanitize_license( $manifest['license'] ?? array() ),
-			'registry'        => $this->sanitize_registry_meta( $manifest ),
-			'trust'           => $this->sanitize_trust( $manifest['trust'] ?? 'standard' ),
-			'zero_trust'      => ! empty( $manifest['zero_trust'] ),
-			'health_check'    => isset( $manifest['health_check'] ) ? esc_url_raw( (string) $manifest['health_check'] ) : '',
-			'jobs'            => $this->sanitize_jobs( $manifest['jobs'] ?? array() ),
-			'settings'        => is_array( $manifest['settings'] ?? null ) ? $manifest['settings'] : array(),
-			'search_endpoint' => isset( $manifest['search_endpoint'] ) ? sanitize_text_field( (string) $manifest['search_endpoint'] ) : '',
-			'shared'          => $this->sanitize_shared( $manifest['shared'] ?? array() ),
-			'enabled'         => true,
-			'installed'       => gmdate( 'Y-m-d\TH:i:s\Z' ),
+			'name'                => sanitize_text_field( $manifest['name'] ),
+			'slug'                => $slug,
+			'version'             => sanitize_text_field( $manifest['version'] ),
+			'author'              => sanitize_text_field( $manifest['author'] ?? '' ),
+			'description'         => sanitize_textarea_field( $manifest['description'] ?? '' ),
+			'icon'                => sanitize_text_field( $manifest['icon'] ?? 'icon.svg' ),
+			'entry'               => sanitize_text_field( $manifest['entry'] ?? 'index.html' ),
+			'menu'                => $this->sanitize_menu( is_array( $manifest['menu'] ?? null ) ? $manifest['menu'] : array() ),
+			'permissions'         => $this->sanitize_permissions( $manifest['permissions'] ?? array() ),
+			'permissions_network' => $this->sanitize_permissions_network( $manifest['permissions_network'] ?? null ),
+			'license'             => $this->sanitize_license( $manifest['license'] ?? array() ),
+			'registry'            => $this->sanitize_registry_meta( $manifest ),
+			'trust'               => $this->sanitize_trust( $manifest['trust'] ?? 'standard' ),
+			'zero_trust'          => ! empty( $manifest['zero_trust'] ),
+			'health_check'        => isset( $manifest['health_check'] ) ? esc_url_raw( (string) $manifest['health_check'] ) : '',
+			'jobs'                => $this->sanitize_jobs( $manifest['jobs'] ?? array() ),
+			'settings'            => is_array( $manifest['settings'] ?? null ) ? $manifest['settings'] : array(),
+			'search_endpoint'     => isset( $manifest['search_endpoint'] ) ? sanitize_text_field( (string) $manifest['search_endpoint'] ) : '',
+			'shared'              => $this->sanitize_shared( $manifest['shared'] ?? array() ),
+			'enabled'             => true,
+			'installed'           => gmdate( 'Y-m-d\TH:i:s\Z' ),
 		);
 
 		if ( ! $this->save_ware( $slug, $ware ) ) {
@@ -188,7 +189,16 @@ final class WareRegistry implements WareRegistryInterface {
 	 * @return array<string, array<string, mixed>>
 	 */
 	public function get_index(): array {
-		return $this->load_index();
+		$index = $this->load_index();
+		/**
+		 * Filter the ware index before it is returned to callers.
+		 *
+		 * Multisite hooks this to merge network-activated wares into the
+		 * site-level index.
+		 *
+		 * @param array<string, array<string, mixed>> $index Slug-keyed index.
+		 */
+		return (array) apply_filters( 'bazaar_ware_index', $index );
 	}
 
 	/**
@@ -211,8 +221,23 @@ final class WareRegistry implements WareRegistryInterface {
 	 */
 	public function get_all(): array {
 		$index = $this->load_index();
-		$all   = array();
+		if ( empty( $index ) ) {
+			return array();
+		}
 
+		// Prime the WordPress options object-cache for all ware keys in one
+		// database round-trip, eliminating the N+1 get_option() pattern.
+		$uncached = array_filter(
+			array_keys( $index ),
+			fn( $slug ) => ! isset( $this->ware_cache[ $slug ] )
+		);
+		if ( ! empty( $uncached ) ) {
+			wp_prime_option_caches(
+				array_map( fn( $s ) => self::WARE_PREFIX . $s, $uncached )
+			);
+		}
+
+		$all = array();
 		foreach ( array_keys( $index ) as $slug ) {
 			$ware = $this->load_ware( $slug );
 			if ( null !== $ware ) {
@@ -255,8 +280,12 @@ final class WareRegistry implements WareRegistryInterface {
 			return $this->index_cache;
 		}
 
-		$decoded           = json_decode( (string) $raw, true );
-		$this->index_cache = is_array( $decoded ) ? $decoded : array();
+		$decoded = json_decode( (string) $raw, true );
+		if ( json_last_error() !== JSON_ERROR_NONE || ! is_array( $decoded ) ) {
+			$this->index_cache = array();
+			return $this->index_cache;
+		}
+		$this->index_cache = $decoded;
 		return $this->index_cache;
 	}
 
@@ -289,19 +318,25 @@ final class WareRegistry implements WareRegistryInterface {
 		// Guard against corrupted storage where 'menu' exists but is not an array.
 		$menu = is_array( $ware['menu'] ?? null ) ? $ware['menu'] : array();
 		return array(
-			'slug'        => $ware['slug'],
-			'name'        => $ware['name'],
-			'enabled'     => (bool) ( $ware['enabled'] ?? false ),
-			'version'     => $ware['version'],
-			'icon'        => $ware['icon'] ?? 'icon.svg',
-			'entry'       => $ware['entry'] ?? 'index.html',
-			'menu_title'  => ! empty( $menu['title'] ) ? $menu['title'] : $ware['name'],
-			'capability'  => ! empty( $menu['capability'] ) ? $menu['capability'] : 'manage_options',
-			'group'       => $menu['group'] ?? null,
-			'dev_url'     => $ware['dev_url'] ?? null,
-			'permissions' => $ware['permissions'] ?? array(),
-			'trust'       => $ware['trust'] ?? 'standard',
-			'zero_trust'  => (bool) ( $ware['zero_trust'] ?? false ),
+			'slug'                => $ware['slug'],
+			'name'                => $ware['name'],
+			'enabled'             => (bool) ( $ware['enabled'] ?? false ),
+			'version'             => $ware['version'],
+			'icon'                => $ware['icon'] ?? 'icon.svg',
+			'entry'               => $ware['entry'] ?? 'index.html',
+			'menu_title'          => ! empty( $menu['title'] ) ? $menu['title'] : $ware['name'],
+			'capability'          => ! empty( $menu['capability'] ) ? $menu['capability'] : 'manage_options',
+			'group'               => $menu['group'] ?? null,
+			'dev_url'             => $ware['dev_url'] ?? null,
+			'permissions'         => $ware['permissions'] ?? array(),
+			'permissions_network' => $ware['permissions_network'] ?? null,
+			'trust'               => $ware['trust'] ?? 'standard',
+			'zero_trust'          => (bool) ( $ware['zero_trust'] ?? false ),
+			'description'         => $ware['description'] ?? '',
+			'author'              => $ware['author'] ?? '',
+			'homepage'            => $ware['homepage'] ?? '',
+			'installed'           => $ware['installed'] ?? '',
+			'search_endpoint'     => $ware['search_endpoint'] ?? '',
 		);
 	}
 
@@ -321,7 +356,7 @@ final class WareRegistry implements WareRegistryInterface {
 
 		if ( false !== $raw ) {
 			$legacy = json_decode( (string) $raw, true );
-			if ( is_array( $legacy ) ) {
+			if ( json_last_error() === JSON_ERROR_NONE && is_array( $legacy ) ) {
 				foreach ( $legacy as $slug => $ware ) {
 					$slug = sanitize_key( (string) $slug );
 					if ( '' === $slug || ! is_array( $ware ) ) {
@@ -369,7 +404,7 @@ final class WareRegistry implements WareRegistryInterface {
 		}
 
 		$decoded = json_decode( (string) $raw, true );
-		if ( ! is_array( $decoded ) ) {
+		if ( json_last_error() !== JSON_ERROR_NONE || ! is_array( $decoded ) ) {
 			return null;
 		}
 
@@ -463,6 +498,36 @@ final class WareRegistry implements WareRegistryInterface {
 			'read:analytics',
 		);
 		return array_values( array_intersect( array_map( 'sanitize_text_field', $raw ), $allowed ) );
+	}
+
+	/**
+	 * Sanitize the network permissions block from a manifest.
+	 *
+	 * Accepts null (no network permissions), true (allow all outbound), or
+	 * an array of HTTPS URL allowlist entries. Values that do not pass UrlSafety
+	 * are silently dropped so a compromised registry cannot inject SSRF targets.
+	 *
+	 * @param mixed $raw Raw value from manifest['permissions_network'].
+	 * @return array<int, string>|true|null
+	 */
+	private function sanitize_permissions_network( mixed $raw ): array|bool|null {
+		if ( null === $raw ) {
+			return null;
+		}
+		if ( true === $raw ) {
+			return true;
+		}
+		if ( ! is_array( $raw ) ) {
+			return null;
+		}
+		$out = array();
+		foreach ( $raw as $url ) {
+			$safe = esc_url_raw( (string) $url );
+			if ( '' !== $safe && UrlSafety::is_safe_url( $safe ) ) {
+				$out[] = $safe;
+			}
+		}
+		return $out;
 	}
 
 	/**

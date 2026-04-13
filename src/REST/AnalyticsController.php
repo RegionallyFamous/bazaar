@@ -125,9 +125,9 @@ final class AnalyticsController extends BazaarController {
 	 * Record a ware usage event.
 	 *
 	 * @param WP_REST_Request $request REST request.
-	 * @return WP_REST_Response
+	 * @return WP_REST_Response|WP_Error
 	 */
-	public function record( WP_REST_Request $request ): WP_REST_Response {
+	public function record( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		global $wpdb;
 
 		$slug        = sanitize_key( $request->get_param( 'slug' ) );
@@ -135,21 +135,44 @@ final class AnalyticsController extends BazaarController {
 		$duration_ms = absint( $request->get_param( 'duration_ms' ) );
 
 		if ( '' === $slug ) {
-			return new WP_REST_Response( array( 'error' => 'Invalid slug' ), 400 );
+			return new WP_Error(
+				'invalid_slug',
+				esc_html__( 'A non-empty ware slug is required.', 'bazaar' ),
+				array( 'status' => 400 )
+			);
 		}
 
 		$table = $wpdb->prefix . Tables::ANALYTICS;
 
-		// Silently ignore if the table doesn't exist yet (e.g. fresh install where
-		// activation hook hasn't run yet in this request).
+		// If the table does not exist (e.g. activation hook did not run yet),
+		// return a 503 so the client knows to retry rather than treating it as
+		// accepted.
 		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
 		if ( $table !== $exists ) {
-			return new WP_REST_Response(
-				array(
-					'ok'     => false,
-					'reason' => 'table_missing',
-				),
-				202
+			return new WP_Error(
+				'table_missing',
+				esc_html__( 'Analytics table is not available.', 'bazaar' ),
+				array( 'status' => 503 )
+			);
+		}
+
+		// Per-slug per-day row cap: prevents a buggy or compromised client from
+		// causing unbounded table growth.
+		$daily_cap   = 1000;
+		$today       = gmdate( 'Y-m-d' );
+		$count_today = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT COUNT(*) FROM %i WHERE slug = %s AND DATE(created_at) = %s',
+				$table,
+				$slug,
+				$today
+			)
+		);
+		if ( $count_today >= $daily_cap ) {
+			return new WP_Error(
+				'daily_cap_exceeded',
+				esc_html__( 'Analytics daily cap exceeded for this ware.', 'bazaar' ),
+				array( 'status' => 429 )
 			);
 		}
 
@@ -166,7 +189,11 @@ final class AnalyticsController extends BazaarController {
 		);
 
 		if ( false === $inserted ) {
-			return new WP_REST_Response( array( 'ok' => false ), 500 );
+			return new WP_Error(
+				'insert_failed',
+				esc_html__( 'Could not record analytics event.', 'bazaar' ),
+				array( 'status' => 500 )
+			);
 		}
 
 		return new WP_REST_Response( array( 'ok' => true ), 201 );

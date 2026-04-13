@@ -205,10 +205,11 @@ defined( 'ABSPATH' ) || exit;
 				'read:analytics'    => __( 'Read analytics', 'bazaar' ),
 			);
 			?>
-			<?php foreach ( $wares as $slug => $ware ) : ?>
-				<?php
-				$enabled        = ! empty( $ware['enabled'] );
-				$card_class     = 'bazaar-card' . ( $enabled ? '' : ' bazaar-card--disabled' );
+		<?php $card_index = 0; ?>
+		<?php foreach ( $wares as $slug => $ware ) : ?>
+			<?php
+			$enabled            = ! empty( $ware['enabled'] );
+			$card_class         = 'bazaar-card' . ( $enabled ? '' : ' bazaar-card--disabled' );
 				$icon_url       = esc_url(
 					rest_url(
 						'bazaar/v1/serve/' . rawurlencode( $slug ) . '/' . rawurlencode( $ware['icon'] ?? 'icon.svg' )
@@ -228,15 +229,16 @@ defined( 'ABSPATH' ) || exit;
 					$ware['name']
 				);
 				$permissions = array_filter( (array) ( $ware['permissions'] ?? array() ) );
-				?>
-				<article
-					class="<?php echo esc_attr( $card_class ); ?>"
-					id="bazaar-card-<?php echo esc_attr( $slug ); ?>"
-					data-slug="<?php echo esc_attr( $slug ); ?>"
-					data-name="<?php echo esc_attr( $ware['name'] ); ?>"
-					data-status="<?php echo $enabled ? 'enabled' : 'disabled'; ?>"
-					role="listitem"
-				>
+			?>
+			<article
+				class="<?php echo esc_attr( $card_class ); ?>"
+				id="bazaar-card-<?php echo esc_attr( $slug ); ?>"
+				data-slug="<?php echo esc_attr( $slug ); ?>"
+				data-name="<?php echo esc_attr( $ware['name'] ); ?>"
+				data-status="<?php echo $enabled ? 'enabled' : 'disabled'; ?>"
+				role="listitem"
+				style="--i:<?php echo (int) $card_index; ?>"
+			>
 					<div class="bazaar-card__content">
 						<div class="bazaar-card__icon-wrap">
 							<img
@@ -320,8 +322,9 @@ defined( 'ABSPATH' ) || exit;
 							</button>
 						</div>
 					</div>
-				</article>
-			<?php endforeach; ?>
+			</article>
+			<?php ++$card_index; ?>
+		<?php endforeach; ?>
 		</div>
 	</section>
 

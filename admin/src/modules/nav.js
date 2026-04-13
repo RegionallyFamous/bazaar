@@ -254,7 +254,9 @@ export function buildItem(
 	if ( svgIcon ) {
 		const tmp = document.createElement( 'span' );
 		tmp.innerHTML = svgIcon;
-		wrap.appendChild( tmp.firstChild );
+		if ( tmp.firstChild ) {
+			wrap.appendChild( tmp.firstChild );
+		}
 	} else if ( icon ) {
 		const img = Object.assign( document.createElement( 'img' ), {
 			src: icon,

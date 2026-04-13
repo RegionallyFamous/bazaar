@@ -165,6 +165,10 @@ final class RemoteRegistry {
 			return new WP_Error( 'no_download_url', esc_html__( 'Registry entry has no download URL.', 'bazaar' ) );
 		}
 
+		if ( ! UrlSafety::is_safe_url( $download_url ) ) {
+			return new WP_Error( 'unsafe_url', esc_html__( 'Registry download URL targets a disallowed host.', 'bazaar' ) );
+		}
+
 		// Download the .wp file to a temp location.
 		$tmp = $this->download( $download_url );
 		if ( is_wp_error( $tmp ) ) {
@@ -247,11 +251,16 @@ final class RemoteRegistry {
 			return $cached;
 		}
 
+		if ( ! UrlSafety::is_safe_url( $this->url ) ) {
+			return new WP_Error( 'unsafe_registry_url', esc_html__( 'Registry URL targets a disallowed host.', 'bazaar' ) );
+		}
+
 		$response = wp_remote_get(
 			$this->url,
 			array(
-				'timeout'    => 10,
-				'user-agent' => 'Bazaar/' . BAZAAR_VERSION . '; WordPress/' . get_bloginfo( 'version' ),
+				'timeout'     => 10,
+				'redirection' => 0,
+				'user-agent'  => 'Bazaar/' . BAZAAR_VERSION . '; WordPress/' . get_bloginfo( 'version' ),
 			)
 		);
 
@@ -271,7 +280,7 @@ final class RemoteRegistry {
 		$body = wp_remote_retrieve_body( $response );
 		$data = json_decode( $body, true );
 
-		if ( ! is_array( $data ) || ! isset( $data['wares'] ) ) {
+		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $data ) || ! isset( $data['wares'] ) ) {
 			return new WP_Error( 'registry_invalid', esc_html__( 'Registry response is not valid JSON.', 'bazaar' ) );
 		}
 

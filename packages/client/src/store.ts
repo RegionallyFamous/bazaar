@@ -18,8 +18,11 @@ type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]:
 export interface WareStore {
 	/** Read a value; returns `undefined` if the key doesn't exist. */
 	get<T = JsonValue>( key: string ): Promise<T | undefined>;
-	/** Write a value. */
-	set<T = JsonValue>( key: string, value: T ): Promise<void>;
+	/**
+	 * Write a value. The value must be JSON-serializable; TypeScript cannot
+	 * verify this at compile time so the parameter type is `unknown`.
+	 */
+	set( key: string, value: unknown ): Promise<void>;
 	/** Delete a key. */
 	del( key: string ): Promise<void>;
 	/** List all keys. */
@@ -34,7 +37,7 @@ export interface WareStore {
 export function createStore( slug: string, config: BazaarClientConfig ): WareStore {
 	const base = `${ config.restUrl }/bazaar/v1/store/${ encodeURIComponent( slug ) }`;
 
-	async function req( method: string, path: string, body?: JsonValue ): Promise<Response> {
+	async function req( method: string, path: string, body?: unknown ): Promise<Response> {
 		const opts: RequestInit = {
 			method,
 			headers: { 'X-WP-Nonce': config.nonce, 'Content-Type': 'application/json' },
@@ -56,8 +59,8 @@ export function createStore( slug: string, config: BazaarClientConfig ): WareSto
 			}
 		},
 
-		async set<T = JsonValue>( key: string, value: T ): Promise<void> {
-			await req( 'PUT', `/${ encodeURIComponent( key ) }`, { value } as JsonValue );
+		async set( key: string, value: unknown ): Promise<void> {
+			await req( 'PUT', `/${ encodeURIComponent( key ) }`, { value } );
 		},
 
 		async del( key: string ): Promise<void> {
