@@ -39,7 +39,7 @@ define( 'BAZAAR_MAX_UNCOMPRESSED_SIZE', 50 * 1024 * 1024 );
  *   define( 'BAZAAR_TELEMETRY_ENDPOINT', 'https://bazaar-telemetry.<yourname>.workers.dev' );
  */
 if ( ! defined( 'BAZAAR_TELEMETRY_ENDPOINT' ) ) {
-	define( 'BAZAAR_TELEMETRY_ENDPOINT', '' );
+	define( 'BAZAAR_TELEMETRY_ENDPOINT', 'https://bazaar-telemetry.nickhamze.workers.dev' );
 }
 
 /**
