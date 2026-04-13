@@ -27,18 +27,19 @@ const FEATURED_SLUGS = [ 'mosaic', 'ledger', 'flow' ];
 export class HomeScreen {
 	/**
 	 * @param {{
-	 *   wareMap:       Map<string, Object>,
-	 *   navigateTo:    (slug: string) => void,
-	 *   iconUrl:       (ware: Object) => string,
-	 *   sortedEnabled: (wareMap: Map) => Object[],
-	 *   badgeMap:      Map<string, number>,
-	 *   pinnedSet:     Set<string>,
-	 *   restUrl:       string,
-	 *   apiFetch:      (url: string, init?: Object) => Promise<Response>,
+	 *   wareMap:        Map<string, Object>,
+	 *   navigateTo:     (slug: string) => void,
+	 *   iconUrl:        (ware: Object) => string,
+	 *   sortedEnabled:  (wareMap: Map) => Object[],
+	 *   badgeMap:       Map<string, number>,
+	 *   pinnedSet:      Set<string>,
+	 *   restUrl:        string,
+	 *   apiFetch:       (url: string, init?: Object) => Promise<Response>,
+	 *   onWareInstalled:(ware: Object) => void,
 	 * }} deps
 	 */
-	constructor( { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap, pinnedSet, restUrl, apiFetch } ) {
-		this._deps = { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap, pinnedSet, restUrl, apiFetch };
+	constructor( { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap, pinnedSet, restUrl, apiFetch, onWareInstalled } ) {
+		this._deps = { wareMap, navigateTo, iconUrl, sortedEnabled, badgeMap, pinnedSet, restUrl, apiFetch, onWareInstalled };
 		this._widgets = new Map(); // slug → { count?, label? }
 		this._el = null;
 	}
@@ -205,7 +206,7 @@ export class HomeScreen {
 	 * @return {HTMLElement} Rendered card element.
 	 */
 	_renderWelcomeCard( app, restUrl, navigateTo ) {
-		const { wareMap, apiFetch } = this._deps;
+		const { wareMap, apiFetch, onWareInstalled } = this._deps;
 
 		const isInstalled = wareMap.has( app.slug );
 
@@ -276,16 +277,12 @@ export class HomeScreen {
 					}
 					const data = await r.json();
 
-					// Mark welcomed and navigate to the new ware.
+					// Mark welcomed first so subsequent renders show the normal home.
 					localStorage.setItem( LS_WELCOMED, '1' );
 					if ( data?.ware ) {
-						// Notify the shell so it registers the ware and expands the nav.
-						window.dispatchEvent(
-							new MessageEvent( 'message', {
-								data: { type: 'bazaar:ware-installed', ware: data.ware },
-							} )
-						);
-						navigateTo( data.ware.slug ?? app.slug );
+						// Register the ware with the shell directly (adds to wareMap,
+						// renders nav, shows success toast, clears SW cache) then navigate.
+						onWareInstalled( data.ware );
 					} else {
 						this._render();
 					}

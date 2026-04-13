@@ -446,6 +446,7 @@ const homeScreen = new HomeScreen( {
 	pinnedSet,
 	restUrl,
 	apiFetch,
+	onWareInstalled: applyWareInstalled,
 } );
 if ( homePanel ) {
 	homeScreen.mount( homePanel );
