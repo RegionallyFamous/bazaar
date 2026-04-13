@@ -64,27 +64,37 @@ export class HomeScreen {
 
 		const enabled = sortedEnabled( wareMap );
 
-		// ── Header
-		const hdr = document.createElement( 'div' );
-		hdr.className = 'bsh-home__header';
-
-		const h1 = Object.assign( document.createElement( 'h1' ), {
-			className: 'bsh-home__title',
-			textContent: __( 'Home', 'bazaar' ),
-		} );
-		hdr.appendChild( h1 );
-		el.appendChild( hdr );
-
 		if ( enabled.length === 0 ) {
 			const empty = document.createElement( 'div' );
 			empty.className = 'bsh-home__empty';
-			const emptyIcon = document.createElement( 'span' );
-			emptyIcon.className = 'dashicons dashicons-admin-plugins bsh-home__empty-icon';
-			emptyIcon.setAttribute( 'aria-hidden', 'true' );
-			const emptyMsg = Object.assign( document.createElement( 'p' ), {
-				textContent: __( 'No wares installed yet.', 'bazaar' ),
+
+			const art = document.createElement( 'div' );
+			art.className = 'bsh-home__empty-art';
+			art.setAttribute( 'aria-hidden', 'true' );
+			// Three staggered placeholder cards to hint at what the grid looks like.
+			for ( let i = 0; i < 3; i++ ) {
+				const ph = document.createElement( 'div' );
+				ph.className = 'bsh-home__empty-ph';
+				art.appendChild( ph );
+			}
+
+			const heading = Object.assign( document.createElement( 'h2' ), {
+				className: 'bsh-home__empty-heading',
+				textContent: __( 'Your workspace is empty', 'bazaar' ),
 			} );
-			empty.append( emptyIcon, emptyMsg );
+
+			const sub = Object.assign( document.createElement( 'p' ), {
+				className: 'bsh-home__empty-sub',
+				textContent: __( 'Install a ware to get started — each one is a self-contained mini-app that lives right here.', 'bazaar' ),
+			} );
+
+			const cta = document.createElement( 'button' );
+			cta.type = 'button';
+			cta.className = 'bsh-home__empty-cta';
+			cta.textContent = __( 'Browse Wares', 'bazaar' );
+			cta.addEventListener( 'click', () => navigateTo( 'manage' ) );
+
+			empty.append( art, heading, sub, cta );
 			el.appendChild( empty );
 			return;
 		}

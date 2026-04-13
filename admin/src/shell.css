@@ -2206,36 +2206,74 @@
 
 .bsh-home::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.12); border-radius: 3px; }
 
-.bsh-home__header {
-	margin-bottom: 28px;
-}
-
-.bsh-home__title {
-	font-size: var(--bsh-text-2xl);
-	font-weight: 700;
-	color: var(--bsh-text);
-	margin: 0;
-	letter-spacing: -0.02em;
-}
-
 .bsh-home__empty {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 12px;
-	padding: 80px 20px;
-	color: var(--bsh-text-dim);
+	gap: 20px;
+	padding: 80px 20px 60px;
 	text-align: center;
+	max-width: 420px;
+	margin: 0 auto;
 }
 
-.bsh-home__empty-icon {
-	font-size: 48px;
-	width: 48px;
-	height: 48px;
-	opacity: 0.5;
-	animation: bsh-pulse 3s ease-in-out infinite;
+.bsh-home__empty-art {
+	display: flex;
+	gap: 10px;
+	align-items: flex-end;
+	margin-bottom: 8px;
 }
+
+.bsh-home__empty-ph {
+	width: 72px;
+	border-radius: 12px;
+	background: var(--bsh-surface);
+	border: 1px solid var(--bsh-border);
+	opacity: 0.6;
+	animation: bsh-pulse 2.8s ease-in-out infinite;
+}
+
+.bsh-home__empty-ph:nth-child(1) { height: 72px; animation-delay: 0s; }
+
+.bsh-home__empty-ph:nth-child(2) { height: 88px; animation-delay: 0.3s; }
+
+.bsh-home__empty-ph:nth-child(3) { height: 60px; animation-delay: 0.6s; }
+
+.bsh-home__empty-heading {
+	font-size: var(--bsh-text-xl);
+	font-weight: 600;
+	color: var(--bsh-text);
+	margin: 0;
+	letter-spacing: -0.01em;
+}
+
+.bsh-home__empty-sub {
+	font-size: var(--bsh-text-sm);
+	color: var(--bsh-text-dim);
+	margin: 0;
+	line-height: 1.6;
+}
+
+.bsh-home__empty-cta {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 9px 20px;
+	background: var(--bsh-accent);
+	color: #fff;
+	border: none;
+	border-radius: 8px;
+	font-size: var(--bsh-text-sm);
+	font-weight: 600;
+	cursor: pointer;
+	transition: opacity 0.15s, transform 0.1s;
+	margin-top: 4px;
+}
+
+.bsh-home__empty-cta:hover { opacity: 0.88; transform: translateY(-1px); }
+
+.bsh-home__empty-cta:active { transform: translateY(0); }
 
 /* Widget row */
 .bsh-home__widgets {
