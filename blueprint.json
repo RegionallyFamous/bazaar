@@ -11,37 +11,37 @@
       "step": "installPlugin",
       "pluginData": {
         "resource": "url",
-        "url": "https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/bazaar.zip"
+        "url": "https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/bazaar.zip"
       },
       "activate": true
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/board.wp --force"
+      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/board.wp --force"
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/flow.wp --force"
+      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/flow.wp --force"
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/ledger.wp --force"
+      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/ledger.wp --force"
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/mosaic.wp --force"
+      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/mosaic.wp --force"
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/sine.wp --force"
+      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/sine.wp --force"
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/swatch.wp --force"
+      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/swatch.wp --force"
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/tome.wp --force"
+      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/tome.wp --force"
     }
   ]
 }
