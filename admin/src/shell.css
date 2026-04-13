@@ -478,10 +478,11 @@
 	border: none;
 	background: #fff;
 	opacity: 0;
+	pointer-events: none;
 	transition: opacity 0.2s ease;
 }
 
-.bsh-iframe--visible { opacity: 1; }
+.bsh-iframe--visible { opacity: 1; pointer-events: auto; }
 
 /* Loading spinner */
 .bsh-loading {
