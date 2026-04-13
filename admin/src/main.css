@@ -325,6 +325,25 @@
 	background: rgba(0, 0, 0, 0.04);
 }
 
+.bazaar-filter-tab__count {
+	display: inline-block;
+	margin-left: 4px;
+	padding: 0 5px;
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 1.7;
+	border-radius: 99px;
+	background: rgba(0, 0, 0, 0.08);
+	color: inherit;
+	vertical-align: middle;
+	min-width: 18px;
+	text-align: center;
+}
+
+.bazaar-filter-tab--active .bazaar-filter-tab__count {
+	background: rgba(0, 0, 0, 0.1);
+}
+
 .bazaar-search {
 	flex: 1;
 	min-width: 140px;
@@ -799,13 +818,20 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 	/* Filter tabs: taller touch targets */
 	.bazaar-filter-tab {
 		padding: 8px 16px;
-		min-height: 36px;
+		min-height: 44px;
 	}
 
 	/* Delete button: larger tap area */
 	.bazaar-card__delete {
-		width: 36px;
-		height: 36px;
+		width: 44px;
+		height: 44px;
+	}
+
+	/* Toggle switch wrapper: ensure 44px tap area via vertical padding */
+	.bazaar-toggle {
+		padding-top: 11px;
+		padding-bottom: 11px;
+		min-height: 44px;
 	}
 
 	/* Shell-context horizontal padding: give back some screen width on phones */
@@ -816,6 +842,18 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 
 	html.bazaar-in-shell .bazaar-empty,
 	html.bazaar-in-shell .bazaar-notice {
+		padding-left: 16px;
+		padding-right: 16px;
+	}
+
+	/* Reduce the 48px horizontal padding so catalog/gallery aren't cramped */
+	html.bazaar-in-shell .bazaar-core-section,
+	html.bazaar-in-shell .bazaar-upload-section {
+		padding-left: 16px;
+		padding-right: 16px;
+	}
+
+	html.bazaar-in-shell .bazaar-gallery-section {
 		padding-left: 16px;
 		padding-right: 16px;
 	}
@@ -1140,6 +1178,35 @@ html.bazaar-in-shell .bazaar-card__open:hover {
 	padding: 32px 16px;
 	text-align: center;
 }
+
+.bazaar-core-load-error {
+	grid-column: 1 / -1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	padding: 32px 16px;
+	text-align: center;
+}
+
+.bazaar-core-load-error__msg {
+	color: var(--bz-text-muted);
+	font-size: 13px;
+	margin: 0;
+}
+
+.bazaar-core-load-error__retry {
+	background: none;
+	border: 1px solid var(--bz-border);
+	color: var(--bz-primary);
+	font-size: 13px;
+	cursor: pointer;
+	padding: 5px 14px;
+	border-radius: 4px;
+	transition: background 0.14s;
+}
+
+.bazaar-core-load-error__retry:hover { background: var(--bz-bg); }
 
 /* ---------------------------------------------------------------------------
  * Shell-iframe mode

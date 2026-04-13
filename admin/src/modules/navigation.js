@@ -137,6 +137,8 @@ export function createNavController( deps ) {
 
 		// Guard: non-manage/home slugs must exist in the registry.
 		if ( slug !== 'manage' && slug !== 'home' && ! wareMap.has( slug ) ) {
+			toasts.show( __( 'Ware not found', 'bazaar' ), 'error', TOAST_DEFAULT_MS );
+			navigateTo( 'home' );
 			return;
 		}
 
@@ -185,6 +187,13 @@ export function createNavController( deps ) {
 			if ( homePanel ) {
 				homePanel.hidden = false;
 				homeScreen.refresh();
+				// Move focus to the home panel so keyboard users land in the right place.
+				requestAnimationFrame( () => {
+					if ( ! homePanel.hasAttribute( 'tabindex' ) ) {
+						homePanel.setAttribute( 'tabindex', '-1' );
+					}
+					homePanel.focus( { preventScroll: true } );
+				} );
 			}
 			loading.hidden = true;
 			renderTaskbar();
@@ -241,6 +250,8 @@ export function createNavController( deps ) {
 
 		if ( had ) {
 			loading.hidden = true;
+			// Move focus to the iframe boundary so keyboard/AT users land in the right place.
+			requestAnimationFrame( () => iframes.frames.get( slug )?.focus() );
 			if ( route ) {
 				iframes.frames
 					.get( slug )
@@ -280,6 +291,8 @@ export function createNavController( deps ) {
 				'load',
 				() => {
 					clearLoad();
+					// Move focus to the iframe so keyboard users enter the ware content.
+					f.focus();
 					if ( route ) {
 						f.contentWindow?.postMessage(
 							{ type: 'bazaar:route', route },

@@ -24,6 +24,10 @@ const LS_GS_OPENED = 'bazaar.gs.opened';
 // Slugs shown in the welcome screen, in order of prominence.
 const FEATURED_SLUGS = [ 'mosaic', 'ledger', 'flow' ];
 
+// Maximum number of ware cards rendered in the home grid at once.
+// Installations beyond this cap are accessible via the Manage screen.
+const MAX_HOME_GRID = 100;
+
 export class HomeScreen {
 	/**
 	 * @param {{
@@ -92,6 +96,51 @@ export class HomeScreen {
 	addWidget( slug, data ) {
 		this._widgets.set( slug, data );
 		this.refresh();
+	}
+
+	/**
+	 * Surgically update badge counts on already-rendered pinned and grid cards.
+	 *
+	 * Called instead of refresh() when only badge counts change, avoiding a
+	 * full DOM rebuild for every bazaar:badge postMessage.
+	 *
+	 * @param {Map<string, number>} badgeMap Current badge counts.
+	 */
+	patchBadges( badgeMap ) {
+		if ( ! this._el ) {
+			return;
+		}
+
+		/**
+		 * Update or remove the badge <span> inside a button element.
+		 *
+		 * @param {HTMLElement} btn   Button that may contain a badge span.
+		 * @param {string}      cls   Badge class name to query/create.
+		 * @param {number}      count New badge count (0 = remove).
+		 */
+		const applyBadge = ( btn, cls, count ) => {
+			let b = btn.querySelector( `.${ cls }` );
+			if ( count > 0 ) {
+				const text = count > 99 ? '99+' : String( count );
+				if ( ! b ) {
+					b = document.createElement( 'span' );
+					b.className = cls;
+					btn.appendChild( b );
+				}
+				b.textContent = text;
+				b.setAttribute( 'aria-label', String( count ) + ' ' + __( 'notifications', 'bazaar' ) );
+			} else if ( b ) {
+				b.remove();
+			}
+		};
+
+		this._el.querySelectorAll( '.bsh-home__pinned-item[data-slug]' ).forEach( ( btn ) => {
+			applyBadge( btn, 'bsh-home__pinned-badge', badgeMap.get( btn.dataset.slug ) ?? 0 );
+		} );
+
+		this._el.querySelectorAll( '.bsh-home__card[data-slug]' ).forEach( ( card ) => {
+			applyBadge( card, 'bsh-home__card-badge', badgeMap.get( card.dataset.slug ) ?? 0 );
+		} );
 	}
 
 	// ── Private ─────────────────────────────────────────────────────────────
@@ -201,8 +250,25 @@ export class HomeScreen {
 					grid.appendChild( this._renderWelcomeCard( app, restUrl, navigateTo ) );
 				}
 			} catch {
-				// Network error or REST unavailable — leave skeletons hidden.
+				// Network error or REST unavailable — show actionable error state.
 				grid.innerHTML = '';
+
+				const errWrap = document.createElement( 'div' );
+				errWrap.className = 'bsh-welcome__fetch-error';
+
+				const errMsg = Object.assign( document.createElement( 'p' ), {
+					className: 'bsh-welcome__fetch-error-msg',
+					textContent: __( 'Could not load featured apps.', 'bazaar' ),
+				} );
+
+				const retryBtn = document.createElement( 'button' );
+				retryBtn.type = 'button';
+				retryBtn.className = 'bsh-welcome__fetch-error-retry';
+				retryBtn.textContent = __( 'Try again', 'bazaar' );
+				retryBtn.addEventListener( 'click', () => this._renderWelcome( el ) );
+
+				errWrap.append( errMsg, retryBtn );
+				grid.appendChild( errWrap );
 			}
 		} )();
 	}
@@ -374,6 +440,7 @@ export class HomeScreen {
 				const btn = document.createElement( 'button' );
 				btn.type = 'button';
 				btn.className = 'bsh-home__pinned-item';
+				btn.dataset.slug = w.slug;
 				btn.setAttribute( 'aria-label', w.menu_title ?? w.name );
 
 				const imgWrap = document.createElement( 'span' );
@@ -468,6 +535,15 @@ export class HomeScreen {
 					wBody.appendChild( lbl );
 				}
 
+				const tileParts = [ ware?.menu_title ?? ware?.name ?? slug ];
+				if ( data.count !== null && data.count !== undefined ) {
+					tileParts.push( String( data.count > 9_999 ? '9999+' : data.count ) );
+				}
+				if ( data.label ) {
+					tileParts.push( data.label );
+				}
+				tile.setAttribute( 'aria-label', tileParts.join( ' — ' ) );
+
 				tile.append( wHdr, wBody );
 				tile.addEventListener( 'click', () => navigateTo( slug ) );
 				widgetRow.appendChild( tile );
@@ -488,8 +564,10 @@ export class HomeScreen {
 		const grid = document.createElement( 'div' );
 		grid.className = 'bsh-home__grid';
 
+		const visible = enabled.slice( 0, MAX_HOME_GRID );
+
 		let cardIdx = 0;
-		for ( const w of enabled ) {
+		for ( const w of visible ) {
 			const card = document.createElement( 'button' );
 			card.type = 'button';
 			card.className = 'bsh-home__card';
@@ -546,6 +624,24 @@ export class HomeScreen {
 		}
 
 		section.appendChild( grid );
+
+		if ( enabled.length > MAX_HOME_GRID ) {
+			const overflow = document.createElement( 'p' );
+			overflow.className = 'bsh-home__overflow';
+			const btn = document.createElement( 'button' );
+			btn.type = 'button';
+			btn.className = 'bsh-home__overflow-link';
+			btn.textContent = sprintf(
+				/* translators: %1$d: visible count, %2$d: total count */
+				__( 'Showing %1$d of %2$d wares — Browse all', 'bazaar' ),
+				MAX_HOME_GRID,
+				enabled.length
+			);
+			btn.addEventListener( 'click', () => navigateTo( 'manage' ) );
+			overflow.appendChild( btn );
+			section.appendChild( overflow );
+		}
+
 		el.appendChild( section );
 	}
 

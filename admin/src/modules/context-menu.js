@@ -163,6 +163,7 @@ export class NavContextMenu {
 		const el = document.createElement( 'div' );
 		el.className = 'bsh-ctxmenu';
 		el.setAttribute( 'role', 'menu' );
+		el.setAttribute( 'aria-label', __( 'Context menu', 'bazaar' ) );
 		el.hidden = true;
 		document.body.appendChild( el );
 		return el;

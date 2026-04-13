@@ -51,6 +51,12 @@ echo "▸ JS build…"
 npm run build --silent
 
 # ---------------------------------------------------------------------------
+# 5a. TypeScript strict check (wares + packages)
+# ---------------------------------------------------------------------------
+echo "▸ TypeScript check…"
+npm run typecheck --silent
+
+# ---------------------------------------------------------------------------
 # 6. PHP tests
 # ---------------------------------------------------------------------------
 echo "▸ PHP tests…"
@@ -61,6 +67,15 @@ php composer.phar test
 # ---------------------------------------------------------------------------
 echo "▸ JS tests…"
 npm test --silent
+
+# ---------------------------------------------------------------------------
+# 8. Ware unit + component tests (Vitest)
+# ---------------------------------------------------------------------------
+echo "▸ Ware tests…"
+for WARE in board flow ledger mosaic sine swatch tome; do
+  echo "  > ${WARE}..."
+  npm run test --workspace="wares/$WARE" --silent
+done
 
 echo ""
 echo "✓ All checks passed — proceeding with commit."

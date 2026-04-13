@@ -8,6 +8,32 @@
 import { __, sprintf } from '@wordpress/i18n';
 
 const LS_DND = 'bazaar_notif_dnd';
+
+/**
+ * Trap keyboard focus inside `el` while the dialog is open.
+ *
+ * @param {HTMLElement} el
+ */
+function trapFocus( el ) {
+	el.addEventListener( 'keydown', ( e ) => {
+		if ( e.key !== 'Tab' ) {
+			return;
+		}
+		const focusable = [ ...el.querySelectorAll(
+			'button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'
+		) ].filter( ( n ) => ! n.closest( '[hidden]' ) );
+		const first = focusable[ 0 ];
+		const last = focusable[ focusable.length - 1 ];
+		const active = el.ownerDocument.activeElement;
+		if ( e.shiftKey && active === first ) {
+			e.preventDefault();
+			last.focus();
+		} else if ( ! e.shiftKey && active === last ) {
+			e.preventDefault();
+			first.focus();
+		}
+	} );
+}
 const LS_ITEMS = 'bazaar_notifications';
 const MAX_ITEMS = 100;
 
@@ -90,6 +116,12 @@ export class NotificationCenter {
 		this._bellBtn.classList.add( 'bsh-toolbar__btn--active' );
 		this._bellBtn.setAttribute( 'aria-expanded', 'true' );
 		this._renderList();
+		requestAnimationFrame( () => {
+			const first = this._drawer.querySelector(
+				'button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'
+			);
+			first?.focus();
+		} );
 	}
 
 	close() {
@@ -97,6 +129,7 @@ export class NotificationCenter {
 		this._root.classList.remove( 'bsh--notif-open' );
 		this._bellBtn.classList.remove( 'bsh-toolbar__btn--active' );
 		this._bellBtn.setAttribute( 'aria-expanded', 'false' );
+		this._bellBtn.focus();
 	}
 
 	toggle() {
@@ -199,6 +232,7 @@ export class NotificationCenter {
 		const drawer = document.createElement( 'div' );
 		drawer.className = 'bsh-notif-drawer';
 		drawer.setAttribute( 'role', 'dialog' );
+		drawer.setAttribute( 'aria-modal', 'true' );
 		drawer.setAttribute( 'aria-label', __( 'Notifications', 'bazaar' ) );
 
 		// ── Header
@@ -260,6 +294,7 @@ export class NotificationCenter {
 		this._list = list;
 
 		drawer.append( header, list );
+		trapFocus( drawer );
 		root.appendChild( drawer );
 		return drawer;
 	}

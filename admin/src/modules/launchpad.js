@@ -9,6 +9,33 @@ import { __ } from '@wordpress/i18n';
 
 const SEARCH_DEBOUNCE_MS = 120;
 
+/**
+ * Trap keyboard focus inside `el` while the dialog is open.
+ * Wraps from last focusable back to first (and vice versa for Shift+Tab).
+ *
+ * @param {HTMLElement} el
+ */
+function trapFocus( el ) {
+	el.addEventListener( 'keydown', ( e ) => {
+		if ( e.key !== 'Tab' ) {
+			return;
+		}
+		const focusable = [ ...el.querySelectorAll(
+			'button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'
+		) ].filter( ( n ) => ! n.closest( '[hidden]' ) );
+		const first = focusable[ 0 ];
+		const last = focusable[ focusable.length - 1 ];
+		const active = el.ownerDocument.activeElement;
+		if ( e.shiftKey && active === first ) {
+			e.preventDefault();
+			last.focus();
+		} else if ( ! e.shiftKey && active === last ) {
+			e.preventDefault();
+			first.focus();
+		}
+	} );
+}
+
 export class Launchpad {
 	/**
 	 * @param {{
@@ -37,6 +64,8 @@ export class Launchpad {
 	}
 
 	open() {
+		const active = this._el.ownerDocument.activeElement;
+		this._opener = active instanceof HTMLElement ? active : null;
 		this._visible = true;
 		this._query = '';
 		this._input.value = '';
@@ -52,9 +81,11 @@ export class Launchpad {
 		this._visible = false;
 		this._el.classList.remove( 'bsh-launchpad--in' );
 		const gen = ++this._closeGen;
+		const opener = this._opener;
 		const apply = () => {
 			if ( this._closeGen === gen ) {
 				this._el.hidden = true;
+				opener?.focus();
 			}
 		};
 		this._el.addEventListener( 'transitionend', apply, { once: true } );
@@ -176,6 +207,8 @@ export class Launchpad {
 				this.close();
 			}
 		} );
+
+		trapFocus( el );
 
 		document.body.appendChild( el );
 		return el;

@@ -21,6 +21,8 @@ defined( 'ABSPATH' ) || exit;
 
 <div id="bazaar-shell-root" class="bsh" aria-label="<?php esc_attr_e( 'Bazaar', 'bazaar' ); ?>">
 
+	<a class="bsh-skip-link" href="#bsh-main"><?php echo esc_html__( 'Skip to content', 'bazaar' ); ?></a>
+
 	<nav class="bsh-nav" id="bsh-nav" aria-label="<?php esc_attr_e( 'Wares', 'bazaar' ); ?>">
 
 		<div class="bsh-nav__header">
@@ -118,7 +120,7 @@ defined( 'ABSPATH' ) || exit;
 		</div>
 
 		<!-- Status bar: ware name, trust level, clock -->
-		<div class="bsh-statusbar" id="bsh-statusbar" aria-hidden="true">
+		<div class="bsh-statusbar" id="bsh-statusbar" aria-live="polite" aria-atomic="false">
 			<div class="bsh-statusbar__left" id="bsh-statusbar-left"></div>
 			<div class="bsh-statusbar__center" id="bsh-statusbar-center"></div>
 			<div class="bsh-statusbar__right">

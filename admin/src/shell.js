@@ -977,9 +977,9 @@ function _renderToolbarContextInner( slug ) {
 			const infoBtn = document.createElement( 'button' );
 			infoBtn.type = 'button';
 			infoBtn.className = 'bsh-toolbar__btn bsh-toolbar__btn--ctx';
-			infoBtn.setAttribute( 'aria-label', __( 'About this ware', 'bazaar' ) );
-			infoBtn.title = __( 'About this ware', 'bazaar' );
-			infoBtn.innerHTML = '<span class="dashicons dashicons-info-outline" aria-hidden="true"></span>';
+			infoBtn.setAttribute( 'aria-label', __( 'Ware settings', 'bazaar' ) );
+			infoBtn.title = __( 'Ware settings', 'bazaar' );
+			infoBtn.innerHTML = '<span class="dashicons dashicons-admin-generic" aria-hidden="true"></span>';
 			infoBtn.addEventListener( 'click', ( e ) => {
 				e.stopPropagation();
 				wareInfo.toggle( ware, infoBtn );
@@ -1101,9 +1101,9 @@ window.addEventListener( 'message', ( event ) => {
 						_badgeRafPending = true;
 						requestAnimationFrame( () => {
 							_badgeRafPending = false;
-							renderNav();
+							patchNavBadges( navList, badgeMap );
 							renderTaskbar();
-							homeScreen.refresh();
+							homeScreen.patchBadges( badgeMap );
 						} );
 					}
 				}
@@ -1251,6 +1251,10 @@ function renderTaskbar() {
 		item.className = 'bsh-taskbar__item' +
 			( slug === navState.activeSlug ? ' bsh-taskbar__item--active' : '' );
 		item.dataset.slug = slug;
+		item.setAttribute( 'role', 'button' );
+		item.setAttribute( 'tabindex', '0' );
+		item.setAttribute( 'aria-label', label );
+		item.setAttribute( 'aria-pressed', slug === navState.activeSlug ? 'true' : 'false' );
 
 		// Icon
 		const iconWrap = document.createElement( 'span' );
@@ -1313,6 +1317,12 @@ function renderTaskbar() {
 		item.appendChild( closeBtn );
 
 		item.addEventListener( 'click', () => navigateTo( slug ) );
+		item.addEventListener( 'keydown', ( e ) => {
+			if ( e.key === 'Enter' || e.key === ' ' ) {
+				e.preventDefault();
+				navigateTo( slug );
+			}
+		} );
 		taskbarEl.appendChild( item );
 	}
 }
@@ -1599,6 +1609,7 @@ registerShortcuts( wareMap, navigateTo );
 // ===========================================================================
 
 const LS_NAV_WIDTH = 'bazaar_nav_width';
+const LS_COLLAPSED = 'bsh-collapsed';
 const NAV_MIN_W = 140;
 const NAV_MAX_W = 400;
 
@@ -1607,6 +1618,20 @@ const NAV_MAX_W = 400;
 		const saved = parseInt( localStorage.getItem( LS_NAV_WIDTH ), 10 );
 		if ( saved >= NAV_MIN_W && saved <= NAV_MAX_W ) {
 			root.style.setProperty( '--bsh-nav-width', saved + 'px' );
+		}
+	} catch {
+		/* non-fatal */
+	}
+}() );
+
+// Restore the nav collapsed/expanded preference saved by the user.
+// Applied before the first paint so there's no flash of the wrong layout.
+( function restoreCollapsed() {
+	try {
+		if ( localStorage.getItem( LS_COLLAPSED ) === '1' ) {
+			root.classList.add( 'bsh--collapsed' );
+			collapse.setAttribute( 'aria-expanded', 'false' );
+			collapse.setAttribute( 'aria-label', __( 'Expand navigation', 'bazaar' ) );
 		}
 	} catch {
 		/* non-fatal */
@@ -1666,6 +1691,12 @@ collapse.addEventListener( 'click', () => {
 			? __( 'Expand navigation', 'bazaar' )
 			: __( 'Collapse navigation', 'bazaar' )
 	);
+	// Persist the new preference so it survives page navigation.
+	try {
+		localStorage.setItem( LS_COLLAPSED, c ? '1' : '0' );
+	} catch {
+		/* non-fatal: storage may be full or blocked in private mode */
+	}
 	// Clear filter when collapsing — it won't be visible anyway.
 	if ( c && navFilterQuery ) {
 		filterInput.value = '';

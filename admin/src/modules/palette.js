@@ -8,6 +8,32 @@
 
 import { __ } from '@wordpress/i18n';
 import { esc } from '../shared/escape.js';
+
+/**
+ * Trap keyboard focus inside `el` while the dialog is open.
+ *
+ * @param {HTMLElement} el
+ */
+function trapFocus( el ) {
+	el.addEventListener( 'keydown', ( e ) => {
+		if ( e.key !== 'Tab' ) {
+			return;
+		}
+		const focusable = [ ...el.querySelectorAll(
+			'button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'
+		) ].filter( ( n ) => ! n.closest( '[hidden]' ) );
+		const first = focusable[ 0 ];
+		const last = focusable[ focusable.length - 1 ];
+		const active = el.ownerDocument.activeElement;
+		if ( e.shiftKey && active === first ) {
+			e.preventDefault();
+			last.focus();
+		} else if ( ! e.shiftKey && active === last ) {
+			e.preventDefault();
+			first.focus();
+		}
+	} );
+}
 import {
 	PALETTE_DEBOUNCE_MS,
 	FED_SEARCH_MIN_CHARS,
@@ -78,6 +104,7 @@ export class CommandPalette {
 			autocomplete: 'off',
 			spellcheck: false,
 		} );
+		this.input.setAttribute( 'aria-label', __( 'Search apps and actions', 'bazaar' ) );
 
 		bar.append( iconWrap, this.input );
 
@@ -110,9 +137,12 @@ export class CommandPalette {
 				this.close();
 			}
 		} );
+		trapFocus( this.overlay );
 	}
 
 	open() {
+		const active = this.overlay.ownerDocument.activeElement;
+		this._opener = active instanceof HTMLElement ? active : null;
 		this.visible = true;
 		this.overlay.classList.add( 'bsh-palette--entering' );
 		this.overlay.classList.remove( 'bsh-palette--in' );
@@ -141,6 +171,7 @@ export class CommandPalette {
 		this.overlay.hidden = true;
 		this.overlay.classList.remove( 'bsh-palette--in', 'bsh-palette--entering' );
 		document.body.classList.remove( 'bsh-palette-open' );
+		this._opener?.focus();
 	}
 
 	async _render() {

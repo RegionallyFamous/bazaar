@@ -85,6 +85,25 @@
 	--bsh-radius-lg:   10px;
 }
 
+/* ─── Skip link (visually hidden until focused) ─────────────────────────── */
+
+.bsh-skip-link {
+	position: absolute;
+	left: -9999px;
+	top: 8px;
+	z-index: 99999;
+	padding: 6px 12px;
+	background: var(--bsh-toolbar-bg);
+	color: var(--bsh-text);
+	border-radius: var(--bsh-radius);
+	text-decoration: none;
+	font-size: 13px;
+}
+
+.bsh-skip-link:focus {
+	left: 8px;
+}
+
 /* ─── Root layout ──────────────────────────────────────────────────────── */
 
 .bsh {
@@ -1141,89 +1160,6 @@
 	color: var(--bsh-text-muted);
 }
 
-/* ─── Ware Inspector ─────────────────────────────────────────────────────── */
-
-.bsh-inspector {
-	position: fixed;
-	top: 32px;
-	right: 0;
-	bottom: 0;
-	width: 340px;
-	background: #fff;
-	border-left: 1px solid var(--bsh-border);
-	box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
-	z-index: 99980;
-	display: flex;
-	flex-direction: column;
-	font-size: 12px;
-}
-
-.bsh-inspector[hidden] { display: none !important; }
-
-.bsh-inspector__header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 11px 14px;
-	border-bottom: 1px solid var(--bsh-border);
-	background: var(--bsh-nav-bg);
-	color: #fff;
-	flex-shrink: 0;
-}
-
-.bsh-inspector__title  { font-weight: 600; font-size: 13px; }
-
-.bsh-inspector__close  {
-	background: none;
-	border: none;
-	color: rgba(255, 255, 255, 0.6);
-	cursor: pointer;
-	font-size: 16px;
-	padding: 0;
-	transition: color var(--bsh-ease-fast);
-}
-
-.bsh-inspector__close:hover { color: #fff; }
-
-.bsh-inspector__body { flex: 1; overflow-y: auto; padding: 8px 0; }
-
-.bsh-inspector__section { border-bottom: 1px solid #f1f5f9; }
-
-.bsh-inspector__section > summary {
-	padding: 7px 14px;
-	cursor: pointer;
-	font-weight: 600;
-	color: #334155;
-	list-style: none;
-	font-size: 12px;
-}
-
-.bsh-inspector__section > summary::before { content: '▶ '; font-size: 9px; opacity: 0.6; }
-
-.bsh-inspector__section[open] > summary::before { content: '▼ '; }
-
-.bsh-inspector__section-body { padding: 4px 14px 10px; }
-
-.bsh-inspector__dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; }
-
-.bsh-inspector__dl dt { color: #94a3b8; white-space: nowrap; }
-
-.bsh-inspector__dl dd { color: #334155; word-break: break-all; margin: 0; }
-
-.bsh-inspector__val--warn { color: #f87171; font-weight: 600; }
-
-.bsh-inspector__log { list-style: none; margin: 0; padding: 0; font-family: monospace; }
-
-.bsh-inspector__log li { padding: 3px 0; border-bottom: 1px solid #f1f5f9; }
-
-.bsh-inspector__log--error { color: #f87171; }
-
-.bsh-inspector__status { float: right; }
-
-.bsh-inspector__empty { color: #94a3b8; font-style: italic; margin: 0; }
-
-.bsh-inspector-open .bsh-content { margin-right: 340px; }
-
 /* ─── Exit Bazaar link ───────────────────────────────────────────────────── */
 
 .bsh-nav__wp-link {
@@ -1504,6 +1440,23 @@
 		justify-content: center;
 	}
 
+	/* Context button next to breadcrumb: meet touch target */
+	.bsh-toolbar__context-btn {
+		min-width: 44px;
+		min-height: 44px;
+	}
+
+	/* Getting-started dismiss: meet touch target */
+	.bsh-gs__dismiss {
+		min-width: 44px;
+		min-height: 44px;
+	}
+
+	/* Nav item rows: taller tap area */
+	.bsh-nav__btn {
+		min-height: 44px;
+	}
+
 	/* Split view: stack panels vertically on mobile */
 	.bsh-main--split {
 		flex-direction: column;
@@ -1519,24 +1472,6 @@
 		width: 100%;
 		height: 4px;
 		cursor: row-resize;
-	}
-
-	/* Inspector: full-width overlay instead of pushing content */
-	.bsh-inspector {
-		width: 100% !important;
-		max-width: 100%;
-		top: auto;
-		bottom: 0;
-		height: 55vh;
-		border-left: none;
-		border-top: 1px solid var(--bsh-border);
-		border-radius: 16px 16px 0 0;
-		box-shadow: 0 -4px 24px rgba(0,0,0,.15);
-	}
-
-	.bsh-inspector-open .bsh-content {
-		margin-right: 0 !important;
-		padding-bottom: 55vh;
 	}
 
 	/* Toast: keep within viewport width */
@@ -2665,6 +2600,7 @@
 	border-radius: var(--bsh-radius-lg);
 	box-shadow: var(--bsh-shadow-lg);
 	width: 260px;
+	max-width: calc(100vw - 32px);
 	padding: 16px;
 	display: flex;
 	flex-direction: column;
@@ -3092,6 +3028,34 @@
 }
 
 .bsh-welcome__skip:hover { color: var(--bsh-text); background: var(--bsh-surface); }
+
+.bsh-welcome__fetch-error {
+	grid-column: 1 / -1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	padding: 24px;
+}
+
+.bsh-welcome__fetch-error-msg {
+	color: var(--bsh-text-dim);
+	font-size: var(--bsh-text-sm);
+	margin: 0;
+}
+
+.bsh-welcome__fetch-error-retry {
+	background: none;
+	border: 1px solid var(--bsh-border);
+	color: var(--bsh-accent);
+	font-size: var(--bsh-text-sm);
+	cursor: pointer;
+	padding: 6px 14px;
+	border-radius: 6px;
+	transition: background 0.14s;
+}
+
+.bsh-welcome__fetch-error-retry:hover { background: var(--bsh-surface); }
 
 /* ─── Getting Started card ───────────────────────────────────────────────── */
 
