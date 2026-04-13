@@ -1,0 +1,16 @@
+{
+  "$schema": "../../manifest.schema.json",
+  "name": "Ledger",
+  "slug": "ledger",
+  "version": "1.2.0",
+  "author": "Regionally Famous",
+  "description": "Get paid. Track clients, generate polished invoices, and log payments without ever leaving the WordPress dashboard.",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "menu": {
+    "title": "Ledger",
+    "position": 6,
+    "capability": "manage_options"
+  },
+  "shared": ["react", "react-dom", "react/jsx-runtime"]
+}

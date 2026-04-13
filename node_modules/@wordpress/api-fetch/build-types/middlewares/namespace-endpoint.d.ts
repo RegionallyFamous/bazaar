@@ -1,0 +1,7 @@
+/**
+ * Internal dependencies
+ */
+import type { APIFetchMiddleware } from '../types';
+declare const namespaceAndEndpointMiddleware: APIFetchMiddleware;
+export default namespaceAndEndpointMiddleware;
+//# sourceMappingURL=namespace-endpoint.d.ts.map

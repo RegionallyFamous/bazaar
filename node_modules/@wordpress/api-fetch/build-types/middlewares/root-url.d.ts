@@ -1,0 +1,11 @@
+/**
+ * Internal dependencies
+ */
+import type { APIFetchMiddleware } from '../types';
+/**
+ * @param rootURL
+ * @return  Root URL middleware.
+ */
+declare const createRootURLMiddleware: (rootURL: string) => APIFetchMiddleware;
+export default createRootURLMiddleware;
+//# sourceMappingURL=root-url.d.ts.map

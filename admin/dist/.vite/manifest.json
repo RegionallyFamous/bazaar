@@ -1,0 +1,82 @@
+{
+  "_chunk-CClVwj-C.js": {
+    "file": "chunk-CClVwj-C.js",
+    "name": "chunk"
+  },
+  "_constants-tgH1I5Zx.js": {
+    "file": "constants-tgH1I5Zx.js",
+    "name": "constants"
+  },
+  "_react-o-zDcV_L.js": {
+    "file": "react-o-zDcV_L.js",
+    "name": "react",
+    "imports": [
+      "_chunk-CClVwj-C.js"
+    ]
+  },
+  "admin/src/main.js": {
+    "file": "bazaar.js",
+    "name": "bazaar",
+    "src": "admin/src/main.js",
+    "isEntry": true,
+    "imports": [
+      "_constants-tgH1I5Zx.js"
+    ],
+    "css": [
+      "bazaar.css"
+    ]
+  },
+  "admin/src/shared/react-dom.js": {
+    "file": "shared/react-dom-DcnmWfor.js",
+    "name": "shared/react-dom",
+    "src": "admin/src/shared/react-dom.js",
+    "isEntry": true,
+    "imports": [
+      "_chunk-CClVwj-C.js",
+      "_react-o-zDcV_L.js"
+    ]
+  },
+  "admin/src/shared/react-jsx-runtime.js": {
+    "file": "shared/react-jsx-runtime-DpaPxiTZ.js",
+    "name": "shared/react-jsx-runtime",
+    "src": "admin/src/shared/react-jsx-runtime.js",
+    "isEntry": true,
+    "imports": [
+      "_chunk-CClVwj-C.js"
+    ]
+  },
+  "admin/src/shared/react.js": {
+    "file": "shared/react-CAY2O9Zp.js",
+    "name": "shared/react",
+    "src": "admin/src/shared/react.js",
+    "isEntry": true,
+    "imports": [
+      "_chunk-CClVwj-C.js",
+      "_react-o-zDcV_L.js"
+    ]
+  },
+  "admin/src/shared/vue.js": {
+    "file": "shared/vue-BCWrSYAK.js",
+    "name": "shared/vue",
+    "src": "admin/src/shared/vue.js",
+    "isEntry": true
+  },
+  "admin/src/shell.js": {
+    "file": "shell.js",
+    "name": "shell",
+    "src": "admin/src/shell.js",
+    "isEntry": true,
+    "imports": [
+      "_constants-tgH1I5Zx.js"
+    ],
+    "css": [
+      "shell.css"
+    ]
+  },
+  "admin/src/zero-trust-sw.js": {
+    "file": "zero-trust-sw.js",
+    "name": "zero-trust-sw",
+    "src": "admin/src/zero-trust-sw.js",
+    "isEntry": true
+  }
+}
