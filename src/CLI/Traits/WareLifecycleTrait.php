@@ -70,30 +70,82 @@ trait WareLifecycleTrait {
 	}
 
 	/**
-	 * Install a ware from a .wp archive file.
+	 * Install a ware from a .wp archive file or a URL.
 	 *
-	 * @param array<int,string>    $args       Positional args: path to .wp file.
+	 * @param array<int,string>    $args       Positional args: path or URL to .wp file.
 	 * @param array<string,string> $assoc_args Named flags: --force to overwrite an existing ware.
 	 */
 	public function install( array $args, array $assoc_args ): void {
 		if ( empty( $args[0] ) ) {
-			WP_CLI::error( __( 'Please provide the path to a .wp file.', 'bazaar' ) );
+			WP_CLI::error( __( 'Please provide the path or URL to a .wp file.', 'bazaar' ) );
 		}
 
-		$file_path = realpath( $args[0] );
+		$source   = $args[0];
+		$tmp_file = null;
 
-		if ( false === $file_path || ! is_file( $file_path ) ) {
-			WP_CLI::error(
+		// URL support: download to a temp file so the rest of the install flow
+		// works identically regardless of whether a path or URL was supplied.
+		if ( str_starts_with( $source, 'http://' ) || str_starts_with( $source, 'https://' ) ) {
+			WP_CLI::log(
 				sprintf(
-					/* translators: %s: file path provided by the user */
-					__( 'File not found: %s', 'bazaar' ),
-					$args[0]
+					/* translators: %s: URL being downloaded */
+					__( 'Downloading %s…', 'bazaar' ),
+					$source
 				)
 			);
-			return;
+
+			$response = wp_remote_get(
+				$source,
+				array(
+					'timeout' => 60,
+				)
+			);
+
+			if ( is_wp_error( $response ) ) {
+				WP_CLI::error( $response->get_error_message() );
+				return;
+			}
+
+			$http_code = wp_remote_retrieve_response_code( $response );
+			if ( $http_code < 200 || $http_code >= 300 ) {
+				WP_CLI::error(
+					sprintf(
+						/* translators: 1: HTTP status code 2: URL */
+						__( 'HTTP %1$d downloading %2$s', 'bazaar' ),
+						$http_code,
+						$source
+					)
+				);
+				return;
+			}
+
+			$body = wp_remote_retrieve_body( $response );
+			if ( empty( $body ) ) {
+				WP_CLI::error( __( 'Downloaded file is empty.', 'bazaar' ) );
+				return;
+			}
+
+			$tmp_file  = tempnam( sys_get_temp_dir(), 'bazaar-ware-' );
+			$tmp_file .= '.wp';
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+			file_put_contents( $tmp_file, $body );
+			$file_path = $tmp_file;
+		} else {
+			$file_path = realpath( $source );
+
+			if ( false === $file_path || ! is_file( $file_path ) ) {
+				WP_CLI::error(
+					sprintf(
+						/* translators: %s: file path provided by the user */
+						__( 'File not found: %s', 'bazaar' ),
+						$source
+					)
+				);
+				return;
+			}
 		}
 
-		$filename = basename( $file_path );
+		$filename = basename( str_ends_with( $file_path, '.wp' ) ? $file_path : $source );
 		$force    = (bool) Utils\get_flag_value( $assoc_args, 'force', false );
 
 		// Pre-validate to get the slug before deciding on --force.
@@ -138,6 +190,13 @@ trait WareLifecycleTrait {
 		);
 
 		$result = $this->loader->install( $file_path, $filename );
+
+		// Clean up the temp file downloaded from a URL.
+		if ( null !== $tmp_file && file_exists( $tmp_file ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+			unlink( $tmp_file );
+		}
+
 		if ( is_wp_error( $result ) ) {
 			WP_CLI::error( $result->get_error_message() );
 			return;

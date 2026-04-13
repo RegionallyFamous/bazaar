@@ -244,7 +244,9 @@ final class WareServer {
 		// or any shared dep to the DB registration busts the cached importmap).
 		$etag_seed = $full_path . $mtime . $file_size;
 		if ( $is_html ) {
-			$reg_path    = BAZAAR_DIR . 'admin/src/shared/registry.json';
+			$dist_reg    = BAZAAR_DIR . 'admin/dist/shared/registry.json';
+			$src_reg     = BAZAAR_DIR . 'admin/src/shared/registry.json';
+			$reg_path    = file_exists( $dist_reg ) ? $dist_reg : $src_reg;
 			$man_path    = BAZAAR_DIR . 'admin/dist/.vite/manifest.json';
 			$etag_seed  .= file_exists( $reg_path ) ? (string) filemtime( $reg_path ) : '';
 			$etag_seed  .= file_exists( $man_path ) ? (string) filemtime( $man_path ) : '';
@@ -623,7 +625,12 @@ final class WareServer {
 			return $cache;
 		}
 
-		$registry_path = BAZAAR_DIR . 'admin/src/shared/registry.json';
+		// Production: admin/dist/shared/registry.json (copied there by Vite build,
+		// included in the release zip). Fallback to admin/src/ for local dev where
+		// only the source tree exists and admin/dist/ may not yet be built.
+		$dist_registry = BAZAAR_DIR . 'admin/dist/shared/registry.json';
+		$src_registry  = BAZAAR_DIR . 'admin/src/shared/registry.json';
+		$registry_path = file_exists( $dist_registry ) ? $dist_registry : $src_registry;
 		$manifest_path = BAZAAR_DIR . 'admin/dist/.vite/manifest.json';
 
 		if ( ! file_exists( $registry_path ) || ! file_exists( $manifest_path ) ) {

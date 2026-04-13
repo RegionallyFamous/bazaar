@@ -3,16 +3,45 @@
   "landingPage": "/wp-admin/admin.php?page=bazaar",
   "steps": [
     {
-      "step": "installPlugin",
-      "pluginZipFile": {
-        "resource": "url",
-        "url": "https://github.com/RegionallyFamous/bazaar/releases/latest/download/bazaar.zip"
-      }
-    },
-    {
       "step": "login",
       "username": "admin",
       "password": "password"
+    },
+    {
+      "step": "installPlugin",
+      "pluginData": {
+        "resource": "url",
+        "url": "https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/bazaar.zip"
+      },
+      "activate": true
+    },
+    {
+      "step": "wp-cli",
+      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/board.wp --force"
+    },
+    {
+      "step": "wp-cli",
+      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/flow.wp --force"
+    },
+    {
+      "step": "wp-cli",
+      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/ledger.wp --force"
+    },
+    {
+      "step": "wp-cli",
+      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/mosaic.wp --force"
+    },
+    {
+      "step": "wp-cli",
+      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/sine.wp --force"
+    },
+    {
+      "step": "wp-cli",
+      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/swatch.wp --force"
+    },
+    {
+      "step": "wp-cli",
+      "command": "wp bazaar ware install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.0/tome.wp --force"
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import { copyFileSync, mkdirSync } from 'fs';
 
 /**
  * WordPress packages are loaded by WordPress core as window globals
@@ -39,8 +40,27 @@ function wpExternals() {
 	};
 }
 
+/**
+ * Copy admin/src/shared/registry.json → admin/dist/shared/registry.json so it
+ * is included in release zips (admin/src is listed in .distignore, admin/dist
+ * is not). WareServer::get_shared_registry() reads from admin/dist/ in
+ * production and falls back to admin/src/ during local development.
+ */
+function copySharedRegistry() {
+	return {
+		name: 'copy-shared-registry',
+		closeBundle() {
+			mkdirSync( resolve( __dirname, 'admin/dist/shared' ), { recursive: true } );
+			copyFileSync(
+				resolve( __dirname, 'admin/src/shared/registry.json' ),
+				resolve( __dirname, 'admin/dist/shared/registry.json' ),
+			);
+		},
+	};
+}
+
 export default defineConfig( {
-	plugins: [ wpExternals() ],
+	plugins: [ wpExternals(), copySharedRegistry() ],
 	build: {
 		outDir: 'admin/dist',
 		emptyOutDir: true,
