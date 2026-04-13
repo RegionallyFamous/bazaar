@@ -19,32 +19,88 @@
       "command": "wp plugin activate bazaar"
     },
     {
-      "step": "wp-cli",
-      "command": "wp bazaar install https://regionallyfamous.github.io/bazaar/board.wp --force"
+      "step": "writeFile",
+      "path": "/tmp/board.wp",
+      "data": {
+        "resource": "url",
+        "url": "https://regionallyfamous.github.io/bazaar/board.wp"
+      }
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar install https://regionallyfamous.github.io/bazaar/flow.wp --force"
+      "command": "wp bazaar install /tmp/board.wp --force"
+    },
+    {
+      "step": "writeFile",
+      "path": "/tmp/flow.wp",
+      "data": {
+        "resource": "url",
+        "url": "https://regionallyfamous.github.io/bazaar/flow.wp"
+      }
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar install https://regionallyfamous.github.io/bazaar/ledger.wp --force"
+      "command": "wp bazaar install /tmp/flow.wp --force"
+    },
+    {
+      "step": "writeFile",
+      "path": "/tmp/ledger.wp",
+      "data": {
+        "resource": "url",
+        "url": "https://regionallyfamous.github.io/bazaar/ledger.wp"
+      }
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar install https://regionallyfamous.github.io/bazaar/mosaic.wp --force"
+      "command": "wp bazaar install /tmp/ledger.wp --force"
+    },
+    {
+      "step": "writeFile",
+      "path": "/tmp/mosaic.wp",
+      "data": {
+        "resource": "url",
+        "url": "https://regionallyfamous.github.io/bazaar/mosaic.wp"
+      }
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar install https://regionallyfamous.github.io/bazaar/sine.wp --force"
+      "command": "wp bazaar install /tmp/mosaic.wp --force"
+    },
+    {
+      "step": "writeFile",
+      "path": "/tmp/sine.wp",
+      "data": {
+        "resource": "url",
+        "url": "https://regionallyfamous.github.io/bazaar/sine.wp"
+      }
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar install https://regionallyfamous.github.io/bazaar/swatch.wp --force"
+      "command": "wp bazaar install /tmp/sine.wp --force"
+    },
+    {
+      "step": "writeFile",
+      "path": "/tmp/swatch.wp",
+      "data": {
+        "resource": "url",
+        "url": "https://regionallyfamous.github.io/bazaar/swatch.wp"
+      }
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar install https://regionallyfamous.github.io/bazaar/tome.wp --force"
+      "command": "wp bazaar install /tmp/swatch.wp --force"
+    },
+    {
+      "step": "writeFile",
+      "path": "/tmp/tome.wp",
+      "data": {
+        "resource": "url",
+        "url": "https://regionallyfamous.github.io/bazaar/tome.wp"
+      }
+    },
+    {
+      "step": "wp-cli",
+      "command": "wp bazaar install /tmp/tome.wp --force"
     }
   ]
 }
