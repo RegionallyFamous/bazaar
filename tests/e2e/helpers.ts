@@ -5,15 +5,21 @@ const WP_ADMIN_USER = 'admin';
 const WP_ADMIN_PASS = 'password';
 
 /**
- * Log in to the WordPress admin panel.
- * Skips login if already authenticated (checks for wp-admin body class).
+ * Ensure the page is logged in to the WordPress admin panel.
+ *
+ * With globalSetup pre-loading the auth storageState, the browser context
+ * already carries valid cookies.  This function just verifies we can reach
+ * wp-admin — if the session is stale it falls back to a full login.
  */
 export async function loginAsAdmin( page: Page ): Promise<void> {
-	await page.goto( '/wp-login.php' );
-	await page.fill( '#user_login', WP_ADMIN_USER );
-	await page.fill( '#user_pass', WP_ADMIN_PASS );
-	await page.click( '#wp-submit' );
-	await page.waitForURL( /wp-admin/ );
+	await page.goto( '/wp-admin/' );
+	// If we land on the login page the stored session was invalid — login fresh.
+	if ( page.url().includes( 'wp-login.php' ) ) {
+		await page.fill( '#user_login', WP_ADMIN_USER );
+		await page.fill( '#user_pass', WP_ADMIN_PASS );
+		await page.click( '#wp-submit' );
+		await page.waitForURL( /wp-admin/, { timeout: 60_000 } );
+	}
 }
 
 /**

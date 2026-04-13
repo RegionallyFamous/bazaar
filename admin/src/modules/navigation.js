@@ -55,7 +55,6 @@ export function createNavController( deps ) {
 		homePanel,
 		loading,
 		root,
-		homeScreen,
 		toasts,
 		serveUrl,
 		closeMobileNav,
@@ -162,7 +161,7 @@ export function createNavController( deps ) {
 		updateUrl( slug, route );
 		pushRecent( slug );
 		recordView( slug );
-		homeScreen.recordOpen( slug );
+		deps.homeScreen.recordOpen( slug );
 		renderToolbarContext( slug );
 		renderStatusBar( slug );
 
@@ -186,7 +185,7 @@ export function createNavController( deps ) {
 			}
 			if ( homePanel ) {
 				homePanel.hidden = false;
-				homeScreen.refresh();
+				deps.homeScreen.refresh();
 				// Move focus to the home panel so keyboard users land in the right place.
 				requestAnimationFrame( () => {
 					if ( ! homePanel.hasAttribute( 'tabindex' ) ) {

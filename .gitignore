@@ -42,3 +42,4 @@ npm-debug.log*
 
 # wp-env
 .wp-env/
+tests/e2e/.auth-state.json
