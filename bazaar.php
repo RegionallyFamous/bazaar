@@ -65,6 +65,31 @@ if ( file_exists( BAZAAR_DIR . 'vendor/autoload.php' ) ) {
 	require_once BAZAAR_DIR . 'vendor/autoload.php';
 }
 
+// Remove any node_modules/ directory left over from early development builds.
+// Those releases accidentally included npm workspace symlinks which break
+// WordPress's WP_Upgrader::clear_destination() when updating.
+// Skip in dev checkouts: package.json present means this is a source tree, not a production install.
+if ( is_dir( BAZAAR_DIR . 'node_modules' ) && ! file_exists( BAZAAR_DIR . 'package.json' ) ) {
+	// WP_Filesystem is not yet loaded at this point; raw PHP calls are intentional.
+	// phpcs:disable WordPress.WP.AlternativeFunctions
+	$_bazaar_nm = BAZAAR_DIR . 'node_modules';
+	$_bazaar_it = new \RecursiveIteratorIterator(
+		new \RecursiveDirectoryIterator( $_bazaar_nm, \FilesystemIterator::SKIP_DOTS ),
+		\RecursiveIteratorIterator::CHILD_FIRST
+	);
+	foreach ( $_bazaar_it as $_bazaar_file ) {
+		// Symlinks must be removed with unlink(); rmdir() rejects them with ENOTDIR.
+		if ( $_bazaar_file->isLink() || ! $_bazaar_file->isDir() ) {
+			unlink( $_bazaar_file->getPathname() );
+		} else {
+			rmdir( $_bazaar_file->getPathname() );
+		}
+	}
+	rmdir( $_bazaar_nm );
+	unset( $_bazaar_nm, $_bazaar_it, $_bazaar_file );
+	// phpcs:enable WordPress.WP.AlternativeFunctions
+}
+
 use Bazaar\Plugin;
 use Bazaar\REST\StreamController;
 

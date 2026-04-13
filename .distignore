@@ -28,8 +28,17 @@ composer.lock
 package.json
 package-lock.json
 
-# Dev dependencies — installed by composer install --no-dev before zip
+# node_modules — root workspace and any nested (e.g. wares/*/node_modules)
 node_modules
+
+# Ware source trees — only compiled .wp bundles and registry.json ship
+wares/board
+wares/flow
+wares/ledger
+wares/mosaic
+wares/sine
+wares/swatch
+wares/tome
 
 # Test suite
 tests
