@@ -1,7 +1,0 @@
-/**
- * Internal dependencies
- */
-import type { APIFetchMiddleware } from '../types';
-declare const userLocaleMiddleware: APIFetchMiddleware;
-export default userLocaleMiddleware;
-//# sourceMappingURL=user-locale.d.ts.map

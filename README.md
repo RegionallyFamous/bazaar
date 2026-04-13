@@ -1,1 +1,0 @@
-# Bazaar Playground Assets
