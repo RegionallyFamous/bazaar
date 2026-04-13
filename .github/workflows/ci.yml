@@ -456,7 +456,7 @@ jobs:
           cp wares/board/public/icon.svg   wares-dist/board-icon.svg
           cp wares/swatch/public/icon.svg  wares-dist/swatch-icon.svg
           cp wares/sine/public/icon.svg    wares-dist/sine-icon.svg
-          cp wares/tome/icon.svg           wares-dist/tome-icon.svg
+          cp wares/tome/public/icon.svg    wares-dist/tome-icon.svg
 
       - name: Attach wares to release
         env:
