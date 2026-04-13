@@ -7,23 +7,37 @@
  * Deploy:  wrangler deploy
  * Query:   wrangler d1 execute bazaar-telemetry --command "SELECT ..."
  */
+
+const CORS_HEADERS = {
+	'Access-Control-Allow-Origin': '*',
+	'Access-Control-Allow-Methods': 'POST, OPTIONS',
+	'Access-Control-Allow-Headers': 'Content-Type',
+	'Access-Control-Max-Age': '86400',
+};
+
 export default {
 	async fetch( request, env ) {
+		// WordPress Playground runs PHP via WASM, so wp_remote_post becomes a
+		// browser fetch. The browser sends a preflight OPTIONS first — handle it.
+		if ( request.method === 'OPTIONS' ) {
+			return new Response( null, { status: 204, headers: CORS_HEADERS } );
+		}
+
 		if ( request.method !== 'POST' ) {
-			return new Response( '', { status: 405 } );
+			return new Response( '', { status: 405, headers: CORS_HEADERS } );
 		}
 
 		let body;
 		try {
 			body = await request.json();
 		} catch {
-			return new Response( '', { status: 400 } );
+			return new Response( '', { status: 400, headers: CORS_HEADERS } );
 		}
 
 		const { distinct_id, plugin_version, wp_version, php_version, wp_locale, is_multisite } = body;
 
 		if ( ! distinct_id || typeof distinct_id !== 'string' ) {
-			return new Response( '', { status: 400 } );
+			return new Response( '', { status: 400, headers: CORS_HEADERS } );
 		}
 
 		await env.DB.prepare( `
@@ -46,7 +60,7 @@ export default {
 		).run();
 
 		return new Response( '{"ok":true}', {
-			headers: { 'Content-Type': 'application/json' },
+			headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
 		} );
 	},
 };
