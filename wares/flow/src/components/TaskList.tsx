@@ -39,13 +39,13 @@ export default function TaskList() {
 		await persist( tasks.filter( t => t.id !== id ) );
 	}, [ tasks, persist ] );
 
+	const done  = tasks.filter( t => t.done ).length;
+	const total = tasks.length;
+
 	const clearDone = useCallback( async () => {
 		if ( ! window.confirm( `Remove ${ done } completed task${ done !== 1 ? 's' : '' }?` ) ) return;
 		await persist( tasks.filter( t => ! t.done ) );
 	}, [ tasks, done, persist ] );
-
-	const done  = tasks.filter( t => t.done ).length;
-	const total = tasks.length;
 
 	return (
 		<div className="tasklist">
