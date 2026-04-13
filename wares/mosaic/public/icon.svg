@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <rect width="64" height="64" rx="14" fill="#2d1b69"/>
   <!--
-    4×4 pixel grid. Cell size 12px, gap 3px.
+    4x4 pixel grid. Cell size 12px, gap 3px.
     x/y positions: 7, 22, 37, 52  (7 + 15n, where step = cell+gap = 15)
-    last cell ends at 52+12 = 64 — fits exactly.
+    last cell ends at 52+12 = 64 -- fits exactly.
   -->
   <!-- Row 1 -->
   <rect x="7"  y="7"  width="12" height="12" rx="2.5" fill="#7c3aed" opacity="0.35"/>
