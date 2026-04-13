@@ -6,24 +6,13 @@ namespace Bazaar\Tests\Unit\REST;
 
 use Bazaar\REST\JobsController;
 use Bazaar\WareRegistry;
-use Brain\Monkey;
 use Brain\Monkey\Functions;
-use PHPUnit\Framework\TestCase;
+use Bazaar\Tests\WareTestCase;
 
 /**
  * Unit tests for JobsController static helpers.
  */
-final class JobsControllerTest extends TestCase {
-
-	protected function setUp(): void {
-		parent::setUp();
-		Monkey\setUp();
-	}
-
-	protected function tearDown(): void {
-		Monkey\tearDown();
-		parent::tearDown();
-	}
+final class JobsControllerTest extends WareTestCase {
 
 	// -------------------------------------------------------------------------
 	// Regression: malformed job entries must be skipped, not fatalled
@@ -37,7 +26,13 @@ final class JobsControllerTest extends TestCase {
 		$scheduled = array();
 		$hooked    = array();
 
-		Functions\when( 'sanitize_text_field' )->returnArg();
+		Functions\when( 'wp_get_schedules' )->justReturn(
+			array(
+				'hourly'     => array( 'interval' => 3600, 'display' => 'Once Hourly' ),
+				'twicedaily' => array( 'interval' => 43200, 'display' => 'Twice Daily' ),
+				'daily'      => array( 'interval' => 86400, 'display' => 'Once Daily' ),
+			)
+		);
 		Functions\when( 'wp_next_scheduled' )->justReturn( false );
 		Functions\when( 'wp_schedule_event' )->alias(
 			function ( int $ts, string $recurrence, string $hook ) use ( &$scheduled ): void {

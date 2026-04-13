@@ -1,58 +1,65 @@
 {
-  "name": "@bazaar/client",
-  "version": "0.1.0",
-  "description": "TypeScript client for building WordPress wares with the Bazaar plugin",
-  "keywords": ["wordpress", "bazaar", "ware", "wp-admin", "rest-api"],
-  "license": "GPL-2.0-or-later",
-  "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    },
-    "./react": {
-      "import": "./dist/hooks.js",
-      "types": "./dist/hooks.d.ts"
-    },
-    "./bus": {
-      "import": "./dist/bus.js",
-      "types": "./dist/bus.d.ts"
-    },
-    "./cache": {
-      "import": "./dist/cache.js",
-      "types": "./dist/cache.d.ts"
-    }
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "tsc --project tsconfig.json",
-    "dev":   "tsc --project tsconfig.json --watch",
-    "check": "tsc --project tsconfig.json --noEmit"
-  },
-  "peerDependencies": {
-    "react": "^18.0.0 || ^19.0.0"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    }
-  },
-  "devDependencies": {
-    "@types/react": "^19.0.0",
-    "typescript": "^5.7.0"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/nickhblair/bazaar",
-    "directory": "packages/client"
-  }
+	"name": "@bazaar/client",
+	"version": "0.1.0",
+	"description": "TypeScript client for building WordPress wares with the Bazaar plugin",
+	"keywords": [
+		"wordpress",
+		"bazaar",
+		"ware",
+		"wp-admin",
+		"rest-api"
+	],
+	"license": "GPL-2.0-or-later",
+	"type": "module",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		},
+		"./react": {
+			"import": "./dist/hooks.js",
+			"types": "./dist/hooks.d.ts"
+		},
+		"./bus": {
+			"import": "./dist/bus.js",
+			"types": "./dist/bus.d.ts"
+		},
+		"./cache": {
+			"import": "./dist/cache.js",
+			"types": "./dist/cache.d.ts"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsc --project tsconfig.json",
+		"dev": "tsc --project tsconfig.json --watch",
+		"check": "tsc --project tsconfig.json --noEmit",
+		"typecheck": "tsc --noEmit"
+	},
+	"peerDependencies": {
+		"react": "^18.0.0 || ^19.0.0"
+	},
+	"peerDependenciesMeta": {
+		"react": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@types/react": "^19.0.0",
+		"typescript": "^5.7.0"
+	},
+	"engines": {
+		"node": ">=20"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/nickhblair/bazaar",
+		"directory": "packages/client"
+	}
 }

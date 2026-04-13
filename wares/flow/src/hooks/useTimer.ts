@@ -5,7 +5,8 @@ import { loadSettings, saveSettings, loadHistory, saveHistory } from './useStore
 import { bzr } from '@bazaar/client';
 
 function todayKey(): string {
-	return new Date().toISOString().split( 'T' )[ 0 ]!;
+	const d = new Date();
+	return `${ d.getFullYear() }-${ String( d.getMonth() + 1 ).padStart( 2, '0' ) }-${ String( d.getDate() ).padStart( 2, '0' ) }`;
 }
 
 function minutesToSeconds( m: number ): number {
@@ -20,6 +21,12 @@ function modeDuration( mode: Mode, settings: Settings ): number {
 	}
 }
 
+// Guards against % 0 when sessionsUntilLong is invalid.
+function nextBreakMode( sessionCount: number, settings: Settings ): Mode {
+	if ( ! settings.sessionsUntilLong || settings.sessionsUntilLong < 1 ) return 'short-break';
+	return sessionCount % settings.sessionsUntilLong === 0 ? 'long-break' : 'short-break';
+}
+
 export function useTimer() {
 	const [ settings, setSettings ]           = useState<Settings>( DEFAULT_SETTINGS );
 	const [ mode, setMode ]                   = useState<Mode>( 'work' );
@@ -32,6 +39,12 @@ export function useTimer() {
 
 	const sessionCountRef = useRef( 0 );  // sessions completed this cycle (for long-break logic)
 	const intervalRef     = useRef<ReturnType<typeof setInterval> | null>( null );
+	const modeRef         = useRef<Mode>( 'work' );   // always holds the current mode
+	const historyRef      = useRef<DayRecord[]>( [] ); // always holds the latest history
+
+	// Keep refs in sync so async callbacks always read the latest values.
+	useEffect( () => { modeRef.current = mode; }, [ mode ] );
+	useEffect( () => { historyRef.current = history; }, [ history ] );
 
 	// Load persisted data on mount
 	useEffect( () => {
@@ -39,6 +52,7 @@ export function useTimer() {
 			setSettings( s );
 			setSecondsLeft( minutesToSeconds( s.workMinutes ) );
 			setHistory( h );
+			historyRef.current = h;
 			const today = h.find( d => d.date === todayKey() );
 			setSessionsToday( today?.sessions ?? 0 );
 			setTotalSessions( h.reduce( ( sum, d ) => sum + d.sessions, 0 ) );
@@ -47,6 +61,7 @@ export function useTimer() {
 		} );
 	}, [] );
 
+	// Persist first, then update UI so state always reflects what was saved.
 	const recordSession = useCallback( async ( currentHistory: DayRecord[] ) => {
 		const today   = todayKey();
 		const updated = [ ...currentHistory ];
@@ -56,35 +71,46 @@ export function useTimer() {
 		} else {
 			updated.push( { date: today, sessions: 1 } );
 		}
-		setHistory( updated );
-		const todayRecord = updated.find( d => d.date === today );
-		setSessionsToday( todayRecord?.sessions ?? 1 );
-		setTotalSessions( updated.reduce( ( s, d ) => s + d.sessions, 0 ) );
-		await saveHistory( updated );
+		try {
+			await saveHistory( updated );
+			setHistory( updated );
+			const todayRecord = updated.find( d => d.date === today );
+			setSessionsToday( todayRecord?.sessions ?? 1 );
+			setTotalSessions( updated.reduce( ( s, d ) => s + d.sessions, 0 ) );
+		} catch ( err ) {
+			console.error( 'Failed to save session history:', err );
+		}
 		return updated;
 	}, [] );
 
+	// Determine next break mode, record the session, then advance UI.
+	// setMode/setSecondsLeft run unconditionally so the timer never stays at 00:00.
 	const completeSession = useCallback( async () => {
 		sessionCountRef.current += 1;
-		const updatedHistory = await recordSession( history );
-
-		// Notify
-		if ( 'Notification' in window && Notification.permission === 'granted' ) {
-			new Notification( 'Focus session complete! 🎉', {
-				body: 'Time for a break.',
-				icon: './icon.svg',
-			} );
+		const nextMode = nextBreakMode( sessionCountRef.current, settings );
+		try {
+			await recordSession( historyRef.current );
+			if ( 'Notification' in window && Notification.permission === 'granted' ) {
+				new Notification( 'Focus session complete! 🎉', {
+					body: 'Time for a break.',
+					icon: './icon.svg',
+				} );
+			}
+		} catch ( err ) {
+			console.error( 'completeSession error:', err );
 		}
-
-		// Advance to break
-		const nextMode: Mode = sessionCountRef.current % settings.sessionsUntilLong === 0
-			? 'long-break'
-			: 'short-break';
 		setMode( nextMode );
 		setSecondsLeft( modeDuration( nextMode, settings ) );
 		setRunning( false );
-		return updatedHistory;
-	}, [ history, settings, recordSession ] );
+	}, [ settings, recordSession ] );
+
+	// Advance to next break without recording a session or incrementing the counter.
+	const skipSession = useCallback( () => {
+		const nextMode = nextBreakMode( sessionCountRef.current, settings );
+		setMode( nextMode );
+		setSecondsLeft( modeDuration( nextMode, settings ) );
+		setRunning( false );
+	}, [ settings ] );
 
 	// Tick
 	useEffect( () => {
@@ -98,15 +124,22 @@ export function useTimer() {
 
 		intervalRef.current = setInterval( () => {
 			setSecondsLeft( prev => {
-			if ( prev <= 1 ) {
-				clearInterval( intervalRef.current! );
-				intervalRef.current = null;
-				setRunning( false );
-				completeSession().catch( () => {
-					bzr.toast( 'Session could not be saved.', 'warning' );
-				} );
-				return 0;
-			}
+				if ( prev <= 1 ) {
+					clearInterval( intervalRef.current! );
+					intervalRef.current = null;
+					setRunning( false );
+					if ( modeRef.current === 'work' ) {
+						// Record the completed work session and advance to break.
+						completeSession().catch( () => {
+							bzr.toast( 'Session could not be saved.', 'warning' );
+						} );
+					} else {
+						// Break expired — return to work without recording a session.
+						setMode( 'work' );
+						setSecondsLeft( modeDuration( 'work', settings ) );
+					}
+					return 0;
+				}
 				return prev - 1;
 			} );
 		}, 1000 );
@@ -132,14 +165,12 @@ export function useTimer() {
 	const skip = useCallback( () => {
 		setRunning( false );
 		if ( mode === 'work' ) {
-			completeSession().catch( () => {
-				bzr.toast( 'Session could not be saved.', 'warning' );
-			} );
+			skipSession();
 		} else {
 			setMode( 'work' );
 			setSecondsLeft( modeDuration( 'work', settings ) );
 		}
-	}, [ mode, settings, completeSession ] );
+	}, [ mode, settings, skipSession ] );
 
 	const switchMode = useCallback( ( m: Mode ) => {
 		setRunning( false );

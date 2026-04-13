@@ -442,8 +442,13 @@ trait WareOpsTrait {
 			if ( ! is_array( $existing ) ) {
 				$existing = array();
 			}
-			$merged = array_merge( $existing, $dirs );
-			update_option( "bazaar_csp_{$slug}", (string) wp_json_encode( $merged ), false );
+			$merged      = array_merge( $existing, $dirs );
+			$merged_json = wp_json_encode( $merged );
+			if ( false === $merged_json ) {
+				WP_CLI::error( "Failed to encode CSP directives for '{$slug}'." );
+				return;
+			}
+			update_option( "bazaar_csp_{$slug}", $merged_json, false );
 			WP_CLI::success( "CSP updated for '{$slug}'." );
 		}
 

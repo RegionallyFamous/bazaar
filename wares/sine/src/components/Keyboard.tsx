@@ -13,11 +13,25 @@ interface Props {
 export default function Keyboard( { activeNotes, onNoteOn, onNoteOff }: Props ) {
   const handleKeyDown = useCallback( ( e: KeyboardEvent ) => {
     if ( e.repeat ) return;
+    const active = document.activeElement;
+    if (
+      active instanceof HTMLInputElement ||
+      active instanceof HTMLSelectElement ||
+      active instanceof HTMLTextAreaElement ||
+      ( active as HTMLElement )?.isContentEditable
+    ) return;
     const note = KEY_MAP[ e.key.toLowerCase() ];
     if ( note ) onNoteOn( note );
   }, [ onNoteOn ] );
 
   const handleKeyUp = useCallback( ( e: KeyboardEvent ) => {
+    const active = document.activeElement;
+    if (
+      active instanceof HTMLInputElement ||
+      active instanceof HTMLSelectElement ||
+      active instanceof HTMLTextAreaElement ||
+      ( active as HTMLElement )?.isContentEditable
+    ) return;
     const note = KEY_MAP[ e.key.toLowerCase() ];
     if ( note ) onNoteOff( note );
   }, [ onNoteOff ] );
@@ -44,9 +58,10 @@ export default function Keyboard( { activeNotes, onNoteOn, onNoteOff }: Props ) 
               className={ `keyboard__key keyboard__key--${ isBlack ? 'black' : 'white' }${ isActive ? ' keyboard__key--active' : '' }` }
               onMouseDown={ e => { e.preventDefault(); onNoteOn( note as Note ); } }
               onMouseUp={ () => onNoteOff( note as Note ) }
-              onMouseLeave={ () => { if ( activeNotes.has( note ) ) onNoteOff( note as Note ); } }
+              onMouseLeave={ e => { if ( e.buttons > 0 ) onNoteOff( note as Note ); } }
               onTouchStart={ e => { e.preventDefault(); onNoteOn( note as Note ); } }
               onTouchEnd={ () => onNoteOff( note as Note ) }
+              onTouchCancel={ e => { e.preventDefault(); onNoteOff( note as Note ); } }
               aria-label={ note }
             >
               <span className="keyboard__hint">{ keyChar.toUpperCase() }</span>

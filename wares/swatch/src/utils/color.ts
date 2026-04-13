@@ -1,8 +1,18 @@
 import type { HSL, HarmonyType } from '../types.ts';
 
+// ── Validation ────────────────────────────────────────────────────────────────
+
+export function isValidHex( hex: string ): boolean {
+  return /^#[0-9a-fA-F]{6}$/.test( hex );
+}
+
 // ── Conversion ────────────────────────────────────────────────────────────────
 
 export function hexToHsl( hex: string ): HSL {
+  if ( ! isValidHex( hex ) ) {
+    console.warn( `hexToHsl: invalid hex value "${ hex }", returning fallback [0,0,0]` );
+    return { h: 0, s: 0, l: 0 };
+  }
   const r = parseInt( hex.slice( 1, 3 ), 16 ) / 255;
   const g = parseInt( hex.slice( 3, 5 ), 16 ) / 255;
   const b = parseInt( hex.slice( 5, 7 ), 16 ) / 255;
@@ -51,10 +61,6 @@ export function hslToHex( { h, s, l }: HSL ): string {
   return '#' + [ r, g, b ].map( v => Math.round( v * 255 ).toString( 16 ).padStart( 2, '0' ) ).join( '' );
 }
 
-export function isValidHex( hex: string ): boolean {
-  return /^#[0-9a-fA-F]{6}$/.test( hex );
-}
-
 // ── Harmonies ─────────────────────────────────────────────────────────────────
 
 function rotate( hsl: HSL, deg: number ): string {
@@ -80,6 +86,10 @@ export function generateHarmony( hex: string, type: HarmonyType ): string[] {
 // ── WCAG contrast ─────────────────────────────────────────────────────────────
 
 function relativeLuminance( hex: string ): number {
+  if ( ! isValidHex( hex ) ) {
+    console.warn( `relativeLuminance: invalid hex value "${ hex }", returning 0` );
+    return 0;
+  }
   const [ r, g, b ] = [ hex.slice( 1, 3 ), hex.slice( 3, 5 ), hex.slice( 5, 7 ) ]
     .map( c => {
       const v = parseInt( c, 16 ) / 255;

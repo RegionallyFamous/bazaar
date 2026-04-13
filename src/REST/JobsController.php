@@ -183,8 +183,10 @@ final class JobsController extends BazaarController {
 			if ( ! is_array( $job ) || '' === (string) ( $job['id'] ?? '' ) ) {
 				continue; // Skip malformed job entries that lack a required id.
 			}
-			$hook     = self::static_hook( $ware['slug'], $job['id'] );
-			$interval = sanitize_text_field( $job['interval'] ?? 'hourly' );
+			$hook            = self::static_hook( $ware['slug'], $job['id'] );
+			$requested       = sanitize_text_field( $job['interval'] ?? 'hourly' );
+			$valid_intervals = array_keys( wp_get_schedules() );
+			$interval        = in_array( $requested, $valid_intervals, true ) ? $requested : 'hourly';
 
 			if ( ! wp_next_scheduled( $hook ) ) {
 				wp_schedule_event( time() + 60, $interval, $hook );

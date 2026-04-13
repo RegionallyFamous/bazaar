@@ -102,10 +102,11 @@ final class WareLicense {
 			return false;
 		}
 
-		// Check expiry.
+		// Check expiry. An invalid/unparseable date is treated as already-expired
+		// so a corrupt expiry string cannot accidentally grant access.
 		if ( ! empty( $data['expires'] ) ) {
 			$expires = strtotime( $data['expires'] );
-			if ( false !== $expires && $expires < time() ) {
+			if ( false === $expires || $expires < time() ) {
 				return false;
 			}
 		}

@@ -113,9 +113,12 @@ final class WareBundler {
 
 				// Apply config overrides if declared.
 				if ( ! empty( $entry['config'] ) && is_array( $entry['config'] ) ) {
-					$current = json_decode( (string) get_option( "bazaar_config_{$slug}", '{}' ), true );
-					$merged  = array_merge( is_array( $current ) ? $current : array(), $entry['config'] );
-					update_option( "bazaar_config_{$slug}", (string) wp_json_encode( $merged ), false );
+					$current     = json_decode( (string) get_option( "bazaar_config_{$slug}", '{}' ), true );
+					$merged      = array_merge( is_array( $current ) ? $current : array(), $entry['config'] );
+					$merged_json = wp_json_encode( $merged );
+					if ( false !== $merged_json ) {
+						update_option( "bazaar_config_{$slug}", $merged_json, false );
+					}
 				}
 
 				AuditLog::record(

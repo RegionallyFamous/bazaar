@@ -5,30 +5,23 @@ declare( strict_types=1 );
 namespace Bazaar\Tests\Unit;
 
 use Bazaar\WareRegistry;
-use Brain\Monkey;
 use Brain\Monkey\Functions;
-use PHPUnit\Framework\TestCase;
+use Bazaar\Tests\WareTestCase;
 
 /**
  * Unit tests for WareRegistry.
  */
-final class WareRegistryTest extends TestCase {
+final class WareRegistryTest extends WareTestCase {
 
 	/** @var array<string, mixed> In-memory option store for test isolation. */
 	private array $store = array();
 
 	protected function setUp(): void {
 		parent::setUp();
-		Monkey\setUp();
 		$this->store = array(
 			'bazaar_index' => '{}',
 		);
 		$this->stub_wp_functions();
-	}
-
-	protected function tearDown(): void {
-		Monkey\tearDown();
-		parent::tearDown();
 	}
 
 	// -------------------------------------------------------------------------
@@ -40,9 +33,6 @@ final class WareRegistryTest extends TestCase {
 	 * Uses the in-memory $store so option reads/writes are fully controlled.
 	 */
 	private function stub_wp_functions(): void {
-		Functions\when( 'sanitize_key' )->returnArg();
-		Functions\when( 'sanitize_text_field' )->returnArg();
-		Functions\when( 'sanitize_textarea_field' )->returnArg();
 		Functions\when( 'esc_url_raw' )->returnArg();
 		Functions\when( 'absint' )->alias( 'intval' );
 		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );

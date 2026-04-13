@@ -6,40 +6,27 @@ namespace Bazaar\Tests\Unit\Blocks;
 
 use Bazaar\Blocks\WareBlock;
 use Bazaar\WareRegistry;
-use Brain\Monkey;
 use Brain\Monkey\Functions;
-use PHPUnit\Framework\TestCase;
+use Bazaar\Tests\WareTestCase;
 
 /**
  * Unit tests for WareBlock token generation and verification.
  */
-final class WareBlockTest extends TestCase {
+final class WareBlockTest extends WareTestCase {
 
 	/** @var array<string, mixed> In-memory option store. */
 	private array $store = array();
 
 	protected function setUp(): void {
 		parent::setUp();
-		Monkey\setUp();
 		$this->store = array( 'bazaar_index' => '{}' );
 		$this->stub_wp_functions();
-	}
-
-	protected function tearDown(): void {
-		Monkey\tearDown();
-		parent::tearDown();
 	}
 
 	private function stub_wp_functions(): void {
 		$store = &$this->store;
 
-		Functions\when( 'sanitize_key' )->returnArg();
-		Functions\when( 'sanitize_text_field' )->returnArg();
-		Functions\when( 'sanitize_textarea_field' )->returnArg();
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'esc_html__' )->returnArg();
-		Functions\when( 'esc_html' )->returnArg();
-		Functions\when( 'esc_attr' )->returnArg();
 		Functions\when( '__' )->returnArg();
 		Functions\when( 'absint' )->alias( 'intval' );
 		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );

@@ -5,9 +5,13 @@ export interface Client {
 	address:   string;
 	notes:     string;
 	createdAt: string;
+	/** Transient flag set by newClient(); stripped before persisting. */
+	_isNew?:   boolean;
 }
 
 export interface LineItem {
+	/** Stable identity used as React key; optional for backwards-compat with stored data. */
+	id?:         string;
 	description: string;
 	qty:         number;
 	rate:        number;
@@ -27,6 +31,8 @@ export interface Invoice {
 	dueDate:         string;
 	notes:           string;
 	createdAt:       string;
+	/** Transient flag set by newInvoice(); stripped before persisting. */
+	_isNew?:         boolean;
 }
 
 export function invoiceSubtotal( inv: Invoice ): number {

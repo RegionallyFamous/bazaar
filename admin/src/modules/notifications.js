@@ -26,12 +26,13 @@ export class NotificationCenter {
 		this._bellBtn = this._buildBell( toolbar );
 		this._drawer = this._buildDrawer( root );
 
-		// Close on outside click.
+		// Close on outside click. Use contains() so clicks on child nodes
+		// (e.g. SVG paths inside the bell icon) are handled correctly.
 		document.addEventListener( 'click', ( e ) => {
 			if (
 				this._open &&
 				! this._drawer.contains( e.target ) &&
-				e.target !== this._bellBtn
+				! this._bellBtn.contains( e.target )
 			) {
 				this.close();
 			}

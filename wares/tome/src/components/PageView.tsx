@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
-import { marked }  from 'marked';
-import DOMPurify   from 'dompurify';
+import { useMemo }        from 'react';
+import { marked, Tokens } from 'marked';
+import DOMPurify           from 'dompurify';
 import type { Page } from '../types.ts';
 
 interface Props {
@@ -9,6 +9,19 @@ interface Props {
 }
 
 marked.setOptions( { gfm: true, breaks: true } );
+
+marked.use( {
+	renderer: {
+		link( token: Tokens.Link ) {
+			const { href, title, text } = token;
+			const titleAttr             = title ? ` title="${ title }"` : '';
+			if ( href?.startsWith( 'http' ) ) {
+				return `<a href="${ href }"${ titleAttr } target="_blank" rel="noopener noreferrer">${ text }</a>`;
+			}
+			return `<a href="${ href }"${ titleAttr }>${ text }</a>`;
+		},
+	},
+} );
 
 export default function PageView( { page, onEdit }: Props ) {
 	const html = useMemo( () => {

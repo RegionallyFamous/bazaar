@@ -33,7 +33,7 @@ export default function Ring( { progress, mode, secondsLeft, running, onToggle }
 			viewBox="0 0 220 220"
 			className="ring-svg"
 			onClick={ onToggle }
-			onKeyDown={ ( e ) => { if ( e.key === 'Enter' || e.key === ' ' ) { e.preventDefault(); onToggle(); } } }
+			onKeyDown={ ( e ) => { if ( e.key === 'Enter' || e.key === ' ' ) { e.preventDefault(); e.stopPropagation(); onToggle(); } } }
 			role="button"
 			tabIndex={ 0 }
 			aria-label={ running ? 'Pause' : 'Start' }

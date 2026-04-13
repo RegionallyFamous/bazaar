@@ -26,6 +26,13 @@ export default function App() {
     seqRef.current?.update( steps, params, bpm );
   }, [ steps, params, bpm ] );
 
+  // Stop the sequencer when the component unmounts to prevent audio leaks.
+  useEffect( () => {
+    return () => {
+      seqRef.current?.stop();
+    };
+  }, [] );
+
   // Keep audio engine in sync with param changes
   useEffect( () => {
     engine.applyParams( params );
@@ -94,13 +101,14 @@ export default function App() {
         { /* Oscillator */ }
         <section className="synth__module synth__module--osc">
           <h2 className="synth__module-title">OSCILLATOR</h2>
-          <div className="synth__wave-btns">
+          <div className="synth__wave-btns" role="group" aria-label="Waveform">
             { WAVEFORMS.map( w => (
               <button
                 key={ w }
                 className={ `synth__wave-btn${ params.waveform === w ? ' synth__wave-btn--active' : '' }` }
                 onClick={ () => setParam( 'waveform', w ) }
                 title={ w }
+                aria-pressed={ params.waveform === w }
               >
                 { w === 'sine'     && '∿' }
                 { w === 'square'   && '⊓' }

@@ -5,24 +5,13 @@ declare( strict_types=1 );
 namespace Bazaar\Tests\Unit;
 
 use Bazaar\WareSigner;
-use Brain\Monkey;
 use Brain\Monkey\Functions;
-use PHPUnit\Framework\TestCase;
+use Bazaar\Tests\WareTestCase;
 
 /**
  * Unit tests for WareSigner.
  */
-final class WareSignerTest extends TestCase {
-
-	protected function setUp(): void {
-		parent::setUp();
-		Monkey\setUp();
-	}
-
-	protected function tearDown(): void {
-		Monkey\tearDown();
-		parent::tearDown();
-	}
+final class WareSignerTest extends WareTestCase {
 
 	public function test_unsigned_manifest_is_allowed_by_default(): void {
 		$signer = new WareSigner();

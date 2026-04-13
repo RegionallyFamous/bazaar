@@ -5,12 +5,27 @@ const KEY     = 'bazaar-board-v1';
 const KEY_OLD = 'bazaar-kanban-v1';
 
 function isValidBoardState( v: unknown ): v is BoardState {
-  return (
-    typeof v === 'object' &&
-    v !== null &&
-    'columns' in v &&
-    Array.isArray( ( v as BoardState ).columns )
-  );
+  if (
+    typeof v !== 'object' ||
+    v === null ||
+    ! ( 'columns' in v ) ||
+    ! Array.isArray( ( v as { columns: unknown } ).columns )
+  ) return false;
+
+  return ( v as { columns: unknown[] } ).columns.every( col => {
+    if ( typeof col !== 'object' || col === null ) return false;
+    const c = col as Record<string, unknown>;
+    if (
+      typeof c['id'] !== 'string' ||
+      typeof c['title'] !== 'string' ||
+      ! Array.isArray( c['cards'] )
+    ) return false;
+    return ( c['cards'] as unknown[] ).every( card => {
+      if ( typeof card !== 'object' || card === null ) return false;
+      const k = card as Record<string, unknown>;
+      return typeof k['id'] === 'string' && typeof k['title'] === 'string';
+    } );
+  } );
 }
 
 function parseBoard( raw: string ): BoardState | null {
@@ -45,10 +60,14 @@ export function loadBoard(): BoardState {
   return structuredClone( DEFAULT_BOARD );
 }
 
-export function saveBoard( state: BoardState ): void {
+export function saveBoard( state: BoardState ): boolean {
   try {
     localStorage.setItem( KEY, JSON.stringify( state ) );
-  } catch { /* quota exceeded or storage unavailable — ignore */ }
+    return true;
+  } catch ( err ) {
+    console.error( 'saveBoard failed:', err );
+    return false;
+  }
 }
 
 export function uid(): string {

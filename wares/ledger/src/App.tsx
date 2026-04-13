@@ -15,13 +15,14 @@ function newInvoice( number: string ): Invoice {
 		number,
 		clientId:        '',
 		status:          'draft',
-		lineItems:       [ { description: '', qty: 1, rate: 0 } ],
+		lineItems:       [ { id: crypto.randomUUID(), description: '', qty: 1, rate: 0 } ],
 		taxPercent:      0,
 		discountPercent: 0,
 		issueDate:       today,
 		dueDate:         due,
 		notes:           '',
 		createdAt:       new Date().toISOString(),
+		_isNew:          true,
 	};
 }
 
@@ -32,14 +33,16 @@ const NAV: { id: View; label: string }[] = [
 ];
 
 export default function App() {
-	const [ view, setView ]           = useState<View>( 'dashboard' );
-	const [ editId, setEditId ]       = useState<string | null>( null );
-	const [ invoices, setInvoices ]   = useState<Invoice[]>( [] );
-	const [ clients, setClients ]     = useState<Client[]>( [] );
-	const [ nextNum, setNextNum ]     = useState( 1 );
-	const [ loading, setLoading ]     = useState( true );
-	const [ loadError, setLoadError ] = useState( false );
-	const loadAttempt                 = useRef( 0 );
+	const [ view, setView ]                   = useState<View>( 'dashboard' );
+	const [ editId, setEditId ]               = useState<string | null>( null );
+	const [ stagedInvoice, setStagedInvoice ] = useState<Invoice | null>( null );
+	const [ invoices, setInvoices ]           = useState<Invoice[]>( [] );
+	const [ clients, setClients ]             = useState<Client[]>( [] );
+	const [ nextNum, setNextNum ]             = useState( 1 );
+	const [ loading, setLoading ]             = useState( true );
+	const [ loadError, setLoadError ]         = useState( false );
+	const [ saveError, setSaveError ]         = useState<string | null>( null );
+	const loadAttempt                         = useRef( 0 );
 
 	const loadData = useCallback( () => {
 		setLoading( true );
@@ -65,33 +68,50 @@ export default function App() {
 	}, [ loadData ] );
 
 	const navigate = useCallback( ( v: View, id?: string ) => {
+		if ( v === 'new-invoice' ) {
+			setStagedInvoice( newInvoice( `INV-${ String( nextNum ).padStart( 3, '0' ) }` ) );
+		} else {
+			setStagedInvoice( null );
+		}
+		setSaveError( null );
 		setView( v );
 		setEditId( id ?? null );
-	}, [] );
+	}, [ nextNum ] );
 
 	const handleSaveInvoice = useCallback( async ( inv: Invoice ) => {
-		const isNew = ! invoices.find( i => i.id === inv.id );
-		let updated: Invoice[];
-		let nextNumUpdated = nextNum;
+		try {
+			const toSave: Invoice = { ...inv, _isNew: undefined };
+			const isNew = ! invoices.find( i => i.id === toSave.id );
+			let updated: Invoice[];
+			let nextNumUpdated = nextNum;
 
-		if ( isNew ) {
-			updated        = [ inv, ...invoices ];
-			nextNumUpdated = nextNum + 1;
-			await saveNextNumber( nextNumUpdated );
-			setNextNum( nextNumUpdated );
-		} else {
-			updated = invoices.map( i => i.id === inv.id ? inv : i );
+			if ( isNew ) {
+				updated        = [ toSave, ...invoices ];
+				nextNumUpdated = nextNum + 1;
+				await saveNextNumber( nextNumUpdated );
+				setNextNum( nextNumUpdated );
+			} else {
+				updated = invoices.map( i => i.id === toSave.id ? toSave : i );
+			}
+
+			setInvoices( updated );
+			await saveInvoices( updated );
+			setSaveError( null );
+			navigate( 'invoices' );
+		} catch {
+			setSaveError( 'Failed to save invoice. Please try again.' );
 		}
-
-		setInvoices( updated );
-		await saveInvoices( updated );
-		navigate( 'invoices' );
 	}, [ invoices, nextNum, navigate ] );
 
 	const handleDeleteInvoice = useCallback( async ( id: string ) => {
-		const updated = invoices.filter( i => i.id !== id );
-		setInvoices( updated );
-		await saveInvoices( updated );
+		try {
+			const updated = invoices.filter( i => i.id !== id );
+			setInvoices( updated );
+			await saveInvoices( updated );
+			setSaveError( null );
+		} catch {
+			setSaveError( 'Failed to delete invoice. Please try again.' );
+		}
 	}, [ invoices ] );
 
 	const handleStatusChange = useCallback( async ( id: string, status: InvoiceStatus ) => {
@@ -101,17 +121,28 @@ export default function App() {
 	}, [ invoices ] );
 
 	const handleSaveClient = useCallback( async ( client: Client ) => {
-		const updated = clients.find( c => c.id === client.id )
-			? clients.map( c => c.id === client.id ? client : c )
-			: [ client, ...clients ];
-		setClients( updated );
-		await saveClients( updated );
+		try {
+			const toSave: Client = { ...client, _isNew: undefined };
+			const updated = clients.find( c => c.id === toSave.id )
+				? clients.map( c => c.id === toSave.id ? toSave : c )
+				: [ toSave, ...clients ];
+			setClients( updated );
+			await saveClients( updated );
+			setSaveError( null );
+		} catch {
+			setSaveError( 'Failed to save client. Please try again.' );
+		}
 	}, [ clients ] );
 
 	const handleDeleteClient = useCallback( async ( id: string ) => {
-		const updated = clients.filter( c => c.id !== id );
-		setClients( updated );
-		await saveClients( updated );
+		try {
+			const updated = clients.filter( c => c.id !== id );
+			setClients( updated );
+			await saveClients( updated );
+			setSaveError( null );
+		} catch {
+			setSaveError( 'Failed to delete client. Please try again.' );
+		}
 	}, [ clients ] );
 
 	if ( loading ) {
@@ -137,11 +168,11 @@ export default function App() {
 		);
 	}
 
-	const activeInvoice = editId ? invoices.find( i => i.id === editId ) : null;
+	const activeInvoice  = editId ? invoices.find( i => i.id === editId ) : null;
 	const editingInvoice = view === 'edit-invoice' && activeInvoice
 		? activeInvoice
-		: view === 'new-invoice'
-			? newInvoice( `INV-${ String( nextNum ).padStart( 3, '0' ) }` )
+		: view === 'new-invoice' && stagedInvoice
+			? stagedInvoice
 			: null;
 
 	return (
@@ -167,14 +198,21 @@ export default function App() {
 				</div>
 			</nav>
 
-			<main className="app-main">
-				{ editingInvoice ? (
-					<InvoiceEditor
-						invoice={ editingInvoice }
-						clients={ clients }
-						onSave={ handleSaveInvoice }
-						onCancel={ () => navigate( 'invoices' ) }
-					/>
+		<main className="app-main">
+			{ saveError && (
+				<div className="error-banner" role="alert">
+					{ saveError }
+					<button className="error-banner__dismiss" onClick={ () => setSaveError( null ) }>✕</button>
+				</div>
+			) }
+			{ editingInvoice ? (
+			<InvoiceEditor
+				invoice={ editingInvoice }
+				isNew={ !! editingInvoice._isNew }
+				clients={ clients }
+				onSave={ handleSaveInvoice }
+				onCancel={ () => navigate( 'invoices' ) }
+			/>
 				) : view === 'invoices' ? (
 					<InvoiceList
 						invoices={ invoices }

@@ -35,17 +35,17 @@ final class WareRenderer {
 	/**
 	 * Registry used to look up ware metadata.
 	 *
-	 * @var WareRegistry
+	 * @var WareRegistryInterface
 	 */
-	private WareRegistry $registry;
+	private WareRegistryInterface $registry;
 
 	/**
 	 * Constructor.
 	 *
 	 * @param string       $slug     Ware slug (will be sanitized).
-	 * @param WareRegistry $registry Registry instance for ware lookups.
+	 * @param WareRegistryInterface $registry Registry instance for ware lookups.
 	 */
-	public function __construct( string $slug, WareRegistry $registry ) {
+	public function __construct( string $slug, WareRegistryInterface $registry ) {
 		$this->slug     = sanitize_key( $slug );
 		$this->registry = $registry;
 	}

@@ -1,7 +1,14 @@
 import { useMemo }                from 'react';
-import type { Invoice, Client }  from '../types.ts';
+import type { Invoice, Client, InvoiceStatus }  from '../types.ts';
 import { invoiceTotal, fmtCurrency } from '../types.ts';
 import type { View }             from '../types.ts';
+
+function displayStatus( inv: Invoice ): InvoiceStatus {
+	if ( inv.status === 'sent' && inv.dueDate && new Date( inv.dueDate + 'T00:00:00' ) < new Date() ) {
+		return 'overdue';
+	}
+	return inv.status;
+}
 
 interface Props {
 	invoices: Invoice[];
@@ -62,13 +69,13 @@ export default function Dashboard( { invoices, clients, onNavigate }: Props ) {
 					<h3 className="card__heading">Recent Invoices</h3>
 					<table className="inv-table">
 						<thead>
-							<tr>
-								<th>Invoice</th>
-								<th>Client</th>
-								<th>Date</th>
-								<th>Amount</th>
-								<th>Status</th>
-							</tr>
+						<tr>
+							<th>Invoice</th>
+							<th>Client</th>
+							<th>Created</th>
+							<th>Amount</th>
+							<th>Status</th>
+						</tr>
 						</thead>
 						<tbody>
 							{ recent.map( inv => {
@@ -85,11 +92,11 @@ export default function Dashboard( { invoices, clients, onNavigate }: Props ) {
 											{ new Date( inv.createdAt ).toLocaleDateString() }
 										</td>
 										<td>{ fmtCurrency( invoiceTotal( inv ) ) }</td>
-										<td>
-											<span className={ `status-badge status-badge--${ inv.status }` }>
-												{ inv.status }
-											</span>
-										</td>
+									<td>
+										<span className={ `status-badge status-badge--${ displayStatus( inv ) }` }>
+											{ displayStatus( inv ) }
+										</span>
+									</td>
 									</tr>
 								);
 							} ) }

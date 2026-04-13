@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 
 export type SoundType = 'rain' | 'brown' | 'white';
 
@@ -48,14 +48,25 @@ interface ActiveSound {
 }
 
 export function useAudio() {
-	const ctxRef    = useRef<AudioContext | null>( null );
-	const sounds    = useRef<Map<SoundType, ActiveSound>>( new Map() );
+	const ctxRef = useRef<AudioContext | null>( null );
+	const sounds = useRef<Map<SoundType, ActiveSound>>( new Map() );
 
 	const [ state, setState ] = useState<Record<SoundType, SoundState>>( {
 		rain:  { type: 'rain',  volume: 0.4, active: false },
 		brown: { type: 'brown', volume: 0.4, active: false },
 		white: { type: 'white', volume: 0.3, active: false },
 	} );
+
+	// Stop all sounds and close the AudioContext on unmount.
+	useEffect( () => {
+		return () => {
+			sounds.current.forEach( s => {
+				try { s.source.stop(); } catch { /* already stopped */ }
+			} );
+			sounds.current.clear();
+			ctxRef.current?.close().catch( () => {} );
+		};
+	}, [] );
 
 	function ensureCtx(): AudioContext {
 		if ( ! ctxRef.current ) {
@@ -67,37 +78,36 @@ export function useAudio() {
 		return ctxRef.current;
 	}
 
+	// Audio I/O happens outside setState so the updater stays pure.
 	const toggleSound = useCallback( ( type: SoundType ) => {
-		setState( prev => {
-			const current = prev[ type ];
-			const nowActive = ! current.active;
+		const current   = state[ type ];
+		const nowActive = ! current.active;
 
-			if ( nowActive ) {
-				const ctx    = ensureCtx();
-				const buffer = createNoiseBuffer( ctx, type );
-				const source = ctx.createBufferSource();
-				source.buffer = buffer;
-				source.loop   = true;
+		if ( nowActive ) {
+			const ctx    = ensureCtx();
+			const buffer = createNoiseBuffer( ctx, type );
+			const source = ctx.createBufferSource();
+			source.buffer = buffer;
+			source.loop   = true;
 
-				const gain  = ctx.createGain();
-				gain.gain.value = current.volume;
+			const gain  = ctx.createGain();
+			gain.gain.value = current.volume;
 
-				source.connect( gain );
-				gain.connect( ctx.destination );
-				source.start();
+			source.connect( gain );
+			gain.connect( ctx.destination );
+			source.start();
 
-				sounds.current.set( type, { source, gain } );
-			} else {
-				const active = sounds.current.get( type );
-				if ( active ) {
-					active.source.stop();
-					sounds.current.delete( type );
-				}
+			sounds.current.set( type, { source, gain } );
+		} else {
+			const active = sounds.current.get( type );
+			if ( active ) {
+				active.source.stop();
+				sounds.current.delete( type );
 			}
+		}
 
-			return { ...prev, [ type ]: { ...current, active: nowActive } };
-		} );
-	}, [] );
+		setState( prev => ( { ...prev, [ type ]: { ...prev[ type ], active: nowActive } } ) );
+	}, [ state ] );
 
 	const setVolume = useCallback( ( type: SoundType, volume: number ) => {
 		setState( prev => {

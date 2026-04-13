@@ -15,6 +15,7 @@
     "lint:css": "wp-scripts lint-style 'admin/src/*.css'",
     "format": "wp-scripts format admin/src/",
     "test": "wp-scripts test-unit-js --config jest.config.js",
+    "typecheck": "npm run -w packages/design typecheck && npm run -w packages/client typecheck && npm run -w wares/flow typecheck && npm run -w wares/mosaic typecheck && npm run -w wares/tome typecheck && npm run -w wares/ledger typecheck && npm run -w wares/board typecheck && npm run -w wares/swatch typecheck && npm run -w wares/sine typecheck",
     "prepare": "husky || :"
   },
   "dependencies": {

@@ -16,7 +16,14 @@ export default function App() {
 	// Keyboard shortcuts
 	useEffect( () => {
 		function onKey( e: KeyboardEvent ) {
-			if ( e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement ) return;
+			const t = e.target;
+			if (
+				t instanceof HTMLInputElement ||
+				t instanceof HTMLButtonElement ||
+				t instanceof HTMLSelectElement ||
+				t instanceof HTMLTextAreaElement ||
+				( t instanceof HTMLElement && t.isContentEditable )
+			) return;
 			if ( e.key === ' ' )            { e.preventDefault(); timer.toggle(); }
 			else if ( e.key === 's' || e.key === 'S' ) timer.skip();
 			else if ( e.key === 'r' || e.key === 'R' ) timer.reset();
@@ -78,7 +85,11 @@ export default function App() {
 									min={ min }
 									max={ max }
 									value={ timer.settings[ key ] }
-									onChange={ e => handleSettingChange( key, parseInt( e.target.value ) || DEFAULT_SETTINGS[ key ] ) }
+									onChange={ e => {
+									const parsed  = parseInt( e.target.value, 10 );
+									const clamped = isNaN( parsed ) ? DEFAULT_SETTINGS[ key ] : Math.min( max, Math.max( min, parsed ) );
+									handleSettingChange( key, clamped );
+								} }
 								/>
 								{ key !== 'sessionsUntilLong' && <span className="settings-unit">min</span> }
 							</div>
@@ -91,18 +102,20 @@ export default function App() {
 				{ /* ── Left panel: timer ── */ }
 				<section className="timer-section">
 					{ /* Mode tabs */ }
-					<div className="mode-tabs">
-						{ MODES.map( m => (
-							<button
-								key={ m }
-								className={ `mode-tab${ timer.mode === m ? ' mode-tab--active' : '' }` }
-								style={ timer.mode === m ? { color } : undefined }
-								onClick={ () => timer.switchMode( m ) }
-							>
-								{ MODE_LABEL[ m ] }
-							</button>
-						) ) }
-					</div>
+				<div className="mode-tabs" role="tablist">
+					{ MODES.map( m => (
+						<button
+							key={ m }
+							role="tab"
+							aria-selected={ timer.mode === m }
+							className={ `mode-tab${ timer.mode === m ? ' mode-tab--active' : '' }` }
+							style={ timer.mode === m ? { color } : undefined }
+							onClick={ () => timer.switchMode( m ) }
+						>
+							{ MODE_LABEL[ m ] }
+						</button>
+					) ) }
+				</div>
 
 					<Ring
 						progress={ timer.progress }

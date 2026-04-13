@@ -24,6 +24,7 @@ export default function Sequencer( {
           <button
             className={ `sequencer__play${ playing ? ' sequencer__play--active' : '' }` }
             onClick={ onPlayStop }
+            aria-label={ playing ? 'Stop sequencer' : 'Play sequencer' }
           >
             { playing ? '⏹' : '▶' }
           </button>
@@ -33,9 +34,13 @@ export default function Sequencer( {
               type="number"
               className="sequencer__bpm"
               value={ bpm }
-              min={ 40 }
-              max={ 200 }
-              onChange={ e => onBpmChange( Number( e.target.value ) ) }
+              min="20"
+              max="300"
+              onChange={ e => {
+                const raw = Number( e.target.value );
+                if ( isNaN( raw ) ) return;
+                onBpmChange( Math.max( 20, Math.min( 300, raw ) ) );
+              } }
             />
           </label>
         </div>

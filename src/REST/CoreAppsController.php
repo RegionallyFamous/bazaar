@@ -191,8 +191,15 @@ final class CoreAppsController extends BazaarController {
 		if ( ! file_exists( self::BUNDLED_REGISTRY ) ) {
 			return null;
 		}
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		$raw  = file_get_contents( self::BUNDLED_REGISTRY );
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+		WP_Filesystem();
+		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			return null;
+		}
+		$raw  = $wp_filesystem->get_contents( self::BUNDLED_REGISTRY );
 		$data = is_string( $raw ) ? json_decode( $raw, true ) : null;
 
 		if ( ! is_array( $data ) || ! isset( $data['wares'] ) || ! is_array( $data['wares'] ) ) {
@@ -238,7 +245,30 @@ final class CoreAppsController extends BazaarController {
 			);
 		}
 
-		// Download to a temp file.
+		$tmp = $this->download_ware( $url );
+		if ( is_wp_error( $tmp ) ) {
+			return $tmp;
+		}
+
+		$filename = sanitize_file_name( basename( '' !== $url_path ? $url_path : 'ware.wp' ) );
+		$manifest = $this->install_ware_file( $tmp, $filename );
+		if ( is_wp_error( $manifest ) ) {
+			return $manifest;
+		}
+
+		return $this->register_ware( $manifest );
+	}
+
+	/**
+	 * Download a ware archive from a trusted URL to a temporary file.
+	 *
+	 * Validates HTTP response code, enforces the max-size cap, and writes
+	 * the body to a unique temp path for consumption by the WareLoader.
+	 *
+	 * @param string $url Validated, trusted download URL.
+	 * @return string|WP_Error Absolute path to the temporary file, or a WP_Error.
+	 */
+	private function download_ware( string $url ): string|WP_Error {
 		$response = wp_remote_get(
 			$url,
 			array(
@@ -298,10 +328,19 @@ final class CoreAppsController extends BazaarController {
 		}
 
 		// Write to a unique temp file so WareLoader can read it.
-		// wp_tempnam() lives in wp-admin/includes/file.php which is not loaded
-		// in REST API context — require it before calling.
-		if ( ! function_exists( 'wp_tempnam' ) ) {
+		// wp_tempnam() and WP_Filesystem live in wp-admin/includes/file.php
+		// which is not loaded in REST API context — require it before calling.
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+		WP_Filesystem();
+		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			return new WP_Error(
+				'filesystem_error',
+				__( 'Could not initialize filesystem.', 'bazaar' ),
+				array( 'status' => 500 )
+			);
 		}
 		$tmp = wp_tempnam( 'bazaar-core-app-.wp' );
 		if ( false === $tmp ) {
@@ -311,7 +350,7 @@ final class CoreAppsController extends BazaarController {
 				array( 'status' => 500 )
 			);
 		}
-		if ( false === file_put_contents( $tmp, $body ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+		if ( false === $wp_filesystem->put_contents( $tmp, $body, FS_CHMOD_FILE ) ) {
 			wp_delete_file( $tmp );
 			return new WP_Error(
 				'write_failed',
@@ -320,10 +359,20 @@ final class CoreAppsController extends BazaarController {
 			);
 		}
 
-		$url_path = (string) ( wp_parse_url( $url, PHP_URL_PATH ) ?? 'ware.wp' );
-		$filename = sanitize_file_name( basename( $url_path ) );
-		$manifest = $this->loader->install( $tmp, $filename );
+		return $tmp;
+	}
 
+	/**
+	 * Hand a downloaded .wp file to WareLoader for extraction and validation.
+	 *
+	 * Always cleans up the temporary file, even on failure.
+	 *
+	 * @param string $tmp      Absolute path to the temporary .wp archive.
+	 * @param string $filename Original filename (used as the install slug hint).
+	 * @return array<string, mixed>|WP_Error Parsed manifest on success, or a WP_Error.
+	 */
+	private function install_ware_file( string $tmp, string $filename ): array|WP_Error {
+		$manifest = $this->loader->install( $tmp, $filename );
 		wp_delete_file( $tmp );
 
 		if ( is_wp_error( $manifest ) ) {
@@ -331,9 +380,21 @@ final class CoreAppsController extends BazaarController {
 			return $manifest;
 		}
 
+		return $manifest;
+	}
+
+	/**
+	 * Register an installed ware manifest and fire the installed action.
+	 *
+	 * On registration failure, rolls back the on-disk files to prevent
+	 * orphaned ware directories.
+	 *
+	 * @param array<string, mixed> $manifest Parsed manifest from WareLoader::install().
+	 * @return WP_REST_Response|WP_Error 201 response on success, or a WP_Error.
+	 */
+	private function register_ware( array $manifest ): WP_REST_Response|WP_Error {
 		$registered = $this->registry->register( $manifest );
 		if ( ! $registered ) {
-			// Roll back on-disk files to avoid orphaned ware directories.
 			$this->loader->delete( $manifest['slug'] );
 			return new WP_Error(
 				'registry_failed',

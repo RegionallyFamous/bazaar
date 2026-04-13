@@ -277,7 +277,8 @@
   font-weight: 700;
 }
 
-.swatch__swatch-tile:hover .swatch__swatch-remove { display: flex; }
+.swatch__swatch-tile:hover .swatch__swatch-remove,
+.swatch__swatch-tile:focus-within .swatch__swatch-remove { display: flex; }
 
 .swatch__swatch-add {
   width: 80px;

@@ -90,10 +90,10 @@ export function renderCoreCard( app, isInstalled, restUrl ) {
 			</div>
 			<div class="bazaar-core-card__info">
 				<h3 class="bazaar-core-card__name">${ escHtml( app.name ) }</h3>
-				<span class="bazaar-core-card__byline">v${ escHtml( app.version ) } &middot; ${ escHtml( app.author ?? 'Bazaar' ) }</span>
-			</div>
+			<span class="bazaar-core-card__byline">v${ escHtml( app.version ?? '' ) } &middot; ${ escHtml( app.author ?? 'Bazaar' ) }</span>
 		</div>
-		<p class="bazaar-core-card__desc">${ escHtml( app.description ) }</p>
+	</div>
+	<p class="bazaar-core-card__desc">${ escHtml( app.description ?? '' ) }</p>
 		${ ctaHtml }
 	`;
 

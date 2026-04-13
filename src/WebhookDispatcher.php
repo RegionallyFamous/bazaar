@@ -36,7 +36,7 @@ final class WebhookDispatcher {
 			return;
 		}
 
-		$payload_json = (string) wp_json_encode(
+		$payload_json = wp_json_encode(
 			array(
 				'event'     => $event,
 				'data'      => $data,
@@ -44,6 +44,10 @@ final class WebhookDispatcher {
 				'timestamp' => time(),
 			)
 		);
+
+		if ( false === $payload_json ) {
+			return;
+		}
 
 		foreach ( $hooks as $hook ) {
 			if ( ! is_array( $hook ) || empty( $hook['url'] ) || ! filter_var( $hook['url'], FILTER_VALIDATE_URL ) ) {

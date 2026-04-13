@@ -44,15 +44,16 @@ export class Sequencer {
   private tick() {
     if ( ! this.playing ) return;
 
+    const safeBpm    = Math.max( 40, this.bpm );
     const step = this.steps[ this.stepIdx ];
     if ( step?.active ) {
-      const stepDurSec = 60 / this.bpm / 2; // 8th-note steps
+      const stepDurSec = 60 / safeBpm / 2; // 8th-note steps
       engine.triggerNote( step.note, this.params, stepDurSec * 0.8 );
     }
     this.onStep( this.stepIdx );
     this.stepIdx = ( this.stepIdx + 1 ) % this.steps.length;
 
-    const intervalMs = ( 60 / this.bpm / 2 ) * 1000;
+    const intervalMs = ( 60 / safeBpm / 2 ) * 1000;
     this.timerId = setTimeout( () => this.tick(), intervalMs );
   }
 }

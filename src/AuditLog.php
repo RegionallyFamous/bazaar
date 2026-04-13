@@ -56,13 +56,18 @@ final class AuditLog {
 
 		$safe_meta = self::cap_meta( $meta );
 
+		$meta_json = wp_json_encode( $safe_meta );
+		if ( false === $meta_json ) {
+			$meta_json = '{}';
+		}
+
 		$inserted = $wpdb->insert(
 			$wpdb->prefix . Tables::AUDIT_LOG,
 			array(
 				'slug'       => substr( $slug, 0, 100 ),
 				'event'      => substr( $event, 0, 50 ),
 				'user_id'    => get_current_user_id(),
-				'meta'       => (string) wp_json_encode( $safe_meta ),
+				'meta'       => $meta_json,
 				'created_at' => current_time( 'mysql', true ),
 			)
 		);

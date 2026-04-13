@@ -72,7 +72,11 @@ export class HomeScreen {
 			return;
 		}
 		if ( ! localStorage.getItem( LS_GS_OPENED ) ) {
-			localStorage.setItem( LS_GS_OPENED, '1' );
+			try {
+				localStorage.setItem( LS_GS_OPENED, '1' );
+			} catch {
+				// Non-fatal: storage may be full or blocked in private mode.
+			}
 			// Re-render the home screen if it's currently visible so the step
 			// checks off in real time when the user navigates back.
 			this.refresh();
@@ -160,7 +164,11 @@ export class HomeScreen {
 		skipBtn.className = 'bsh-welcome__skip';
 		skipBtn.textContent = __( 'Skip setup, take me to the dashboard', 'bazaar' );
 		skipBtn.addEventListener( 'click', () => {
-			localStorage.setItem( LS_WELCOMED, '1' );
+			try {
+				localStorage.setItem( LS_WELCOMED, '1' );
+			} catch {
+				// Non-fatal: storage may be full or blocked in private mode.
+			}
 			this._render();
 		} );
 		footer.appendChild( skipBtn );
@@ -254,7 +262,11 @@ export class HomeScreen {
 		if ( isInstalled ) {
 			cta.textContent = __( 'Open', 'bazaar' );
 			cta.addEventListener( 'click', () => {
-				localStorage.setItem( LS_WELCOMED, '1' );
+				try {
+					localStorage.setItem( LS_WELCOMED, '1' );
+				} catch {
+					// Non-fatal: storage may be full or blocked in private mode.
+				}
 				navigateTo( app.slug );
 			} );
 		} else {
@@ -551,16 +563,19 @@ export class HomeScreen {
 			return null;
 		}
 
-		const hasWare = wareMap.size > 0;
+		const { navigateTo, sortedEnabled } = this._deps;
+		const hasWare = sortedEnabled( wareMap ).length > 0;
 		const hasOpened = !! localStorage.getItem( LS_GS_OPENED );
 
 		// Auto-dismiss once all milestones are done.
 		if ( hasWare && hasOpened ) {
-			localStorage.setItem( LS_GS_DONE, '1' );
+			try {
+				localStorage.setItem( LS_GS_DONE, '1' );
+			} catch {
+				// Non-fatal: storage may be full or blocked in private mode.
+			}
 			return null;
 		}
-
-		const { navigateTo } = this._deps;
 
 		const card = document.createElement( 'div' );
 		card.className = 'bsh-gs';
@@ -580,7 +595,11 @@ export class HomeScreen {
 		dismissBtn.setAttribute( 'aria-label', __( 'Dismiss getting started card', 'bazaar' ) );
 		dismissBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>';
 		dismissBtn.addEventListener( 'click', () => {
-			localStorage.setItem( LS_GS_DONE, '1' );
+			try {
+				localStorage.setItem( LS_GS_DONE, '1' );
+			} catch {
+				// Non-fatal: storage may be full or blocked in private mode.
+			}
 			card.classList.add( 'bsh-gs--fade-out' );
 			card.addEventListener( 'animationend', () => card.remove(), { once: true } );
 		} );
@@ -595,20 +614,31 @@ export class HomeScreen {
 			const li = document.createElement( 'li' );
 			li.className = 'bsh-gs__step' + ( done ? ' bsh-gs__step--done' : '' );
 
-			const check = document.createElementNS( 'http://www.w3.org/2000/svg', 'svg' );
+			// Use inline SVG with explicit presentation attributes so fill/stroke
+			// render correctly across all browsers without relying on CSS inheritance.
+			const svgNS = 'http://www.w3.org/2000/svg';
+			const check = document.createElementNS( svgNS, 'svg' );
 			check.setAttribute( 'class', 'bsh-gs__step-icon' );
 			check.setAttribute( 'viewBox', '0 0 20 20' );
 			check.setAttribute( 'width', '20' );
 			check.setAttribute( 'height', '20' );
+			check.setAttribute( 'fill', 'none' );
 			check.setAttribute( 'aria-hidden', 'true' );
-			const circle = document.createElementNS( 'http://www.w3.org/2000/svg', 'circle' );
+
+			const circle = document.createElementNS( svgNS, 'circle' );
 			circle.setAttribute( 'cx', '10' );
 			circle.setAttribute( 'cy', '10' );
-			circle.setAttribute( 'r', '9' );
+			circle.setAttribute( 'r', '8.5' );
+			circle.setAttribute( 'fill', 'none' );
+			circle.setAttribute( 'stroke', done ? 'var(--bsh-accent)' : 'var(--bsh-border)' );
+			circle.setAttribute( 'stroke-width', '1.5' );
 			check.appendChild( circle );
+
 			if ( done ) {
-				const tick = document.createElementNS( 'http://www.w3.org/2000/svg', 'path' );
+				const tick = document.createElementNS( svgNS, 'path' );
 				tick.setAttribute( 'd', 'M5.5 10l3 3 6-6' );
+				tick.setAttribute( 'stroke', 'var(--bsh-accent)' );
+				tick.setAttribute( 'stroke-width', '1.75' );
 				tick.setAttribute( 'stroke-linecap', 'round' );
 				tick.setAttribute( 'stroke-linejoin', 'round' );
 				check.appendChild( tick );

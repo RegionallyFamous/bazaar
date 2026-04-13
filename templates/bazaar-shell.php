@@ -53,11 +53,11 @@ defined( 'ABSPATH' ) || exit;
 		<a
 			class="bsh-nav__wp-link"
 			href="<?php echo esc_url( get_admin_url() ); ?>"
-			title="<?php esc_attr_e( 'Back to WordPress', 'bazaar' ); ?>"
-			aria-label="<?php esc_attr_e( 'Back to WordPress admin', 'bazaar' ); ?>"
+			title="<?php esc_attr_e( 'Exit Bazaar', 'bazaar' ); ?>"
+			aria-label="<?php esc_attr_e( 'Exit Bazaar', 'bazaar' ); ?>"
 		>
-			<span class="dashicons dashicons-wordpress-alt bsh-nav__wp-icon" aria-hidden="true"></span>
-			<span class="bsh-nav__wp-label"><?php esc_html_e( 'WordPress', 'bazaar' ); ?></span>
+			<span class="dashicons dashicons-exit bsh-nav__wp-icon" aria-hidden="true"></span>
+			<span class="bsh-nav__wp-label"><?php esc_html_e( 'Exit Bazaar', 'bazaar' ); ?></span>
 		</a>
 
 		<div class="bsh-nav__resize-handle" id="bsh-resize-handle" aria-hidden="true"></div>
@@ -70,12 +70,9 @@ defined( 'ABSPATH' ) || exit;
 			<div class="bsh-toolbar__context" id="bsh-toolbar-context" aria-live="polite">
 				<!-- Active ware breadcrumb injected by shell.js -->
 			</div>
-			<!-- Action buttons injected by shell.js -->
-		</div>
-
-		<!-- Window chrome: thin title bar above the active ware iframe -->
-		<div class="bsh-winbar" id="bsh-winbar" hidden aria-hidden="true">
-			<!-- Populated by shell.js -->
+			<!-- Context-sensitive controls (reload, info) — updated on each navigation -->
+			<div class="bsh-toolbar__ctx-btns" id="bsh-toolbar-ctx-btns" aria-live="polite"></div>
+			<!-- Static action buttons injected by shell.js -->
 		</div>
 
 		<main class="bsh-main" id="bsh-main" aria-live="polite">

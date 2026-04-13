@@ -142,6 +142,9 @@ jobs:
       - name: JS tests
         run: npm test
 
+      - name: TypeScript check (wares + packages)
+        run: npm run typecheck
+
   # ---------------------------------------------------------------------------
   # Build wares — compile and package all .wp files
   # ---------------------------------------------------------------------------

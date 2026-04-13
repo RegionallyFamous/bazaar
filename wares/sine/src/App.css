@@ -132,7 +132,13 @@
 
 .knob__dial:hover   { filter: drop-shadow( 0 0 5px rgba(var(--bw-accent-rgb), .6) ); }
 
-.knob__dial:focus   { outline: none; filter: drop-shadow( 0 0 6px rgba(var(--bw-accent-rgb), .8) ); }
+.knob__dial:focus:not(:focus-visible) { outline: none; filter: drop-shadow( 0 0 6px rgba(var(--bw-accent-rgb), .8) ); }
+
+.knob__dial:focus-visible {
+  outline: 2px solid var(--bsh-accent, #2271b1);
+  outline-offset: 2px;
+  filter: drop-shadow( 0 0 6px rgba(var(--bw-accent-rgb), .8) );
+}
 
 .knob__value {
   font-size: 9px;

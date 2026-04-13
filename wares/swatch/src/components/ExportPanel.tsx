@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Palette } from '../types.ts';
 import { toCssVars, toTailwind, toHexList, toSvg, download } from '../utils/export.ts';
 import { bzr } from '@bazaar/client';
@@ -17,6 +17,13 @@ const FORMAT_LABELS: Record<Format, string> = {
 export default function ExportPanel( { palette }: Props ) {
   const [ fmt, setFmt ] = useState<Format>( 'css' );
   const [ copied, setCopied ] = useState( false );
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>( null );
+
+  useEffect( () => {
+    return () => {
+      if ( copyTimerRef.current !== null ) clearTimeout( copyTimerRef.current );
+    };
+  }, [] );
 
   function getContent(): string {
     switch ( fmt ) {
@@ -31,7 +38,8 @@ export default function ExportPanel( { palette }: Props ) {
     navigator.clipboard.writeText( getContent() )
       .then( () => {
         setCopied( true );
-        setTimeout( () => setCopied( false ), 1800 );
+        if ( copyTimerRef.current !== null ) clearTimeout( copyTimerRef.current );
+        copyTimerRef.current = setTimeout( () => setCopied( false ), 1800 );
       } )
       .catch( () => bzr.toast( 'Copy failed — try copying manually', 'error' ) );
   }

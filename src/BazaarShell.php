@@ -188,8 +188,12 @@ final class BazaarShell {
 		$manifest_path = BAZAAR_DIR . 'admin/dist/.vite/manifest.json';
 
 		if ( file_exists( $manifest_path ) ) {
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-			$raw      = file_get_contents( $manifest_path );
+			if ( ! function_exists( 'WP_Filesystem' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+			}
+			WP_Filesystem();
+			global $wp_filesystem;
+			$raw      = ( ! empty( $wp_filesystem ) ) ? $wp_filesystem->get_contents( $manifest_path ) : false;
 			$manifest = is_string( $raw ) ? json_decode( $raw, true ) : null;
 
 			if ( is_array( $manifest ) ) {

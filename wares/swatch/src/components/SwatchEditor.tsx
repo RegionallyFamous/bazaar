@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Swatch }         from '../types.ts';
 import { hexToHsl, hslToHex, isValidHex } from '../utils/color.ts';
 
@@ -12,6 +12,16 @@ export default function SwatchEditor( { swatch, onChange, onClose }: Props ) {
   const [ hex,  setHex  ] = useState( swatch.hex );
   const [ name, setName ] = useState( swatch.name );
   const [ hsl,  setHsl  ] = useState( hexToHsl( swatch.hex ) );
+
+  // Detect when a different swatch is selected and reset local state during
+  // render to avoid a stale editor showing the previous swatch's values.
+  const prevIdRef = useRef( swatch.id );
+  if ( swatch.id !== prevIdRef.current ) {
+    prevIdRef.current = swatch.id;
+    setHex( swatch.hex );
+    setName( swatch.name );
+    setHsl( hexToHsl( swatch.hex ) );
+  }
 
   // Sync hex → hsl when hex input changes
   useEffect( () => {

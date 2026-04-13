@@ -11,15 +11,25 @@ export default function PageEditor( { page, onSave, onCancel }: Props ) {
 	const [ title,   setTitle   ] = useState( page.title );
 	const [ content, setContent ] = useState( page.content );
 	const textareaRef             = useRef<HTMLTextAreaElement>( null );
+	const initialTitle            = useRef( page.title );
+	const initialContent          = useRef( page.content );
 
 	useEffect( () => {
 		setTitle( page.title );
 		setContent( page.content );
+		initialTitle.current   = page.title;
+		initialContent.current = page.content;
 	}, [ page.id, page.title, page.content ] );
 
 	useEffect( () => {
 		textareaRef.current?.focus();
 	}, [ page.id ] );
+
+	const handleCancel = useCallback( () => {
+		const isDirty = title !== initialTitle.current || content !== initialContent.current;
+		if ( isDirty && ! window.confirm( 'Discard unsaved changes?' ) ) return;
+		onCancel();
+	}, [ title, content, onCancel ] );
 
 	const handleKeyDown = useCallback( ( e: React.KeyboardEvent ) => {
 		if ( ( e.metaKey || e.ctrlKey ) && e.key === 's' ) {
@@ -27,9 +37,9 @@ export default function PageEditor( { page, onSave, onCancel }: Props ) {
 			onSave( { title, content } );
 		}
 		if ( e.key === 'Escape' ) {
-			onCancel();
+			handleCancel();
 		}
-	}, [ title, content, onSave, onCancel ] );
+	}, [ title, content, onSave, handleCancel ] );
 
 	return (
 		<div className="tome-editor" onKeyDown={ handleKeyDown }>
@@ -51,7 +61,7 @@ export default function PageEditor( { page, onSave, onCancel }: Props ) {
 					</button>
 					<button
 						className="tome-editor__btn tome-editor__btn--cancel"
-						onClick={ onCancel }
+						onClick={ handleCancel }
 					>
 						Cancel
 					</button>

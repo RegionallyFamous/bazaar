@@ -1,7 +1,14 @@
 import { useState, useMemo }      from 'react';
-import type { Invoice, Client }   from '../types.ts';
+import type { Invoice, Client, InvoiceStatus } from '../types.ts';
 import { invoiceTotal, fmtCurrency, fmtDate, STATUS_LABEL } from '../types.ts';
-import type { View, InvoiceStatus } from '../types.ts';
+import type { View } from '../types.ts';
+
+function displayStatus( inv: Invoice ): InvoiceStatus {
+	if ( inv.status === 'sent' && inv.dueDate && new Date( inv.dueDate + 'T00:00:00' ) < new Date() ) {
+		return 'overdue';
+	}
+	return inv.status;
+}
 
 interface Props {
 	invoices:       Invoice[];
@@ -21,7 +28,7 @@ export default function InvoiceList( {
 
 	const filtered = useMemo( () => {
 		let list = [ ...invoices ].sort( ( a, b ) => b.createdAt.localeCompare( a.createdAt ) );
-		if ( filter !== 'all' ) list = list.filter( i => i.status === filter );
+		if ( filter !== 'all' ) list = list.filter( i => displayStatus( i ) === filter );
 		if ( search ) {
 			const q = search.toLowerCase();
 			list = list.filter( i => {
@@ -46,28 +53,30 @@ export default function InvoiceList( {
 
 			<div className="filters">
 				<div className="filter-tabs">
-					{ ALL_STATUSES.map( s => (
-						<button
-							key={ s }
-							className={ `filter-tab${ filter === s ? ' filter-tab--active' : '' }` }
-							onClick={ () => setFilter( s ) }
-						>
-							{ s === 'all' ? 'All' : STATUS_LABEL[ s ] }
-							<span className="filter-tab__count">
-								{ s === 'all'
-									? invoices.length
-									: invoices.filter( i => i.status === s ).length }
-							</span>
-						</button>
-					) ) }
+				{ ALL_STATUSES.map( s => (
+					<button
+						key={ s }
+						className={ `filter-tab${ filter === s ? ' filter-tab--active' : '' }` }
+						aria-pressed={ filter === s }
+						onClick={ () => setFilter( s ) }
+					>
+						{ s === 'all' ? 'All' : STATUS_LABEL[ s ] }
+						<span className="filter-tab__count">
+							{ s === 'all'
+								? invoices.length
+								: invoices.filter( i => displayStatus( i ) === s ).length }
+						</span>
+					</button>
+				) ) }
 				</div>
-				<input
-					className="search-input"
-					type="search"
-					placeholder="Search invoices…"
-					value={ search }
-					onChange={ e => setSearch( e.target.value ) }
-				/>
+			<input
+				className="search-input"
+				type="search"
+				placeholder="Search invoices…"
+				aria-label="Search invoices"
+				value={ search }
+				onChange={ e => setSearch( e.target.value ) }
+			/>
 			</div>
 
 			{ filtered.length > 0 ? (
@@ -95,11 +104,11 @@ export default function InvoiceList( {
 										<td className="inv-table__muted">{ fmtDate( inv.dueDate ) }</td>
 										<td>{ fmtCurrency( invoiceTotal( inv ) ) }</td>
 										<td>
-											<select
-												className={ `status-select status-select--${ inv.status }` }
-												value={ inv.status }
-												onChange={ e => onStatusChange( inv.id, e.target.value as InvoiceStatus ) }
-											>
+									<select
+											className={ `status-select status-select--${ displayStatus( inv ) }` }
+											value={ inv.status }
+											onChange={ e => onStatusChange( inv.id, e.target.value as InvoiceStatus ) }
+										>
 												{ ( [ 'draft', 'sent', 'paid', 'overdue' ] as InvoiceStatus[] ).map( s => (
 													<option key={ s } value={ s }>{ STATUS_LABEL[ s ] }</option>
 												) ) }

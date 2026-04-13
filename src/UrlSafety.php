@@ -51,13 +51,18 @@ final class UrlSafety {
 			return false;
 		}
 
-		if ( in_array( strtolower( $host ), array( 'localhost', '127.0.0.1', '::1', '0.0.0.0', '169.254.169.254' ), true ) ) {
+		// PHP's parse_url (and wp_parse_url) returns IPv6 addresses with their
+		// surrounding brackets, e.g. "[::1]". Strip them before comparison so
+		// the blocklist and filter_var() checks work correctly.
+		$bare_host = trim( $host, '[]' );
+
+		if ( in_array( strtolower( $bare_host ), array( 'localhost', '127.0.0.1', '::1', '0.0.0.0', '169.254.169.254' ), true ) ) {
 			return false;
 		}
 
 		if (
-			filter_var( $host, FILTER_VALIDATE_IP ) !== false
-			&& filter_var( $host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) === false
+			filter_var( $bare_host, FILTER_VALIDATE_IP ) !== false
+			&& filter_var( $bare_host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) === false
 		) {
 			return false;
 		}

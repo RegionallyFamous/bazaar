@@ -37,7 +37,7 @@ export function popOut( url, slug ) {
 	window.open(
 		url,
 		`bazaar_popout_${ slug }`,
-		`width=${ w },height=${ h },left=${ left },top=${ top },resizable=yes,scrollbars=yes,toolbar=no,menubar=no`
+		`width=${ w },height=${ h },left=${ left },top=${ top },resizable=yes,scrollbars=yes,toolbar=no,menubar=no,noopener`
 	);
 }
 

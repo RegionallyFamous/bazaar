@@ -168,6 +168,56 @@ export async function pollBadges( { restUrl, nonce, badgeMap, onDirty } ) {
  *   onDirty:   () => void,
  * }} deps
  */
+/**
+ * Create a polling fallback that fires badge and health polls on separate
+ * intervals only when the SSE connection is not active.
+ *
+ * The returned object exposes `start()` and `stop()` so the caller can
+ * pause polling while the browser tab is hidden and resume on visibility
+ * restore, without leaving orphaned timers in the background.
+ *
+ * @param {{
+ *   badgePollDeps:          Object,
+ *   healthPollDeps:         Object,
+ *   BADGE_POLL_INTERVAL_MS:  number,
+ *   HEALTH_POLL_INTERVAL_MS: number,
+ * }} deps
+ * @return {{ start: () => void, stop: () => void }} Object with start/stop methods to control the polling intervals.
+ */
+export function createPollingFallback( {
+	badgePollDeps,
+	healthPollDeps,
+	BADGE_POLL_INTERVAL_MS,
+	HEALTH_POLL_INTERVAL_MS,
+} ) {
+	let _badgeTimer;
+	let _healthTimer;
+
+	function stop() {
+		clearInterval( _badgeTimer );
+		clearInterval( _healthTimer );
+	}
+
+	function start() {
+		// Clear any existing intervals before creating new ones so that calling
+		// start() more than once (e.g. initial load + visibilitychange)
+		// never leaves orphaned timers running in the background.
+		stop();
+		_badgeTimer = setInterval( () => {
+			if ( ! sseConnected ) {
+				void pollBadges( badgePollDeps );
+			}
+		}, BADGE_POLL_INTERVAL_MS );
+		_healthTimer = setInterval( () => {
+			if ( ! sseConnected ) {
+				void pollHealth( healthPollDeps );
+			}
+		}, HEALTH_POLL_INTERVAL_MS );
+	}
+
+	return { start, stop };
+}
+
 let _healthPollInFlight = false;
 
 export async function pollHealth( { restUrl, nonce, healthMap, onDirty } ) {

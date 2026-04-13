@@ -89,7 +89,7 @@ export default function Palette( {
 				{ saveSlots.length > 0 && (
 					<ul className="palette__slots">
 						{ saveSlots.map( ( slot, i ) => (
-							<li key={ slot.savedAt } className="palette__slot">
+							<li key={ `${ i }-${ slot.savedAt }` } className="palette__slot">
 								<button
 									className="palette__slot-btn"
 									onClick={ () => onLoad( i ) }

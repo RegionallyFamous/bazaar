@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import type { Page } from '../types.ts';
 
 interface Props {
@@ -22,10 +22,28 @@ function buildTree( pages: Page[] ): TreeNode[] {
 		map.set( page.id, { page, children: [] } );
 	}
 
+	// Returns true if ancestorId is reachable by following raw parentId links from nodeId.
+	const isAncestor = ( ancestorId: string, nodeId: string ): boolean => {
+		let current: string | null = nodeId;
+		const visited              = new Set<string>();
+		while ( current !== null ) {
+			if ( visited.has( current ) ) return false;
+			visited.add( current );
+			if ( current === ancestorId ) return true;
+			current = map.get( current )?.page.parentId ?? null;
+		}
+		return false;
+	};
+
 	for ( const page of pages ) {
 		const node = map.get( page.id )!;
 		if ( page.parentId && map.has( page.parentId ) ) {
-			map.get( page.parentId )!.children.push( node );
+			if ( isAncestor( page.id, page.parentId ) ) {
+				console.warn( `[Tome] Cycle detected involving page "${ page.id }"; treating as root.` );
+				roots.push( node );
+			} else {
+				map.get( page.parentId )!.children.push( node );
+			}
 		} else {
 			roots.push( node );
 		}
@@ -49,7 +67,13 @@ function PageNode( {
 	const isActive                  = node.page.id === activeId;
 
 	return (
-		<li className="tome-tree__item">
+		<li
+			className="tome-tree__item"
+			role="treeitem"
+			aria-selected={ isActive }
+			aria-level={ depth + 1 }
+			{ ...( hasChildren ? { 'aria-expanded': expanded } : {} ) }
+		>
 			<div
 				className={ `tome-tree__row${ isActive ? ' tome-tree__row--active' : '' }` }
 				style={ { paddingLeft: `${ 12 + depth * 16 }px` } }
@@ -119,17 +143,19 @@ function PageNode( {
 export default function Sidebar( { pages, activeId, onSelect, onNew, onDelete }: Props ) {
 	const [ query, setQuery ] = useState( '' );
 
-	const filtered = useCallback( () => {
-		if ( ! query.trim() ) return pages;
-		const q = query.toLowerCase();
-		return pages.filter( p =>
-			p.title.toLowerCase().includes( q ) ||
-			p.content.toLowerCase().includes( q ),
-		);
-	}, [ pages, query ] );
+	const displayPages = useMemo(
+		() => {
+			if ( ! query.trim() ) return pages;
+			const q = query.toLowerCase();
+			return pages.filter( p =>
+				p.title.toLowerCase().includes( q ) ||
+				p.content.toLowerCase().includes( q ),
+			);
+		},
+		[ pages, query ],
+	);
 
-	const displayPages = filtered();
-	const tree         = buildTree( displayPages );
+	const tree = buildTree( displayPages );
 
 	return (
 		<aside className="tome-sidebar">
@@ -154,19 +180,19 @@ export default function Sidebar( { pages, activeId, onSelect, onNew, onDelete }:
 						{ query ? 'No results.' : 'No pages yet.' }
 					</p>
 				) }
-				<ul className="tome-tree">
-					{ tree.map( node => (
-						<PageNode
-							key={ node.page.id }
-							node={ node }
-							depth={ 0 }
-							activeId={ activeId }
-							onSelect={ onSelect }
-							onNew={ onNew }
-							onDelete={ onDelete }
-						/>
-					) ) }
-				</ul>
+			<ul className="tome-tree" role="tree">
+				{ tree.map( node => (
+					<PageNode
+						key={ node.page.id }
+						node={ node }
+						depth={ 0 }
+						activeId={ activeId }
+						onSelect={ onSelect }
+						onNew={ onNew }
+						onDelete={ onDelete }
+					/>
+				) ) }
+			</ul>
 			</nav>
 
 			<div className="tome-sidebar__footer">

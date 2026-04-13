@@ -12,6 +12,16 @@ interface Props {
 
 const LABELS: CardLabel[] = [ 'none', 'red', 'orange', 'yellow', 'green', 'blue', 'purple' ];
 
+const LABEL_NAMES: Record<CardLabel, string> = {
+  none:   'No label',
+  red:    'Red label',
+  orange: 'Orange label',
+  yellow: 'Yellow label',
+  green:  'Green label',
+  blue:   'Blue label',
+  purple: 'Purple label',
+};
+
 export default function CardModal( { card, onSave, onDelete, onClose }: Props ) {
   const isNew = card === null;
   const [ title, setTitle ]     = useState( card?.title ?? '' );
@@ -87,8 +97,8 @@ export default function CardModal( { card, onSave, onDelete, onClose }: Props ) 
                 className={ `modal__label-dot${ label === l ? ' modal__label-dot--active' : '' }` }
                 style={ { background: l === 'none' ? '#e5e7eb' : LABEL_COLORS[ l ] } }
                 onClick={ () => setLabel( l ) }
-                aria-label={ l }
-                title={ l }
+                aria-label={ LABEL_NAMES[ l ] }
+                title={ LABEL_NAMES[ l ] }
               />
             ) ) }
           </div>

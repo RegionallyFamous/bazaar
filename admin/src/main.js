@@ -252,6 +252,9 @@ gallery.addEventListener( 'change', async ( e ) => {
 	}
 
 	const slug = input.dataset.slug;
+	if ( ! slug ) {
+		return;
+	}
 	const enabled = input.checked;
 	const card = document.getElementById( `bazaar-card-${ slug }` );
 	const label = input.closest( '.bazaar-toggle' );
@@ -353,7 +356,7 @@ searchInput?.addEventListener( 'input', () => {
  * @param {HTMLElement} btn The tab button to activate.
  */
 function activateFilterTab( btn ) {
-	currentFilter = btn.dataset.filter;
+	currentFilter = btn.dataset.filter ?? 'all';
 
 	filterTabs.querySelectorAll( '[data-filter]' ).forEach( ( tab ) => {
 		const active = tab === btn;

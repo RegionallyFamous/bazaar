@@ -60,9 +60,9 @@ export default function Knob( { label, value, min, max, step = 0.01, unit = '', 
         aria-valuemax={ max }
         tabIndex={ 0 }
         onKeyDown={ e => {
-          const delta = ( max - min ) / 20;
-          if ( e.key === 'ArrowUp'   ) { e.preventDefault(); onChange( Math.min( max, value + delta ) ); }
-          if ( e.key === 'ArrowDown' ) { e.preventDefault(); onChange( Math.max( min, value - delta ) ); }
+          const nudge = step ?? ( max - min ) / 20;
+          if ( e.key === 'ArrowUp'   ) { e.preventDefault(); onChange( Math.min( max, value + nudge ) ); }
+          if ( e.key === 'ArrowDown' ) { e.preventDefault(); onChange( Math.max( min, value - nudge ) ); }
         } }
       >
         <svg viewBox="0 0 44 44" width="44" height="44">

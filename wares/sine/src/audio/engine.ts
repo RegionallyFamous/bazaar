@@ -7,11 +7,17 @@ interface Voice {
   started: boolean;
 }
 
+interface TriggerVoice {
+  osc:  OscillatorNode;
+  gain: GainNode;
+}
+
 export class SynthEngine {
-  private ctx:     AudioContext | null = null;
-  private filter:  BiquadFilterNode | null = null;
-  private master:  GainNode | null = null;
-  private voices:  Map<string, Voice> = new Map();
+  private ctx:            AudioContext | null = null;
+  private filter:         BiquadFilterNode | null = null;
+  private master:         GainNode | null = null;
+  private voices:         Map<string, Voice> = new Map();
+  private triggerVoices:  Map<string, TriggerVoice> = new Map();
 
   private getCtx(): AudioContext {
     if ( ! this.ctx ) {
@@ -75,6 +81,15 @@ export class SynthEngine {
     const ctx = this.getCtx();
     if ( ctx.state === 'suspended' ) { void ctx.resume(); }
 
+    // Stop and disconnect any previous triggered voice for this pitch
+    const existing = this.triggerVoices.get( note );
+    if ( existing ) {
+      try { existing.osc.stop(); } catch { /* already stopped */ }
+      existing.osc.disconnect();
+      existing.gain.disconnect();
+      this.triggerVoices.delete( note );
+    }
+
     const osc  = ctx.createOscillator();
     const gain = ctx.createGain();
 
@@ -95,6 +110,18 @@ export class SynthEngine {
     gain.connect( this.filter! );
     osc.start( now );
     osc.stop( now + held + release + 0.05 );
+
+    this.triggerVoices.set( note, { osc, gain } );
+
+    // Remove from map and disconnect after the note finishes
+    const cleanupMs = ( held + release + 0.1 ) * 1000;
+    setTimeout( () => {
+      if ( this.triggerVoices.get( note )?.osc === osc ) {
+        this.triggerVoices.delete( note );
+      }
+      osc.disconnect();
+      gain.disconnect();
+    }, cleanupMs );
   }
 
   resume() {

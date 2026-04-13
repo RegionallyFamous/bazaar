@@ -21,7 +21,7 @@ import { connectHmr } from './modules/hmr-bridge.js';
 
 import { TrustAwareLruManager } from './modules/lru.js';
 import { toggleFullscreen, popOut } from './modules/views.js';
-import { showError, dismissError } from './modules/errors.js';
+import { showError } from './modules/errors.js';
 import {
 	sortedEnabled,
 	buildItem,
@@ -32,20 +32,20 @@ import {
 	registerShortcuts,
 	pinnedSet,
 	recentList,
-	pushRecent,
 	healthMap,
 	invalidateSortCache,
 	patchNavBadges,
 	patchNavHealth,
 } from './modules/nav.js';
 import { CommandPalette } from './modules/palette.js';
-import { connectSSE, pollBadges, pollHealth, sseConnected } from './modules/sse.js';
+import { connectSSE, pollBadges, pollHealth, createPollingFallback } from './modules/sse.js';
+import { initServiceWorker } from './modules/sw.js';
 import { NotificationCenter } from './modules/notifications.js';
 import { NavContextMenu } from './modules/context-menu.js';
 import { Launchpad } from './modules/launchpad.js';
 import { HomeScreen } from './modules/home.js';
 import { WareInfo } from './modules/ware-info.js';
-
+import { createNavController } from './modules/navigation.js';
 // ===========================================================================
 // Bootstrap
 // ===========================================================================
@@ -106,13 +106,10 @@ const LRU_CAP = Math.max(
 // State
 // ===========================================================================
 
-let activeSlug = null;
+// Shared mutable state object — passed to the navigation controller so both
+// this module and navigation.js can read/write navState.activeSlug by reference.
+const navState = { activeSlug: /** @type {string|null} */ ( null ) };
 let navFilterQuery = '';
-/** @type {ReturnType<typeof setTimeout>|null} */
-let _loadTimer = null;
-
-let _navInFlight = false;
-let _navPending = /** @type {{ slug: string, route?: string }|null} */ ( null );
 
 /** @type {Map<string, Object>} slug → index entry */
 const wareMap = new Map( ( initialWares ?? [] ).map( ( w ) => [ w.slug, w ] ) );
@@ -133,10 +130,10 @@ const loading = document.getElementById( 'bsh-loading' );
 const collapse = document.getElementById( 'bsh-collapse' );
 const root = document.getElementById( 'bazaar-shell-root' );
 const toolbarContext = document.getElementById( 'bsh-toolbar-context' );
+const toolbarCtxBtns = document.getElementById( 'bsh-toolbar-ctx-btns' );
 const taskbarEl = document.getElementById( 'bsh-taskbar' );
 const statusbarLeft = document.getElementById( 'bsh-statusbar-left' );
 const statusbarClock = document.getElementById( 'bsh-statusbar-clock' );
-const winbarEl = document.getElementById( 'bsh-winbar' );
 const homePanel = document.getElementById( 'bsh-home-screen' );
 
 // Fail loudly in development; degrade gracefully in production when the shell
@@ -183,7 +180,7 @@ function positionNavPill( slug ) {
 
 // Re-position pill whenever the nav list is resized (window resize, WP sidebar
 // layout changes, and every frame of the collapse/expand CSS transition).
-new ResizeObserver( () => positionNavPill( activeSlug ?? '' ) ).observe( navList );
+new ResizeObserver( () => positionNavPill( navState.activeSlug ?? '' ) ).observe( navList );
 
 // ─── Nav filter input ────────────────────────────────────────────────────────
 
@@ -424,6 +421,48 @@ const clipboard = new ShellClipboard();
 
 const toasts = new ToastManager( toastEl );
 const bus = new EventBus();
+
+// ===========================================================================
+// Navigation controller
+// ===========================================================================
+
+// homeScreenRef is a single-entry mutable container so the navigation
+// controller can be created before HomeScreen exists. The getter below
+// is only evaluated when navigateTo() is actually called, by which point
+// homeScreenRef.current has been populated (see OS features section below).
+const homeScreenRef = {};
+const nav = createNavController( {
+	navState,
+	restUrl,
+	manageUrl,
+	wareMap,
+	badgeMap,
+	healthMap,
+	iframes,
+	navEl,
+	homePanel,
+	loading,
+	root,
+	get homeScreen() {
+		return homeScreenRef.current;
+	},
+	toasts,
+	serveUrl,
+	closeMobileNav,
+	positionNavPill,
+	updateUrl,
+	renderNav,
+	renderTaskbar,
+	renderToolbarContext,
+	renderStatusBar,
+	apiFetch,
+	getNonce: () => _nonce,
+	TOAST_DEFAULT_MS,
+	DATA_CACHE_TTL_MS,
+	DATA_CACHE_MAX,
+} );
+const { navigateTo, applyWareInstalled, applyWareDeleted, applyWareToggled, cacheQuery, recordView } = nav;
+
 const palette = new CommandPalette( {
 	wareMap,
 	restUrl,
@@ -448,6 +487,7 @@ const homeScreen = new HomeScreen( {
 	apiFetch,
 	onWareInstalled: applyWareInstalled,
 } );
+homeScreenRef.current = homeScreen;
 if ( homePanel ) {
 	homeScreen.mount( homePanel );
 }
@@ -595,7 +635,7 @@ function applyNavFilter() {
 		}
 	} );
 	// Active item may have been hidden/shown by the filter — re-sync pill.
-	positionNavPill( activeSlug ?? '' );
+	positionNavPill( navState.activeSlug ?? '' );
 }
 
 // ===========================================================================
@@ -619,7 +659,7 @@ function renderNav() {
 			label: __( 'Home', 'bazaar' ),
 			di: 'dashicons-admin-home',
 		},
-		activeSlug,
+		navState.activeSlug,
 		badgeMap
 	);
 	navFooter.appendChild( homeItem );
@@ -638,7 +678,7 @@ function renderNav() {
 				<circle cx="6"  cy="12" r="2" fill="currentColor"/>
 			</svg>`,
 		},
-		activeSlug,
+		navState.activeSlug,
 		badgeMap
 	);
 	navFooter.appendChild( manageItem );
@@ -687,7 +727,7 @@ function renderNav() {
 						icon: iconUrl( w ),
 						devMode: !! w.dev_url,
 					},
-					activeSlug,
+					navState.activeSlug,
 					badgeMap
 				)
 			);
@@ -713,7 +753,7 @@ function renderNav() {
 						icon: iconUrl( w ),
 						devMode: !! w.dev_url,
 					},
-					activeSlug,
+					navState.activeSlug,
 					badgeMap
 				)
 			);
@@ -751,7 +791,7 @@ function renderNav() {
 					icon: iconUrl( w ),
 					devMode: !! w.dev_url,
 				},
-				activeSlug,
+				navState.activeSlug,
 				badgeMap
 			)
 		);
@@ -770,7 +810,7 @@ function renderNav() {
 						icon: iconUrl( w ),
 						devMode: !! w.dev_url,
 					},
-					activeSlug,
+					navState.activeSlug,
 					badgeMap
 				)
 			);
@@ -787,7 +827,7 @@ function renderNav() {
 						devMode: !! w.dev_url,
 						grouped: true,
 					},
-					activeSlug,
+					navState.activeSlug,
 					badgeMap
 				)
 			);
@@ -820,38 +860,11 @@ function renderNav() {
 
 	// Re-append pill (innerHTML clear removed it) and sync position.
 	navList.appendChild( navPill );
-	positionNavPill( activeSlug ?? '' );
+	positionNavPill( navState.activeSlug ?? '' );
 }
 
 // Nav refresh event (from drag/pin toggles).
 document.addEventListener( 'bazaar:nav-refresh', () => renderNav() );
-
-// ===========================================================================
-// Analytics
-// ===========================================================================
-
-let _viewSlug = null;
-let _viewStart = 0;
-
-function recordView( newSlug ) {
-	if ( _viewSlug && _viewSlug !== newSlug && _viewStart ) {
-		fetch( `${ restUrl }/analytics`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-WP-Nonce': _nonce,
-			},
-			body: JSON.stringify( {
-				slug: _viewSlug,
-				event: 'view',
-				duration_ms: Date.now() - _viewStart,
-			} ),
-			keepalive: true,
-		} ).catch( () => {} );
-	}
-	_viewSlug = newSlug;
-	_viewStart = Date.now();
-}
 
 // ===========================================================================
 // Toolbar context breadcrumb
@@ -938,266 +951,42 @@ function _renderToolbarContextInner( slug ) {
 
 	btn.addEventListener( 'click', () => palette.open() );
 	toolbarContext.appendChild( btn );
-}
 
-// ===========================================================================
-// Navigation
-// ===========================================================================
+	// Context-sensitive action buttons: Reload + Info (wares only).
+	// These live in the toolbar rather than a separate winbar so there's
+	// one unified chrome strip with no duplicated title.
+	if ( toolbarCtxBtns ) {
+		toolbarCtxBtns.innerHTML = '';
 
-function _navDone() {
-	_navInFlight = false;
-	if ( _navPending ) {
-		const { slug, route } = _navPending;
-		_navPending = null;
-		navigateTo( slug, route );
-	}
-}
-
-function navigateTo( slug, route ) {
-	if ( ! slug ) {
-		return;
-	}
-
-	// Guard: non-manage/home slugs must exist in the registry.
-	if ( slug !== 'manage' && slug !== 'home' && ! wareMap.has( slug ) ) {
-		return;
-	}
-
-	// Last-wins queue while a view transition is running.
-	if ( _navInFlight ) {
-		_navPending = { slug, route };
-		return;
-	}
-
-	_navInFlight = true;
-
-	// Close the mobile drawer on navigation.
-	closeMobileNav();
-
-	// Cancel any pending slow-load toast from a previous navigation.
-	clearTimeout( _loadTimer );
-	_loadTimer = null;
-
-	const prevSlug = activeSlug;
-	activeSlug = slug;
-	updateUrl( slug, route );
-	pushRecent( slug );
-	recordView( slug );
-	homeScreen.recordOpen( slug );
-	renderToolbarContext( slug );
-	renderWinBar( slug );
-	renderStatusBar( slug );
-
-	navEl.querySelectorAll( '.bsh-nav__btn' ).forEach( ( btn ) => {
-		const a = btn.dataset.slug === slug;
-		btn.classList.toggle( 'bsh-nav__btn--active', a );
-		if ( a ) {
-			btn.setAttribute( 'aria-current', 'page' );
-		} else {
-			btn.removeAttribute( 'aria-current' );
-		}
-	} );
-
-	positionNavPill( slug );
-
-	// Home screen — no iframe needed.
-	if ( slug === 'home' ) {
-		for ( const f of iframes.frames.values() ) {
-			f.classList.remove( 'bsh-iframe--visible' );
-			f.setAttribute( 'aria-hidden', 'true' );
-		}
-		if ( homePanel ) {
-			homePanel.hidden = false;
-			homeScreen.refresh();
-		}
-		loading.hidden = true;
-		renderTaskbar();
-		_navDone();
-		return;
-	}
-
-	// Hide the home panel when switching to a real ware.
-	if ( homePanel ) {
-		homePanel.hidden = true;
-	}
-
-	const url =
-		slug === 'manage' ? manageUrl : serveUrl( wareMap.get( slug ) );
-	const had = iframes.frames.has( slug );
-
-	dismissError( slug );
-
-	if ( 'startViewTransition' in document ) {
-		const enabled = sortedEnabled( wareMap );
-		const prevIdx = enabled.findIndex( ( w ) => w.slug === prevSlug );
-		const nextIdx = enabled.findIndex( ( w ) => w.slug === slug );
-		let dir = null;
-		if ( prevIdx !== -1 && nextIdx !== -1 ) {
-			dir = nextIdx > prevIdx ? 'down' : 'up';
-		}
-		if ( dir ) {
-			root.dataset.vtDir = dir;
-		} else {
-			delete root.dataset.vtDir;
-		}
-		const t = document.startViewTransition( () => iframes.activate( slug, url ) );
-		t.finished
-			.catch( ( e ) => {
-			// AbortError is expected when a navigation supersedes an in-flight
-			// transition (e.g. a deep-link triggers navigation on page load while
-			// the opening transition is still running). Log anything unexpected
-			// but do not rethrow — navigation has already completed and _navDone
-			// must always run regardless of transition outcome.
-				if ( e?.name !== 'AbortError' ) {
-				// eslint-disable-next-line no-console
-					console.error( '[bazaar] view transition error', e );
+		if ( ! isHome ) {
+			const reloadBtn = document.createElement( 'button' );
+			reloadBtn.type = 'button';
+			reloadBtn.className = 'bsh-toolbar__btn bsh-toolbar__btn--ctx';
+			reloadBtn.setAttribute( 'aria-label', __( 'Reload', 'bazaar' ) );
+			reloadBtn.title = __( 'Reload', 'bazaar' );
+			reloadBtn.innerHTML = '<span class="dashicons dashicons-update" aria-hidden="true"></span>';
+			reloadBtn.addEventListener( 'click', () => {
+				if ( navState.activeSlug ) {
+					iframes.reload( navState.activeSlug );
 				}
-			} )
-			.finally( () => {
-				delete root.dataset.vtDir;
-				_navDone();
 			} );
-	} else {
-		iframes.activate( slug, url );
-		_navDone();
-	}
-
-	renderTaskbar();
-
-	if ( had ) {
-		loading.hidden = true;
-		if ( route ) {
-			iframes.frames
-				.get( slug )
-				?.contentWindow?.postMessage(
-					{ type: 'bazaar:route', route },
-					window.location.origin
-				);
+			toolbarCtxBtns.appendChild( reloadBtn );
 		}
-	} else {
-		loading.hidden = false;
-		const f = iframes.frames.get( slug );
-		const wareName = wareMap.get( slug )?.name ?? slug;
 
-		const clearLoad = () => {
-			clearTimeout( _loadTimer );
-			_loadTimer = null;
-			loading.hidden = true;
-		};
-
-		// If the iframe document never fires 'load' (hung network, DNS failure,
-		// HTTP 5xx that returns no document), hide the overlay after 15 s and
-		// show a toast so the user isn't stuck indefinitely.
-		_loadTimer = setTimeout( () => {
-			loading.hidden = true;
-			toasts.show(
-				sprintf(
-					/* translators: %s: ware name */
-					__( '%s is taking a long time to load. Try reloading.', 'bazaar' ),
-					wareName
-				),
-				'error',
-				TOAST_DEFAULT_MS
-			);
-		}, 15_000 );
-
-		f?.addEventListener(
-			'load',
-			() => {
-				clearLoad();
-				if ( route ) {
-					f.contentWindow?.postMessage(
-						{ type: 'bazaar:route', route },
-						window.location.origin
-					);
-				}
-			},
-			{ once: true }
-		);
-
-		// 'error' fires when the src itself cannot be fetched (network offline,
-		// SSL failure). HTTP error documents still fire 'load', so the timeout
-		// above covers those cases.
-		f?.addEventListener(
-			'error',
-			() => {
-				clearLoad();
-				toasts.show(
-					sprintf(
-						/* translators: %s: ware name */
-						__( '%s failed to load.', 'bazaar' ),
-						wareName
-					),
-					'error',
-					TOAST_DEFAULT_MS
-				);
-			},
-			{ once: true }
-		);
-	}
-}
-
-// ===========================================================================
-// Ware lifecycle helpers — shared by both SSE and postMessage handlers
-// ===========================================================================
-
-/**
- * Apply a ware-installed event: register the ware, refresh the nav, navigate to
- * it, show a success toast, and clear any stale SW-cached assets.
- *
- * @param {Object} ware Ware descriptor from the server.
- */
-function applyWareInstalled( ware ) {
-	wareMap.set( ware.slug, ware );
-	renderNav();
-	navigateTo( ware.slug );
-	toasts.show(
-		sprintf( /* translators: %s: ware name */ __( '%s is ready', 'bazaar' ), ware.name ?? ware.slug ),
-		'success',
-		TOAST_DEFAULT_MS
-	);
-	// Flush stale SW-cached assets so the next load always fetches the
-	// freshly-deployed build rather than a stale one that may reference
-	// removed REST routes.
-	navigator.serviceWorker?.controller?.postMessage( {
-		type: 'bazaar:cache-clear',
-		slug: ware.slug,
-	} );
-}
-
-/**
- * Apply a ware-deleted event: remove from registry, destroy iframe, redirect
- * away if it was active, and refresh the nav.
- *
- * @param {string} slug
- */
-function applyWareDeleted( slug ) {
-	wareMap.delete( slug );
-	badgeMap.delete( slug );
-	healthMap.delete( slug );
-	iframes.destroy( slug );
-	if ( activeSlug === slug ) {
-		navigateTo( 'home' );
-	}
-	renderNav();
-	renderTaskbar();
-}
-
-/**
- * Apply a ware-toggled (enable/disable) event.
- *
- * @param {string}  slug
- * @param {boolean} enabled
- */
-function applyWareToggled( slug, enabled ) {
-	const w = wareMap.get( slug );
-	if ( w ) {
-		w.enabled = enabled;
-		if ( ! enabled && activeSlug === slug ) {
-			navigateTo( 'manage' );
+		if ( ware ) {
+			const infoBtn = document.createElement( 'button' );
+			infoBtn.type = 'button';
+			infoBtn.className = 'bsh-toolbar__btn bsh-toolbar__btn--ctx';
+			infoBtn.setAttribute( 'aria-label', __( 'About this ware', 'bazaar' ) );
+			infoBtn.title = __( 'About this ware', 'bazaar' );
+			infoBtn.innerHTML = '<span class="dashicons dashicons-info-outline" aria-hidden="true"></span>';
+			infoBtn.addEventListener( 'click', ( e ) => {
+				e.stopPropagation();
+				wareInfo.toggle( ware, infoBtn );
+			} );
+			toolbarCtxBtns.appendChild( infoBtn );
 		}
 	}
-	renderNav();
 }
 
 // ===========================================================================
@@ -1244,83 +1033,6 @@ const healthPollDeps = {
 	healthMap,
 	onDirty: () => patchNavHealth( navList, healthMap ),
 };
-
-// ===========================================================================
-// Shared data cache proxy
-// ===========================================================================
-
-const _dataCache = new Map();
-
-async function cacheQuery( id, path, targetWindow ) {
-	// Only proxy paths within the Bazaar namespace — prevents a ware from
-	// using the shell's admin nonce to fetch arbitrary WordPress REST data.
-	// Normalize through URL to collapse any ../ segments before the prefix
-	// check so that '/bazaar/v1/../wp/v2/users' cannot bypass the guard.
-	if ( typeof path !== 'string' ) {
-		return;
-	}
-	let normalizedPath;
-	try {
-		normalizedPath = new URL( path, window.location.origin ).pathname;
-	} catch {
-		return;
-	}
-	if ( ! normalizedPath.startsWith( '/bazaar/v1/' ) ) {
-		return;
-	}
-
-	const cached = _dataCache.get( normalizedPath );
-	if ( cached && Date.now() - cached.ts < DATA_CACHE_TTL_MS ) {
-		try {
-			targetWindow.postMessage(
-				{ type: 'bazaar:query-response', id, data: cached.data },
-				window.location.origin
-			);
-		} catch {
-			/* target window may have been closed */
-		}
-		return;
-	}
-	const replyError = ( status = 0 ) => {
-		try {
-			targetWindow.postMessage(
-				{ type: 'bazaar:query-error', id, status },
-				window.location.origin
-			);
-		} catch { /* target window may have been closed */ }
-	};
-	try {
-		const r = await apiFetch(
-			`${ restUrl.replace( /\/bazaar\/v1$/, '' ) }${ normalizedPath }`
-		);
-		if ( ! r.ok ) {
-			replyError( r.status );
-			return;
-		}
-		const contentType = r.headers.get( 'content-type' ) ?? '';
-		if ( ! contentType.includes( 'application/json' ) ) {
-			// reply or the waiting iframe hangs.
-			replyError( r.status );
-			return;
-		}
-		const d = await r.json();
-		// Evict oldest entry when cache is full (simple FIFO).
-		if ( _dataCache.size >= DATA_CACHE_MAX ) {
-			_dataCache.delete( _dataCache.keys().next().value );
-		}
-		_dataCache.set( normalizedPath, { data: d, ts: Date.now() } );
-		try {
-			targetWindow.postMessage(
-				{ type: 'bazaar:query-response', id, data: d },
-				window.location.origin
-			);
-		} catch {
-			/* target window may have been closed */
-		}
-	} catch {
-		replyError();
-	}
-}
 
 // ===========================================================================
 // postMessage hub
@@ -1503,10 +1215,10 @@ window.addEventListener( 'message', ( event ) => {
 	} );
 
 	mkBtn( __( 'Pop out', 'bazaar' ), 'dashicons-external', () => {
-		if ( activeSlug && activeSlug !== 'manage' && activeSlug !== 'home' ) {
-			const ware = wareMap.get( activeSlug );
+		if ( navState.activeSlug && navState.activeSlug !== 'manage' && navState.activeSlug !== 'home' ) {
+			const ware = wareMap.get( navState.activeSlug );
 			if ( ware ) {
-				popOut( serveUrl( ware ), activeSlug );
+				popOut( serveUrl( ware ), navState.activeSlug );
 			}
 		}
 	} );
@@ -1537,7 +1249,7 @@ function renderTaskbar() {
 
 		const item = document.createElement( 'div' );
 		item.className = 'bsh-taskbar__item' +
-			( slug === activeSlug ? ' bsh-taskbar__item--active' : '' );
+			( slug === navState.activeSlug ? ' bsh-taskbar__item--active' : '' );
 		item.dataset.slug = slug;
 
 		// Icon
@@ -1592,7 +1304,7 @@ function renderTaskbar() {
 		closeBtn.addEventListener( 'click', ( e ) => {
 			e.stopPropagation();
 			iframes.destroy( closedSlug );
-			if ( activeSlug === closedSlug ) {
+			if ( navState.activeSlug === closedSlug ) {
 				const next = [ ...iframes.order ].reverse()[ 0 ] ?? 'home';
 				navigateTo( next );
 			}
@@ -1602,85 +1314,6 @@ function renderTaskbar() {
 
 		item.addEventListener( 'click', () => navigateTo( slug ) );
 		taskbarEl.appendChild( item );
-	}
-}
-
-// ===========================================================================
-// Window chrome — thin title bar above the active ware
-// ===========================================================================
-
-function renderWinBar( slug ) {
-	if ( ! winbarEl ) {
-		return;
-	}
-	if ( ! slug || slug === 'home' ) {
-		winbarEl.hidden = true;
-		winbarEl.setAttribute( 'aria-hidden', 'true' );
-		return;
-	}
-	winbarEl.hidden = false;
-	winbarEl.removeAttribute( 'aria-hidden' );
-	winbarEl.innerHTML = '';
-
-	const ware = slug === 'manage' ? null : wareMap.get( slug );
-	const label = slug === 'manage'
-		? __( 'Manage Wares', 'bazaar' )
-		: ( ware?.menu_title ?? ware?.name ?? slug );
-
-	// Icon
-	if ( ware?.icon ) {
-		const img = document.createElement( 'img' );
-		img.src = iconUrl( ware );
-		img.alt = '';
-		img.className = 'bsh-winbar__icon';
-		img.onerror = () => img.remove();
-		winbarEl.appendChild( img );
-	}
-
-	// Name
-	winbarEl.appendChild(
-		Object.assign( document.createElement( 'span' ), {
-			className: 'bsh-winbar__name',
-			textContent: label,
-		} )
-	);
-
-	const spacer = document.createElement( 'span' );
-	spacer.className = 'bsh-winbar__spacer';
-	winbarEl.appendChild( spacer );
-
-	// Reload
-	const reloadBtn = document.createElement( 'button' );
-	reloadBtn.type = 'button';
-	reloadBtn.className = 'bsh-winbar__btn';
-	reloadBtn.setAttribute( 'aria-label', __( 'Reload ware', 'bazaar' ) );
-	reloadBtn.title = __( 'Reload', 'bazaar' );
-	reloadBtn.innerHTML = '<span class="dashicons dashicons-update" aria-hidden="true"></span>';
-	reloadBtn.addEventListener( 'click', () => iframes.reload( slug ) );
-	winbarEl.appendChild( reloadBtn );
-
-	// Info + Pop-out (real wares only)
-	if ( ware ) {
-		const popOutBtn = document.createElement( 'button' );
-		popOutBtn.type = 'button';
-		popOutBtn.className = 'bsh-winbar__btn';
-		popOutBtn.setAttribute( 'aria-label', __( 'Pop out', 'bazaar' ) );
-		popOutBtn.title = __( 'Pop out', 'bazaar' );
-		popOutBtn.innerHTML = '<span class="dashicons dashicons-external" aria-hidden="true"></span>';
-		popOutBtn.addEventListener( 'click', () => popOut( serveUrl( ware ), slug ) );
-		winbarEl.appendChild( popOutBtn );
-
-		const infoBtn = document.createElement( 'button' );
-		infoBtn.type = 'button';
-		infoBtn.className = 'bsh-winbar__btn';
-		infoBtn.setAttribute( 'aria-label', __( 'About this ware', 'bazaar' ) );
-		infoBtn.title = __( 'About this ware', 'bazaar' );
-		infoBtn.innerHTML = '<span class="dashicons dashicons-info-outline" aria-hidden="true"></span>';
-		infoBtn.addEventListener( 'click', ( e ) => {
-			e.stopPropagation();
-			wareInfo.toggle( ware, infoBtn );
-		} );
-		winbarEl.appendChild( infoBtn );
 	}
 }
 
@@ -2041,7 +1674,7 @@ collapse.addEventListener( 'click', () => {
 	}
 	// ResizeObserver handles per-frame updates during the CSS transition but
 	// fire an immediate re-position too for responsiveness on the first frame.
-	positionNavPill( activeSlug ?? '' );
+	positionNavPill( navState.activeSlug ?? '' );
 } );
 
 navEl.addEventListener( 'click', ( e ) => {
@@ -2074,48 +1707,30 @@ void pollHealth( healthPollDeps );
 connectSSE( sseDeps );
 
 // Fallback polling — only fires when SSE is not delivering events.
-// Intervals are paused when the tab is hidden to avoid background traffic.
-let _badgeTimer;
-let _healthTimer;
-
-function startPolling() {
-	// Clear any existing intervals before creating new ones so that calling
-	// startPolling() more than once (e.g. initial load + visibilitychange)
-	// never leaves orphaned timers running in the background.
-	stopPolling();
-	_badgeTimer = setInterval( () => {
-		if ( ! sseConnected ) {
-			void pollBadges( badgePollDeps );
-		}
-	}, BADGE_POLL_INTERVAL_MS );
-	_healthTimer = setInterval( () => {
-		if ( ! sseConnected ) {
-			void pollHealth( healthPollDeps );
-		}
-	}, HEALTH_POLL_INTERVAL_MS );
-}
-
-function stopPolling() {
-	clearInterval( _badgeTimer );
-	clearInterval( _healthTimer );
-}
+// Paused when the tab is hidden to avoid unnecessary background traffic.
+const polling = createPollingFallback( {
+	badgePollDeps,
+	healthPollDeps,
+	BADGE_POLL_INTERVAL_MS,
+	HEALTH_POLL_INTERVAL_MS,
+} );
 
 document.addEventListener( 'visibilitychange', () => {
 	if ( document.hidden ) {
-		stopPolling();
+		polling.stop();
 		recordView( null );
 	} else {
-		if ( activeSlug ) {
-			_viewSlug = activeSlug;
-			_viewStart = Date.now();
+		if ( navState.activeSlug ) {
+			// Reset the view timer so the hidden period isn't counted as active time.
+			recordView( navState.activeSlug );
 		}
-		startPolling();
+		polling.start();
 	}
 } );
 
 window.addEventListener( 'pagehide', () => recordView( null ) );
 
-startPolling();
+polling.start();
 
 // HMR bridge — connect to Vite dev servers for all dev-mode wares.
 for ( const ware of wareMap.values() ) {
@@ -2126,41 +1741,7 @@ for ( const ware of wareMap.values() ) {
 
 // Service worker — always registered for universal asset caching;
 // also sends zero-trust permissions when relevant wares are installed.
-( async function initServiceWorker() {
-	if ( ! ( 'serviceWorker' in navigator ) ) {
-		return;
-	}
-
-	try {
-		await navigator.serviceWorker.register(
-			swUrl ??
-				`${ window.location.origin }/wp-json/bazaar/v1/sw`,
-			{ scope: '/' }
-		);
-
-		// Send zero-trust permissions for wares that require network enforcement.
-		const ztWares = [ ...wareMap.values() ].filter(
-			( w ) => w.zero_trust && w.permissions_network
-		);
-		if ( ! ztWares.length ) {
-			return;
-		}
-
-		// Await the service worker being fully active before sending zt-init
-		// to eliminate the race condition where the SW is still installing.
-		const activeSw = await navigator.serviceWorker.ready;
-		const permissions = Object.fromEntries(
-			ztWares.map( ( w ) => [ w.slug, w.permissions_network ] )
-		);
-		activeSw.active?.postMessage( {
-			type: 'bazaar:zt-init',
-			permissions,
-			origin: window.location.origin,
-		} );
-	} catch {
-		// SW registration failure is non-fatal.
-	}
-}() );
+void initServiceWorker( { swUrl, wareMap } );
 
 const dl = parseDeepLink();
 navigateTo( dl.ware ?? 'home', dl.route );

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import type { Column as ColumnType, Card as CardType } from '../types.ts';
 import CardComponent from './Card.tsx';
 
@@ -26,7 +26,6 @@ export default function Column( {
   const [ newTitle, setNewTitle ] = useState( '' );
   const [ renaming, setRenaming ] = useState( false );
   const [ colTitle, setColTitle ] = useState( column.title );
-  const inputRef = useRef<HTMLInputElement>( null );
 
   function submitAdd( e: React.FormEvent ) {
     e.preventDefault();
@@ -80,6 +79,7 @@ export default function Column( {
               className="column__menu-btn"
               onClick={ () => onClearDone( column.id ) }
               title="Clear all done cards"
+              aria-label="Clear done cards"
             >
               🗑
             </button>
@@ -88,13 +88,14 @@ export default function Column( {
             className="column__menu-btn column__menu-btn--danger"
             onClick={ () => onDelete( column.id ) }
             title="Delete column"
+            aria-label="Delete column"
           >
             ✕
           </button>
         </div>
       </div>
 
-      <div className="column__cards" ref={ inputRef as React.RefObject<HTMLDivElement> }>
+      <div className="column__cards">
         { column.cards.map( card => (
           <div
             key={ card.id }

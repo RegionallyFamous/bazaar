@@ -38,6 +38,22 @@
 	font-size:       14px;
 }
 
+.tome-save-error {
+	position:        fixed;
+	top:             12px;
+	left:            50%;
+	transform:       translateX( -50% );
+	z-index:         100;
+	padding:         8px 18px;
+	background:      var( --bw-danger-bg, #fee2e2 );
+	color:           var( --bw-danger, #b91c1c );
+	border:          1px solid var( --bw-danger, #b91c1c );
+	border-radius:   6px;
+	font-family:     var( --font-ui );
+	font-size:       13px;
+	pointer-events:  none;
+}
+
 /* ── Sidebar ───────────────────────────────────────────────────────────── */
 
 .tome-sidebar {

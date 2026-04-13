@@ -1,12 +1,13 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { rgbaToHex }                       from '../hooks/usePixelEditor.ts';
-import type { ZoomLevel }                  from '../types.ts';
+import type { ZoomLevel, Tool }            from '../types.ts';
 
 interface Props {
 	pixels:    Uint8Array;
 	size:      number;
 	zoom:      ZoomLevel;
 	showGrid:  boolean;
+	tool:      Tool;
 	onPointerDown: ( e: React.PointerEvent<HTMLCanvasElement>, el: HTMLCanvasElement ) => void;
 	onPointerMove: ( e: React.PointerEvent<HTMLCanvasElement>, el: HTMLCanvasElement ) => void;
 	onPointerUp:   () => void;
@@ -20,7 +21,8 @@ function renderPixels(
 	zoom: number,
 	showGrid: boolean,
 ) {
-	const ctx = canvas.getContext( '2d' )!;
+	const ctx = canvas.getContext( '2d' );
+	if ( ! ctx ) return;
 	const w   = size * zoom;
 
 	// Checkerboard background (shows through transparent pixels)
@@ -76,7 +78,7 @@ function renderPixels(
 }
 
 export default function Canvas( {
-	pixels, size, zoom, showGrid,
+	pixels, size, zoom, showGrid, tool,
 	onPointerDown, onPointerMove, onPointerUp, onHover,
 }: Props ) {
 	const canvasRef = useRef<HTMLCanvasElement>( null );
@@ -134,6 +136,8 @@ export default function Canvas( {
 	return (
 		<canvas
 			ref={ canvasRef }
+			role="img"
+			aria-label={ `Pixel art canvas, ${ size }x${ size } pixels, ${ tool } tool selected` }
 			width={ dim }
 			height={ dim }
 			style={ { display: 'block', cursor: 'crosshair', imageRendering: 'pixelated' } }

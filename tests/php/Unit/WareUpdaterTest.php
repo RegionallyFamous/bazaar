@@ -8,9 +8,8 @@ use Bazaar\RemoteRegistry;
 use Bazaar\WareLoader;
 use Bazaar\WareRegistry;
 use Bazaar\WareUpdater;
-use Brain\Monkey;
 use Brain\Monkey\Functions;
-use PHPUnit\Framework\TestCase;
+use Bazaar\Tests\WareTestCase;
 use WP_Error;
 
 /**
@@ -20,37 +19,25 @@ use WP_Error;
  * controlling what the underlying WordPress option-store returns rather
  * than mocking those classes directly.
  */
-final class WareUpdaterTest extends TestCase {
+final class WareUpdaterTest extends WareTestCase {
 
 	/** @var array<string, mixed> In-memory option store. */
 	private array $store = array();
 
 	protected function setUp(): void {
 		parent::setUp();
-		Monkey\setUp();
 		$this->store = array( 'bazaar_index' => '{}' );
 		$this->stub_wp_functions();
-	}
-
-	protected function tearDown(): void {
-		Monkey\tearDown();
-		parent::tearDown();
 	}
 
 	// ─── Helpers ─────────────────────────────────────────────────────────────
 
 	private function stub_wp_functions(): void {
-		Functions\when( 'sanitize_key' )->returnArg();
-		Functions\when( 'sanitize_text_field' )->returnArg();
-		Functions\when( 'sanitize_textarea_field' )->returnArg();
 		Functions\when( 'esc_url_raw' )->returnArg();
 		Functions\when( 'absint' )->alias( 'intval' );
 		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
-		Functions\when( 'esc_html__' )->returnArg();
 		Functions\when( 'gmdate' )->alias( 'gmdate' );
 		Functions\when( 'get_bloginfo' )->justReturn( '6.6' );
-		Functions\when( 'apply_filters' )->returnArg();
-		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof WP_Error );
 
 		$store = &$this->store;
 

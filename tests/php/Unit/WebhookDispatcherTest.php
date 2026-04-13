@@ -5,26 +5,18 @@ declare( strict_types=1 );
 namespace Bazaar\Tests\Unit;
 
 use Bazaar\WebhookDispatcher;
-use Brain\Monkey;
 use Brain\Monkey\Functions;
-use PHPUnit\Framework\TestCase;
+use Bazaar\Tests\WareTestCase;
 
 /**
  * Unit tests for WebhookDispatcher.
  */
-final class WebhookDispatcherTest extends TestCase {
+final class WebhookDispatcherTest extends WareTestCase {
 
 	protected function setUp(): void {
 		parent::setUp();
-		Monkey\setUp();
-		// Stub common WordPress helpers used in every test.
 		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
 		Functions\when( 'wp_generate_uuid4' )->justReturn( '00000000-0000-0000-0000-000000000001' );
-	}
-
-	protected function tearDown(): void {
-		Monkey\tearDown();
-		parent::tearDown();
 	}
 
 	// ─── Helpers ─────────────────────────────────────────────────────────────

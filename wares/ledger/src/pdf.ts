@@ -131,5 +131,7 @@ export function exportInvoicePDF( invoice: Invoice, client: Client ): void {
 		doc.text( noteLines, M, y );
 	}
 
-	doc.save( `${ invoice.number }.pdf` );
+	const safeNumber = invoice.number.replace( /[/\\?%*:|"<>\x00-\x1F]/g, '-' );
+	const filename   = safeNumber.endsWith( '.pdf' ) ? safeNumber : `${ safeNumber }.pdf`;
+	doc.save( filename );
 }

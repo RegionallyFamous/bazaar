@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { getBazaarContext, createStore, bzr }        from '@bazaar/client';
 import type { Tool, CanvasSize, ZoomLevel, SaveSlot } from '../types.ts';
 
@@ -16,6 +16,10 @@ export function makeBlankPixels( size: number ): Uint8Array {
 }
 
 function hexToRgba( hex: string ): [ number, number, number, number ] {
+	if ( ! /^#[0-9a-fA-F]{6}$/.test( hex ) ) {
+		console.warn( 'hexToRgba: invalid hex value', hex );
+		return [ 0, 0, 0, 255 ];
+	}
 	const c = hex.replace( '#', '' );
 	return [
 		parseInt( c.slice( 0, 2 ), 16 ),
@@ -256,12 +260,16 @@ export function usePixelEditor() {
 	}, [ size ] );
 
 	const loadSlot = useCallback( ( slot: SaveSlot ) => {
+		if ( slot.data.length !== slot.size * slot.size * 4 ) {
+			console.warn( 'Slot data length mismatch, skipping load' );
+			return;
+		}
 		const loaded = new Uint8Array( slot.data );
 		setSize( slot.size );
 		commit( loaded );
 	}, [ commit ] );
 
-	return {
+	return useMemo( () => ( {
 		size, pixels, tool, primaryColor, zoom, showGrid,
 		undoStack, redoStack, saveSlots, saveName,
 		setTool, setPrimaryColor: setPrimary, setZoom, setShowGrid, setSaveName,
@@ -269,5 +277,11 @@ export function usePixelEditor() {
 		canRedo: redoStack.length > 0,
 		undo, redo, changeSize, clearCanvas, exportPNG, saveSlot, loadSlot,
 		handlePointerDown, handlePointerMove, handlePointerUp,
-	};
+	} ), [
+		size, pixels, tool, primaryColor, zoom, showGrid,
+		undoStack, redoStack, saveSlots, saveName,
+		setTool, setPrimary, setZoom, setShowGrid, setSaveName,
+		undo, redo, changeSize, clearCanvas, exportPNG, saveSlot, loadSlot,
+		handlePointerDown, handlePointerMove, handlePointerUp,
+	] );
 }

@@ -5,34 +5,13 @@ declare( strict_types=1 );
 namespace Bazaar\Tests\Unit;
 
 use Bazaar\RemoteRegistry;
-use Brain\Monkey;
 use Brain\Monkey\Functions;
-use PHPUnit\Framework\TestCase;
+use Bazaar\Tests\WareTestCase;
 
 /**
  * Unit tests for RemoteRegistry.
  */
-final class RemoteRegistryTest extends TestCase {
-
-	protected function setUp(): void {
-		parent::setUp();
-		Monkey\setUp();
-	}
-
-	protected function tearDown(): void {
-		Monkey\tearDown();
-		parent::tearDown();
-	}
-
-	/**
-	 * Wire up the WP functions needed to construct a RemoteRegistry.
-	 */
-	private function make_registry(): RemoteRegistry {
-		Functions\when( 'get_option' )->justReturn( '' ); // No override URL.
-		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg( 2 ); // Passthrough — return the value, not the hook name.
-		return new RemoteRegistry();
-	}
+final class RemoteRegistryTest extends WareTestCase {
 
 	// ─── bust_cache ──────────────────────────────────────────────────────────
 
@@ -40,7 +19,6 @@ final class RemoteRegistryTest extends TestCase {
 		$deleted_key = null;
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'delete_transient' )->alias(
 			function ( string $key ) use ( &$deleted_key ): bool {
 				$deleted_key = $key;
@@ -59,13 +37,10 @@ final class RemoteRegistryTest extends TestCase {
 	public function test_check_update_returns_no_update_when_ware_not_in_registry(): void {
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg( 2 );
 		// Cache miss → make fetch() return WP_Error (e.g. network failure).
 		Functions\when( 'get_transient' )->justReturn( false );
 		$wp_error = new \WP_Error( 'http_request_failed', 'Network error' );
 		Functions\when( 'wp_remote_get' )->justReturn( $wp_error );
-		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
-		Functions\when( 'esc_html__' )->returnArg();
 		Functions\when( 'get_bloginfo' )->justReturn( '6.7' );
 
 		$registry = new RemoteRegistry();
@@ -93,9 +68,7 @@ final class RemoteRegistryTest extends TestCase {
 
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'get_transient' )->justReturn( $cached_index );
-		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
 
 		$registry = new RemoteRegistry();
 		$result   = $registry->check_update(
@@ -122,9 +95,7 @@ final class RemoteRegistryTest extends TestCase {
 
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'get_transient' )->justReturn( $cached_index );
-		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
 
 		$registry = new RemoteRegistry();
 		$result   = $registry->check_update(
@@ -150,11 +121,7 @@ final class RemoteRegistryTest extends TestCase {
 
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'get_transient' )->justReturn( $cached_index );
-		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
-		Functions\when( 'esc_html__' )->returnArg();
-		Functions\when( 'esc_html' )->returnArg();
 		Functions\when( 'sprintf' )->alias( 'sprintf' );
 
 		$registry = new RemoteRegistry();
@@ -175,11 +142,7 @@ final class RemoteRegistryTest extends TestCase {
 
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'get_transient' )->justReturn( $cached_index );
-		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
-		Functions\when( 'esc_html__' )->returnArg();
-		Functions\when( 'esc_html' )->returnArg();
 		Functions\when( 'sprintf' )->alias( 'sprintf' );
 
 		$registry = new RemoteRegistry();
@@ -209,9 +172,7 @@ final class RemoteRegistryTest extends TestCase {
 
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'get_transient' )->justReturn( $cached_index );
-		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
 
 		$registry = new RemoteRegistry();
 		$results  = $registry->search( 'crm' );
@@ -230,16 +191,10 @@ final class RemoteRegistryTest extends TestCase {
 	public function test_install_returns_no_download_url_when_missing(): void {
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg( 2 );
-		Functions\when( 'esc_html__' )->returnArg();
-		Functions\when( 'sanitize_key' )->returnArg();
-		Functions\when( 'sanitize_text_field' )->returnArg();
-		Functions\when( 'sanitize_textarea_field' )->returnArg();
 		Functions\when( 'absint' )->alias( 'intval' );
 		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
 		Functions\when( 'gmdate' )->alias( 'gmdate' );
 		Functions\when( 'get_bloginfo' )->justReturn( '6.6' );
-		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
 		Functions\when( 'get_transient' )->justReturn(
 			array(
 				array( 'slug' => 'crm', 'name' => 'CRM', 'version' => '1.0.0' ), // No download_url.
@@ -277,9 +232,7 @@ final class RemoteRegistryTest extends TestCase {
 
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'get_transient' )->justReturn( $cached_index );
-		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
 
 		$registry = new RemoteRegistry();
 		$results  = $registry->search( '' );
@@ -296,14 +249,10 @@ final class RemoteRegistryTest extends TestCase {
 	private function stub_for_live_fetch( string $body, int $code, bool $is_wp_error_response = false ): void {
 		Functions\when( 'get_option' )->justReturn( '' );
 		Functions\when( 'esc_url_raw' )->returnArg();
-		Functions\when( 'apply_filters' )->returnArg( 2 );
 		Functions\when( 'get_bloginfo' )->justReturn( '6.6' );
 		Functions\when( 'get_transient' )->justReturn( false ); // Cache miss.
 		Functions\when( 'set_transient' )->justReturn( true );
-		Functions\when( 'esc_html__' )->returnArg();
-		Functions\when( 'esc_html' )->returnArg();
 		Functions\when( 'sprintf' )->alias( 'sprintf' );
-		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof \WP_Error );
 
 		if ( $is_wp_error_response ) {
 			Functions\when( 'wp_remote_get' )->justReturn( new \WP_Error( 'http_request_failed', 'cURL error' ) );
@@ -359,8 +308,8 @@ final class RemoteRegistryTest extends TestCase {
 	}
 
 	public function test_fetch_caches_result_on_success(): void {
-		$cached_key  = null;
-		$valid_body  = (string) json_encode( array( 'wares' => array( array( 'slug' => 'crm', 'name' => 'CRM', 'version' => '1.0.0' ) ) ) );
+		$cached_key = null;
+		$valid_body = (string) json_encode( array( 'wares' => array( array( 'slug' => 'crm', 'name' => 'CRM', 'version' => '1.0.0' ) ) ) );
 
 		$this->stub_for_live_fetch( $valid_body, 200 );
 		Functions\when( 'set_transient' )->alias(

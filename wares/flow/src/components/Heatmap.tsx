@@ -8,6 +8,9 @@ interface Props {
 const WEEKS = 26;   // 6 months
 const DAYS  = 7;
 
+function localDateKey( date: Date ): string {
+	return `${ date.getFullYear() }-${ String( date.getMonth() + 1 ).padStart( 2, '0' ) }-${ String( date.getDate() ).padStart( 2, '0' ) }`;
+}
 
 export default function Heatmap( { history }: Props ) {
 	const cells = useMemo( () => {
@@ -29,7 +32,7 @@ export default function Heatmap( { history }: Props ) {
 			for ( let d = 0; d < DAYS; d++ ) {
 				const cell = new Date( start );
 				cell.setDate( start.getDate() + w * 7 + d );
-				const iso      = cell.toISOString().split( 'T' )[ 0 ]!;
+				const iso      = localDateKey( cell );
 				const sessions = map.get( iso ) ?? 0;
 				week.push( {
 					date:     cell.toLocaleDateString( 'en-US', { month: 'short', day: 'numeric' } ),
@@ -52,8 +55,8 @@ export default function Heatmap( { history }: Props ) {
 	}
 
 	const totalSessions = history.reduce( ( s, d ) => s + d.sessions, 0 );
-	const today         = new Date().toISOString().split( 'T' )[ 0 ]!;
-	const todaySessions = history.find( d => d.date === today )?.sessions ?? 0;
+	const todayKey      = localDateKey( new Date() );
+	const todaySessions = history.find( d => d.date === todayKey )?.sessions ?? 0;
 
 	return (
 		<div className="heatmap">
@@ -73,6 +76,9 @@ export default function Heatmap( { history }: Props ) {
 								className="heatmap__cell"
 								style={ { background: cellColor( cell.sessions ) } }
 								title={ `${ cell.date }: ${ cell.sessions } session${ cell.sessions !== 1 ? 's' : '' }` }
+								role="img"
+								aria-label={ `${ cell.sessions } session${ cell.sessions !== 1 ? 's' : '' } on ${ cell.date }` }
+								tabIndex={ 0 }
 							/>
 						) ) }
 					</div>

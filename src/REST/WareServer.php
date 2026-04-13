@@ -226,57 +226,15 @@ final class WareServer {
 		$slug      = sanitize_key( $request->get_param( 'slug' ) );
 		$file_path = $request->get_param( 'file' );
 
-		// Second-layer path traversal rejection (first is in validate_callback).
-		if ( str_contains( $file_path, '..' ) ) {
-			return new WP_Error(
-				'path_traversal',
-				esc_html__( 'Invalid file path.', 'bazaar' ),
-				array( 'status' => 400 )
-			);
-		}
-
-		$ware_dir  = realpath( BAZAAR_WARES_DIR . $slug );
-		$full_path = realpath( BAZAAR_WARES_DIR . $slug . '/' . $file_path );
-
-		// Confinement: both paths must resolve and the file must be inside its ware dir.
-		if ( false === $ware_dir || false === $full_path ) {
-			return new WP_Error(
-				'file_not_found',
-				esc_html__( 'File not found.', 'bazaar' ),
-				array( 'status' => 404 )
-			);
-		}
-
-		if ( ! str_starts_with( $full_path, $ware_dir . DIRECTORY_SEPARATOR ) ) {
-			return new WP_Error(
-				'path_traversal',
-				esc_html__( 'Invalid file path.', 'bazaar' ),
-				array( 'status' => 400 )
-			);
-		}
-
-		if ( ! is_file( $full_path ) ) {
-			return new WP_Error(
-				'file_not_found',
-				esc_html__( 'File not found.', 'bazaar' ),
-				array( 'status' => 404 )
-			);
-		}
-
-		// Safety cap: refuse to load oversized files into PHP memory.
-		$file_size = filesize( $full_path );
-		$max_bytes = (int) apply_filters( 'bazaar_max_serve_bytes', self::MAX_SERVE_BYTES );
-		if ( false === $file_size || $file_size > $max_bytes ) {
-			return new WP_Error(
-				'file_too_large',
-				esc_html__( 'File is too large to serve.', 'bazaar' ),
-				array( 'status' => 413 )
-			);
+		$full_path = $this->route_asset( $slug, $file_path );
+		if ( is_wp_error( $full_path ) ) {
+			return $full_path;
 		}
 
 		$ext       = strtolower( pathinfo( $full_path, PATHINFO_EXTENSION ) );
-		$mime_type = self::MIME_MAP[ $ext ] ?? 'application/octet-stream';
+		$mime_type = $this->content_type( $ext );
 		$is_html   = in_array( $ext, array( 'html', 'htm' ), true );
+		$file_size = (int) filesize( $full_path );
 		$mtime     = (int) filemtime( $full_path );
 
 		// Build cache validators.
@@ -339,31 +297,9 @@ final class WareServer {
 			$content   = $use_cache ? get_transient( $cache_key ) : false;
 
 			if ( false === $content ) {
-				// Read HTML into memory — we need to inject the <base href> that
-				// makes Vite's relative asset paths resolve to directly-served static
-				// files at wp-content/bazaar/{slug}/, bypassing PHP for all assets.
-				if ( ! function_exists( 'WP_Filesystem' ) ) {
-					require_once ABSPATH . 'wp-admin/includes/file.php';
-				}
-				WP_Filesystem();
-				global $wp_filesystem;
-				if ( empty( $wp_filesystem ) ) {
-					return new WP_Error(
-						'filesystem_error',
-						esc_html__( 'Could not initialize filesystem.', 'bazaar' ),
-						array( 'status' => 500 )
-					);
-				}
-				$content = $wp_filesystem->get_contents( $full_path );
-				if ( false === $content ) {
-					return new WP_Error( 'file_read_error', esc_html__( 'Could not read file.', 'bazaar' ), array( 'status' => 500 ) );
-				}
-				$content = $this->inject_base_href( $content, $slug );
-				$content = $this->inject_importmap( $content, $ware ?? array() );
-				$content = $this->inject_error_reporter( $content );
-				// Inject Vite HMR client only in dev mode.
-				if ( ! empty( $ware['dev_url'] ) ) {
-					$content = $this->inject_vite_client( $content, (string) $ware['dev_url'] );
+				$content = $this->read_and_transform_html( $full_path, $ware ?? array(), $slug );
+				if ( is_wp_error( $content ) ) {
+					return $content;
 				}
 				if ( $use_cache ) {
 					set_transient( $cache_key, $content, DAY_IN_SECONDS );
@@ -391,9 +327,8 @@ final class WareServer {
 			if ( false === $svg_raw ) {
 				return new WP_Error( 'file_read_error', esc_html__( 'Could not read SVG file.', 'bazaar' ), array( 'status' => 500 ) );
 			}
-			$svg_safe = $this->sanitize_svg( $svg_raw );
 			header( 'Content-Type: image/svg+xml' );
-			echo $svg_safe;
+			echo $this->sanitize_svg( $svg_raw );
 			exit;
 		}
 
@@ -401,6 +336,135 @@ final class WareServer {
 		header( 'Content-Length: ' . $file_size );
 		readfile( $full_path );
 		exit;
+	}
+
+	/**
+	 * Validate a slug + relative file path and return the absolute path on disk.
+	 *
+	 * Performs path-traversal rejection, realpath confinement, file-existence
+	 * and size-cap checks so serve_file() only deals with the happy path.
+	 *
+	 * @param string $slug      Sanitized ware slug.
+	 * @param string $file_path Relative path from the ware root (from request param).
+	 * @return string|WP_Error  Absolute resolved file path, or a WP_Error.
+	 */
+	private function route_asset( string $slug, string $file_path ): string|WP_Error {
+		// Second-layer path traversal rejection (first is in validate_callback).
+		if ( str_contains( $file_path, '..' ) ) {
+			return new WP_Error(
+				'path_traversal',
+				esc_html__( 'Invalid file path.', 'bazaar' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$ware_dir  = realpath( BAZAAR_WARES_DIR . $slug );
+		$full_path = realpath( BAZAAR_WARES_DIR . $slug . '/' . $file_path );
+
+		// Confinement: both paths must resolve and the file must be inside its ware dir.
+		if ( false === $ware_dir || false === $full_path ) {
+			return new WP_Error(
+				'file_not_found',
+				esc_html__( 'File not found.', 'bazaar' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		if ( ! str_starts_with( $full_path, $ware_dir . DIRECTORY_SEPARATOR ) ) {
+			return new WP_Error(
+				'path_traversal',
+				esc_html__( 'Invalid file path.', 'bazaar' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( ! is_file( $full_path ) ) {
+			return new WP_Error(
+				'file_not_found',
+				esc_html__( 'File not found.', 'bazaar' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		// Safety cap: refuse to load oversized files into PHP memory.
+		$file_size = filesize( $full_path );
+		$max_bytes = (int) apply_filters( 'bazaar_max_serve_bytes', self::MAX_SERVE_BYTES );
+		if ( false === $file_size || $file_size > $max_bytes ) {
+			return new WP_Error(
+				'file_too_large',
+				esc_html__( 'File is too large to serve.', 'bazaar' ),
+				array( 'status' => 413 )
+			);
+		}
+
+		return $full_path;
+	}
+
+	/**
+	 * Read an HTML file from disk and apply the full injection pipeline.
+	 *
+	 * Handles WP_Filesystem initialisation and delegates to the four
+	 * inject_* helpers so serve_file() stays focused on HTTP plumbing.
+	 *
+	 * @param string               $full_path Absolute path to the HTML file.
+	 * @param array<string, mixed> $ware      Full ware record from the registry.
+	 * @param string               $slug      Sanitized ware slug.
+	 * @return string|WP_Error Transformed HTML, or a WP_Error on read failure.
+	 */
+	private function read_and_transform_html( string $full_path, array $ware, string $slug ): string|WP_Error {
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+		WP_Filesystem();
+		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			return new WP_Error(
+				'filesystem_error',
+				esc_html__( 'Could not initialize filesystem.', 'bazaar' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		$html = $wp_filesystem->get_contents( $full_path );
+		if ( false === $html ) {
+			return new WP_Error( 'file_read_error', esc_html__( 'Could not read file.', 'bazaar' ), array( 'status' => 500 ) );
+		}
+
+		return $this->transform_html( $html, $ware, $slug );
+	}
+
+	/**
+	 * Apply the full HTML injection pipeline to a ware entry document.
+	 *
+	 * Injects (in order): base href, importmap, error reporter, and — in dev
+	 * mode only — the Vite HMR client.
+	 *
+	 * @param string               $html Raw HTML content.
+	 * @param array<string, mixed> $ware Full ware record from the registry.
+	 * @param string               $slug Sanitized ware slug.
+	 * @return string Transformed HTML.
+	 */
+	private function transform_html( string $html, array $ware, string $slug ): string {
+		$html = $this->inject_base_href( $html, $slug );
+		$html = $this->inject_importmap( $html, $ware );
+		$html = $this->inject_error_reporter( $html );
+		if ( ! empty( $ware['dev_url'] ) ) {
+			$html = $this->inject_vite_client( $html, (string) $ware['dev_url'] );
+		}
+		return $html;
+	}
+
+	/**
+	 * Return the MIME type for a given file extension.
+	 *
+	 * Falls back to application/octet-stream for unknown extensions so browsers
+	 * treat the response as a binary download rather than trying to render it.
+	 *
+	 * @param string $ext Lowercase file extension (without leading dot).
+	 * @return string MIME type string.
+	 */
+	private function content_type( string $ext ): string {
+		return self::MIME_MAP[ $ext ] ?? 'application/octet-stream';
 	}
 
 	/**

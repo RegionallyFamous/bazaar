@@ -15,6 +15,7 @@ function newClient(): Client {
 		address:   '',
 		notes:     '',
 		createdAt: new Date().toISOString(),
+		_isNew:    true,
 	};
 }
 
@@ -46,9 +47,9 @@ export default function ClientList( { clients, onSaveClient, onDeleteClient }: P
 
 			{ editing && (
 				<div className="card client-form">
-					<h3 className="card__heading">
-						{ editing.createdAt ? 'Edit Client' : 'New Client' }
-					</h3>
+			<h3 className="card__heading">
+				{ editing._isNew ? 'New Client' : 'Edit Client' }
+			</h3>
 					<div className="field-row">
 						<div className="field-group">
 							<label className="field-label">Name *</label>
@@ -108,13 +109,14 @@ export default function ClientList( { clients, onSaveClient, onDeleteClient }: P
 					<h3 className="card__heading">
 						{ clients.length } client{ clients.length !== 1 ? 's' : '' }
 					</h3>
-					<input
-						className="search-input search-input--sm"
-						type="search"
-						placeholder="Search…"
-						value={ search }
-						onChange={ e => setSearch( e.target.value ) }
-					/>
+				<input
+					className="search-input search-input--sm"
+					type="search"
+					placeholder="Search…"
+					aria-label="Search clients"
+					value={ search }
+					onChange={ e => setSearch( e.target.value ) }
+				/>
 				</div>
 				{ filtered.length > 0 ? (
 					<table className="inv-table">

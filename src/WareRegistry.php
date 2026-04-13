@@ -669,8 +669,9 @@ final class WareRegistry implements WareRegistryInterface {
 		$value = match ( $field ) {
 			'enabled', 'zero_trust'
 				=> (bool) $value,
-			'version', 'name', 'description', 'entry', 'dev_url',
-			'health_check', 'search_endpoint'
+			'dev_url', 'health_check'
+				=> esc_url_raw( (string) $value ),
+			'version', 'name', 'description', 'entry', 'search_endpoint'
 				=> sanitize_text_field( (string) $value ),
 			'icon'
 				=> sanitize_file_name( (string) $value ),
@@ -694,7 +695,9 @@ final class WareRegistry implements WareRegistryInterface {
 		$index = $this->load_index();
 		if ( isset( $index[ $slug ] ) ) {
 			$index[ $slug ] = $this->make_index_entry( $ware );
-			$this->save_index( $index );
+			if ( ! $this->save_index( $index ) ) {
+				return false;
+			}
 		}
 		return true;
 	}

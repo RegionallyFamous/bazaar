@@ -152,7 +152,7 @@ export default function App() {
         { /* Swatch grid */ }
         <div className="swatch__swatches">
           { active.swatches.map( s => (
-            <div key={ s.id } className="swatch__swatch-tile">
+            <div key={ s.id } className="swatch__swatch-tile" tabIndex={ 0 }>
               <button
                 className="swatch__swatch-color"
                 style={ { background: s.hex } }
@@ -179,10 +179,12 @@ export default function App() {
         </div>
 
         { /* Panel tabs */ }
-        <div className="swatch__panel-tabs">
+        <div className="swatch__panel-tabs" role="tablist" aria-label="Color tools">
           { ( [ 'harmony', 'contrast', 'export' ] as Panel[] ).map( t => (
             <button
               key={ t }
+              role="tab"
+              aria-selected={ panel === t }
               className={ `swatch__panel-tab${ panel === t ? ' swatch__panel-tab--active' : '' }` }
               onClick={ () => setPanel( t ) }
             >
@@ -191,7 +193,7 @@ export default function App() {
           ) ) }
         </div>
 
-        <div className="swatch__panel">
+        <div className="swatch__panel" role="tabpanel">
           { panel === 'harmony' && (
             <HarmonyPanel swatches={ active.swatches } onAddSwatch={ addSwatch } />
           ) }

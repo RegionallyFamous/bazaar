@@ -139,7 +139,7 @@ final class {$class_name} extends WP_REST_Controller {
 	}
 
 	public function get_items( WP_REST_Request \$request ): WP_REST_Response {
-		// TODO: implement business logic
+		// @todo Add your business logic here and replace this empty response.
 		return new WP_REST_Response( [], 200 );
 	}
 }
@@ -149,7 +149,7 @@ PHP;
 import { wpFetch } from '@bazaar/client';
 
 export interface {$class_name}Response {
-  // TODO: define response shape
+  // @todo Replace `items: unknown[]` with the actual response shape.
   items: unknown[];
 }
 

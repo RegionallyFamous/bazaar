@@ -754,6 +754,25 @@
 	background: rgba(var(--bsh-accent-rgb), 0.15) !important;
 }
 
+/* Context-sensitive buttons (reload, info) sit between the breadcrumb and the
+   static actions, separated by a subtle rule so the two groups feel distinct. */
+.bsh-toolbar__ctx-btns {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	margin-left: auto;
+	padding-right: 6px;
+	border-right: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.bsh-toolbar__ctx-btns:empty {
+	display: none;
+}
+
+.bsh-toolbar__btn--ctx {
+	color: rgba(255, 255, 255, 0.35);
+}
+
 /* ─── Toast notifications ────────────────────────────────────────────────── */
 
 .bsh-toasts {
@@ -1205,7 +1224,7 @@
 
 .bsh-inspector-open .bsh-content { margin-right: 340px; }
 
-/* ─── Back to WordPress link ─────────────────────────────────────────────── */
+/* ─── Exit Bazaar link ───────────────────────────────────────────────────── */
 
 .bsh-nav__wp-link {
 	display: flex;
@@ -1228,6 +1247,9 @@
 
 .bsh-nav__wp-icon {
 	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 1;
 	flex-shrink: 0;
 	opacity: 0.6;
 	transition: opacity var(--bsh-ease-fast);
@@ -1740,60 +1762,6 @@
 }
 
 /* ─── Window chrome (winbar) ─────────────────────────────────────────────── */
-
-.bsh-winbar {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 0 12px;
-	height: 30px;
-	min-height: 30px;
-	background: rgba(10, 15, 28, 0.78);
-	backdrop-filter: blur(14px) saturate(180%);
-	-webkit-backdrop-filter: blur(14px) saturate(180%);
-	border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-	flex-shrink: 0;
-}
-
-.bsh-winbar[hidden] { display: none; }
-
-.bsh-winbar__icon {
-	width: 14px;
-	height: 14px;
-	object-fit: contain;
-	border-radius: 3px;
-	flex-shrink: 0;
-}
-
-.bsh-winbar__name {
-	font-size: var(--bsh-text-sm);
-	font-weight: 500;
-	color: rgba(255, 255, 255, 0.68);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.bsh-winbar__spacer { flex: 1; }
-
-.bsh-winbar__btn {
-	background: none;
-	border: none;
-	cursor: pointer;
-	color: rgba(255, 255, 255, 0.3);
-	padding: 3px 5px;
-	border-radius: var(--bsh-radius-sm);
-	display: flex;
-	align-items: center;
-	line-height: 1;
-	font-size: 14px;
-	transition: background var(--bsh-ease-fast), color var(--bsh-ease-fast);
-}
-
-.bsh-winbar__btn:hover {
-	background: rgba(255, 255, 255, 0.09);
-	color: rgba(255, 255, 255, 0.8);
-}
 
 /* ─── Notification center ────────────────────────────────────────────────── */
 
@@ -3192,15 +3160,6 @@
 
 .bsh-gs__step-icon {
 	flex-shrink: 0;
-	color: var(--bsh-border);
-	fill: none;
-	stroke: currentcolor;
-	stroke-width: 1.5;
-	transition: color 0.2s;
-}
-
-.bsh-gs__step--done .bsh-gs__step-icon {
-	color: var(--bsh-accent);
 }
 
 .bsh-gs__step-label {

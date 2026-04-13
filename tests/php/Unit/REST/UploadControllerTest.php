@@ -7,9 +7,8 @@ namespace Bazaar\Tests\Unit\REST;
 use Bazaar\REST\UploadController;
 use Bazaar\WareLoaderInterface;
 use Bazaar\WareRegistryInterface;
-use Brain\Monkey;
 use Brain\Monkey\Functions;
-use PHPUnit\Framework\TestCase;
+use Bazaar\Tests\WareTestCase;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_Error;
@@ -23,7 +22,7 @@ use ZipArchive;
  *   - install succeeds, register fails → 500 and loader->delete() called
  *   - happy path → 201
  */
-final class UploadControllerTest extends TestCase {
+final class UploadControllerTest extends WareTestCase {
 
 	/** Temp directory for test .wp archives. */
 	private string $tmp_dir;
@@ -33,14 +32,12 @@ final class UploadControllerTest extends TestCase {
 
 	protected function setUp(): void {
 		parent::setUp();
-		Monkey\setUp();
 		$this->tmp_dir = sys_get_temp_dir() . '/bupload-test-' . uniqid( '', true );
 		mkdir( $this->tmp_dir, 0755, true );
 		$this->store = array( 'bazaar_index' => '{}' );
 	}
 
 	protected function tearDown(): void {
-		Monkey\tearDown();
 		if ( is_dir( $this->tmp_dir ) ) {
 			array_map( 'unlink', glob( $this->tmp_dir . '/**/*' ) ?: array() );
 			array_map( 'unlink', glob( $this->tmp_dir . '/*' ) ?: array() );
@@ -52,12 +49,7 @@ final class UploadControllerTest extends TestCase {
 	// ─── Helpers ─────────────────────────────────────────────────────────────
 
 	private function stub_common_wp_functions(): void {
-		Functions\when( 'sanitize_key' )->returnArg();
-		Functions\when( 'sanitize_text_field' )->returnArg();
-		Functions\when( 'sanitize_textarea_field' )->returnArg();
 		Functions\when( 'sanitize_file_name' )->returnArg();
-		Functions\when( 'esc_html__' )->returnArg();
-		Functions\when( 'esc_html' )->returnArg();
 		Functions\when( '__' )->returnArg();
 		Functions\when( 'esc_url_raw' )->returnArg();
 		Functions\when( 'absint' )->alias( 'intval' );
@@ -65,7 +57,6 @@ final class UploadControllerTest extends TestCase {
 		Functions\when( 'gmdate' )->alias( 'gmdate' );
 		Functions\when( 'sprintf' )->alias( 'sprintf' );
 		Functions\when( 'register_rest_route' )->justReturn( true );
-		Functions\when( 'is_wp_error' )->alias( fn( $v ) => $v instanceof WP_Error );
 	}
 
 	/** Create a minimal valid .wp archive and return its path. */

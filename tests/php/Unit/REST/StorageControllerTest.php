@@ -6,9 +6,8 @@ namespace Bazaar\Tests\Unit\REST;
 
 use Bazaar\REST\StorageController;
 use Bazaar\WareRegistry;
-use Brain\Monkey;
 use Brain\Monkey\Functions;
-use PHPUnit\Framework\TestCase;
+use Bazaar\Tests\WareTestCase;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_Error;
@@ -20,7 +19,7 @@ use WP_Error;
  * Uses a real WareRegistry backed by an in-memory option store and
  * per-test overrides for usermeta to simulate all error branches.
  */
-final class StorageControllerTest extends TestCase {
+final class StorageControllerTest extends WareTestCase {
 
 	/** @var array<string, mixed> In-memory option store. */
 	private array $store = array();
@@ -30,15 +29,9 @@ final class StorageControllerTest extends TestCase {
 
 	protected function setUp(): void {
 		parent::setUp();
-		Monkey\setUp();
 		$this->store    = array( 'bazaar_index' => '{}' );
 		$this->usermeta = array();
 		$this->stub_wp_functions();
-	}
-
-	protected function tearDown(): void {
-		Monkey\tearDown();
-		parent::tearDown();
 	}
 
 	// ─── Helpers ─────────────────────────────────────────────────────────────
@@ -47,10 +40,6 @@ final class StorageControllerTest extends TestCase {
 		$store    = &$this->store;
 		$usermeta = &$this->usermeta;
 
-		Functions\when( 'sanitize_key' )->returnArg();
-		Functions\when( 'sanitize_text_field' )->returnArg();
-		Functions\when( 'esc_html__' )->returnArg();
-		Functions\when( 'esc_html' )->returnArg();
 		Functions\when( '__' )->returnArg();
 		Functions\when( 'sprintf' )->alias( 'sprintf' );
 		Functions\when( 'absint' )->alias( 'intval' );

@@ -6,27 +6,24 @@ namespace Bazaar\Tests\Unit;
 
 use Bazaar\WareLoader;
 use Bazaar\WareRegistry;
-use Brain\Monkey;
 use Brain\Monkey\Functions;
-use PHPUnit\Framework\TestCase;
+use Bazaar\Tests\WareTestCase;
 use ZipArchive;
 
 /**
  * Unit tests for WareLoader validation pipeline.
  */
-final class WareLoaderTest extends TestCase {
+final class WareLoaderTest extends WareTestCase {
 
 	private string $tmp_dir;
 
 	protected function setUp(): void {
 		parent::setUp();
-		Monkey\setUp();
 		$this->tmp_dir = sys_get_temp_dir() . '/bazaar-test-' . uniqid( '', true );
 		mkdir( $this->tmp_dir, 0755, true );
 	}
 
 	protected function tearDown(): void {
-		Monkey\tearDown();
 		// Clean up temp files.
 		if ( is_dir( $this->tmp_dir ) ) {
 			array_map( 'unlink', glob( $this->tmp_dir . '/*' ) ?: array() );
@@ -72,7 +69,6 @@ final class WareLoaderTest extends TestCase {
 	 */
 	private function make_registry(): WareRegistry {
 		Functions\when( 'get_option' )->justReturn( '[]' );
-		Functions\when( 'sanitize_key' )->returnArg();
 		return new WareRegistry();
 	}
 
@@ -82,9 +78,6 @@ final class WareLoaderTest extends TestCase {
 
 	public function test_rejects_non_wp_extension(): void {
 		$loader = new WareLoader( $this->make_registry() );
-
-		Functions\when( 'esc_html__' )->returnArg();
-
 		$result = $loader->validate( $this->tmp_dir . '/fake.zip', 'fake.zip' );
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
@@ -94,8 +87,6 @@ final class WareLoaderTest extends TestCase {
 	public function test_rejects_php_file_inside_archive(): void {
 		$loader = new WareLoader( $this->make_registry() );
 
-		Functions\when( 'esc_html__' )->returnArg();
-		Functions\when( 'esc_html' )->returnArg();
 		Functions\when( 'get_option' )->justReturn( BAZAAR_MAX_UNCOMPRESSED_SIZE );
 		Functions\when( 'absint' )->alias( 'intval' );
 		Functions\when( 'number_format_i18n' )->alias( 'number_format' );
@@ -110,7 +101,6 @@ final class WareLoaderTest extends TestCase {
 	public function test_rejects_archive_without_manifest(): void {
 		$loader = new WareLoader( $this->make_registry() );
 
-		Functions\when( 'esc_html__' )->returnArg();
 		Functions\when( 'get_option' )->justReturn( BAZAAR_MAX_UNCOMPRESSED_SIZE );
 		Functions\when( 'absint' )->alias( 'intval' );
 		Functions\when( 'number_format_i18n' )->alias( 'number_format' );
@@ -130,12 +120,9 @@ final class WareLoaderTest extends TestCase {
 	public function test_valid_archive_returns_manifest_array(): void {
 		$loader = new WareLoader( $this->make_registry() );
 
-		Functions\when( 'esc_html__' )->returnArg();
-		Functions\when( 'esc_html' )->returnArg();
 		Functions\when( 'get_option' )->justReturn( BAZAAR_MAX_UNCOMPRESSED_SIZE );
 		Functions\when( 'absint' )->alias( 'intval' );
 		Functions\when( 'number_format_i18n' )->alias( 'number_format' );
-		Functions\when( 'sanitize_key' )->returnArg();
 
 		$path   = $this->make_wp_archive();
 		$result = $loader->validate( $path, 'test.wp' );
@@ -147,7 +134,6 @@ final class WareLoaderTest extends TestCase {
 	public function test_rejects_invalid_manifest_json(): void {
 		$loader = new WareLoader( $this->make_registry() );
 
-		Functions\when( 'esc_html__' )->returnArg();
 		Functions\when( 'get_option' )->justReturn( BAZAAR_MAX_UNCOMPRESSED_SIZE );
 		Functions\when( 'absint' )->alias( 'intval' );
 		Functions\when( 'number_format_i18n' )->alias( 'number_format' );
@@ -168,12 +154,9 @@ final class WareLoaderTest extends TestCase {
 	public function test_rejects_manifest_missing_required_fields(): void {
 		$loader = new WareLoader( $this->make_registry() );
 
-		Functions\when( 'esc_html__' )->returnArg();
-		Functions\when( 'esc_html' )->returnArg();
 		Functions\when( 'get_option' )->justReturn( BAZAAR_MAX_UNCOMPRESSED_SIZE );
 		Functions\when( 'absint' )->alias( 'intval' );
 		Functions\when( 'number_format_i18n' )->alias( 'number_format' );
-		Functions\when( 'sanitize_key' )->returnArg();
 
 		// Missing 'version' field.
 		$path   = $this->make_wp_archive( array( 'version' => '' ) );
@@ -184,9 +167,6 @@ final class WareLoaderTest extends TestCase {
 	}
 
 	public function test_rejects_slug_that_is_already_installed(): void {
-		Functions\when( 'sanitize_key' )->returnArg();
-		Functions\when( 'esc_html__' )->returnArg();
-		Functions\when( 'esc_html' )->returnArg();
 		Functions\when( 'absint' )->alias( 'intval' );
 		Functions\when( 'number_format_i18n' )->alias( 'number_format' );
 
@@ -215,9 +195,6 @@ final class WareLoaderTest extends TestCase {
 	// ─── install() ───────────────────────────────────────────────────────────
 
 	public function test_install_returns_wp_error_when_lock_already_held(): void {
-		Functions\when( 'sanitize_key' )->returnArg();
-		Functions\when( 'esc_html__' )->returnArg();
-		Functions\when( 'esc_html' )->returnArg();
 		Functions\when( 'absint' )->alias( 'intval' );
 		Functions\when( 'number_format_i18n' )->alias( 'number_format' );
 		Functions\when( 'get_option' )->justReturn( BAZAAR_MAX_UNCOMPRESSED_SIZE );
@@ -236,8 +213,6 @@ final class WareLoaderTest extends TestCase {
 	// ─── delete() ────────────────────────────────────────────────────────────
 
 	public function test_delete_returns_true_when_directory_does_not_exist(): void {
-		Functions\when( 'sanitize_key' )->returnArg();
-
 		$loader = new WareLoader( $this->make_registry() );
 		// 'nonexistent-ware' has no directory under BAZAAR_WARES_DIR in temp.
 		$result = $loader->delete( 'nonexistent-ware' );
@@ -246,9 +221,6 @@ final class WareLoaderTest extends TestCase {
 	}
 
 	public function test_delete_returns_true_after_removing_ware_directory(): void {
-		Functions\when( 'sanitize_key' )->returnArg();
-		Functions\when( 'esc_html__' )->returnArg();
-		Functions\when( 'esc_html' )->returnArg();
 		Functions\when( 'request_filesystem_credentials' )->justReturn( true );
 		Functions\when( 'WP_Filesystem' )->alias(
 			static function (): bool {
@@ -287,8 +259,6 @@ final class WareLoaderTest extends TestCase {
 	public function test_rejects_archive_with_path_traversal(): void {
 		$loader = new WareLoader( $this->make_registry() );
 
-		Functions\when( 'esc_html__' )->returnArg();
-		Functions\when( 'esc_html' )->returnArg();
 		Functions\when( 'get_option' )->justReturn( BAZAAR_MAX_UNCOMPRESSED_SIZE );
 		Functions\when( 'absint' )->alias( 'intval' );
 		Functions\when( 'number_format_i18n' )->alias( 'number_format' );

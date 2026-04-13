@@ -30,7 +30,7 @@ namespace Bazaar\REST;
 
 defined( 'ABSPATH' ) || exit;
 
-use Bazaar\WareRegistry;
+use Bazaar\WareRegistryInterface;
 use WP_REST_Server;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -42,18 +42,18 @@ use WP_Error;
 final class StorageController extends BazaarController {
 
 	/**
-	 * WareRegistry instance for slug validation.
+	 * Registry used to confirm a ware slug exists before operating on its storage.
 	 *
-	 * @var WareRegistry
+	 * @var WareRegistryInterface
 	 */
-	private WareRegistry $registry;
+	private WareRegistryInterface $registry;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param WareRegistry $registry Registry used to confirm a ware slug exists before operating on its storage.
+	 * @param WareRegistryInterface $registry Registry used to confirm a ware slug exists before operating on its storage.
 	 */
-	public function __construct( WareRegistry $registry ) {
+	public function __construct( WareRegistryInterface $registry ) {
 		$this->registry = $registry;
 	}
 
@@ -236,7 +236,12 @@ final class StorageController extends BazaarController {
 
 		$result = update_user_meta( $uid, $meta, $encoded );
 		if ( false === $result ) {
-			return new WP_Error( 'write_error', __( 'Could not save value to database.', 'bazaar' ), array( 'status' => 500 ) );
+			// update_user_meta() returns false both on genuine DB failure and when
+			// the stored value is already identical (no change). Only treat it as
+			// an error when the stored value does not match what we tried to save.
+			if ( get_user_meta( $uid, $meta, true ) !== $encoded ) {
+				return new WP_Error( 'write_error', __( 'Could not save value to database.', 'bazaar' ), array( 'status' => 500 ) );
+			}
 		}
 		return new WP_REST_Response(
 			array(

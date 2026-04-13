@@ -8,12 +8,18 @@ import './App.css';
 
 type Mode = 'view' | 'edit';
 
+const getAllDescendantIds = ( id: string, pages: Page[] ): string[] => {
+	const children = pages.filter( p => p.parentId === id ).map( p => p.id );
+	return [ ...children, ...children.flatMap( cid => getAllDescendantIds( cid, pages ) ) ];
+};
+
 export default function App() {
 	const [ pages,     setPages     ] = useState<Page[]>( [] );
 	const [ activeId,  setActiveId  ] = useState<string | null>( null );
 	const [ mode,      setMode      ] = useState<Mode>( 'view' );
 	const [ loading,   setLoading   ] = useState( true );
 	const [ loadError, setLoadError ] = useState( false );
+	const [ saveError, setSaveError ] = useState<string | null>( null );
 	const loadAttempt = useRef( 0 );
 
 	const loadData = useCallback( () => {
@@ -45,17 +51,28 @@ export default function App() {
 		setPages( updated );
 		setActiveId( page.id );
 		setMode( 'edit' );
-		await savePages( updated );
+		try {
+			await savePages( updated );
+			setSaveError( null );
+		} catch {
+			setSaveError( 'Failed to save. Changes may be lost.' );
+		}
 	}, [ pages ] );
 
 	const handleDelete = useCallback( async ( id: string ) => {
-		const updated = pages.filter( p => p.id !== id && p.parentId !== id );
+		const idsToRemove = new Set( [ id, ...getAllDescendantIds( id, pages ) ] );
+		const updated     = pages.filter( p => ! idsToRemove.has( p.id ) );
 		setPages( updated );
-		if ( activeId === id ) {
+		if ( activeId !== null && idsToRemove.has( activeId ) ) {
 			setActiveId( updated.length > 0 ? updated[ 0 ].id : null );
 			setMode( 'view' );
 		}
-		await savePages( updated );
+		try {
+			await savePages( updated );
+			setSaveError( null );
+		} catch {
+			setSaveError( 'Failed to save. Changes may be lost.' );
+		}
 	}, [ pages, activeId ] );
 
 	const handleSave = useCallback( async ( patch: Pick<Page, 'title' | 'content'> ) => {
@@ -67,15 +84,28 @@ export default function App() {
 		);
 		setPages( updated );
 		setMode( 'view' );
-		await savePages( updated );
+		try {
+			await savePages( updated );
+			setSaveError( null );
+		} catch {
+			setSaveError( 'Failed to save. Changes may be lost.' );
+		}
 	}, [ pages, activeId ] );
 
 	useEffect( () => {
 		const handler = ( e: KeyboardEvent ) => {
 			const meta = e.metaKey || e.ctrlKey;
-			if ( meta && e.key === 'n' ) { e.preventDefault(); void handleNew( null ); }
+			if ( meta && e.key === 'n' ) {
+				e.preventDefault();
+				if ( mode === 'edit' ) {
+					if ( ! window.confirm( 'You have unsaved changes. Create a new page anyway?' ) ) return;
+				}
+				void handleNew( null );
+			}
 			if ( meta && e.key === 'e' && activePage && mode === 'view' ) { e.preventDefault(); setMode( 'edit' ); }
-			if ( e.key === '/' && mode === 'view' && document.activeElement?.tagName !== 'INPUT' ) {
+			if ( e.key === '/' && mode === 'view' ) {
+				const tag = ( document.activeElement as HTMLElement )?.tagName;
+				if ( tag === 'INPUT' || tag === 'TEXTAREA' ) return;
 				e.preventDefault();
 				document.querySelector<HTMLInputElement>( '.tome-sidebar__search-input' )?.focus();
 			}
@@ -103,6 +133,12 @@ export default function App() {
 
 	return (
 		<div className="tome">
+			{ saveError && (
+				<div className="tome-save-error" role="alert">
+					{ saveError }
+				</div>
+			) }
+
 			<Sidebar
 				pages={ pages }
 				activeId={ activeId }

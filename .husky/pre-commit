@@ -26,28 +26,41 @@ if git diff --cached --name-only | grep -q '^packages/design/src/'; then
 fi
 
 # ---------------------------------------------------------------------------
-# 2. PHP lint (PHPCS + PHPStan)
+# 2. PHP auto-format (phpcbf) — fix style violations before checking them.
+#    phpcbf exits 1 when it modifies files; that is expected, not an error.
+# ---------------------------------------------------------------------------
+echo "▸ PHP auto-format (phpcbf)…"
+php composer.phar format || true
+
+# ---------------------------------------------------------------------------
+# 3. PHP lint (PHPCS + PHPStan)
 # ---------------------------------------------------------------------------
 echo "▸ PHP lint…"
 php composer.phar lint
 
 # ---------------------------------------------------------------------------
-# 3. JS / CSS lint
+# 4. JS / CSS lint
 # ---------------------------------------------------------------------------
 echo "▸ JS/CSS lint…"
 npm run lint --silent
 
 # ---------------------------------------------------------------------------
-# 4. JS build (catches TypeScript errors in the shell bundle)
+# 5. JS build (catches TypeScript errors in the shell bundle)
 # ---------------------------------------------------------------------------
 echo "▸ JS build…"
 npm run build --silent
 
 # ---------------------------------------------------------------------------
-# 5. PHP tests
+# 6. PHP tests
 # ---------------------------------------------------------------------------
 echo "▸ PHP tests…"
 php composer.phar test
+
+# ---------------------------------------------------------------------------
+# 7. JS tests
+# ---------------------------------------------------------------------------
+echo "▸ JS tests…"
+npm test --silent
 
 echo ""
 echo "✓ All checks passed — proceeding with commit."

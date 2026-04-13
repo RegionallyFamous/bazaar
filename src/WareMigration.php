@@ -88,7 +88,11 @@ final class WareMigration {
 				// Update the slug field stored inside the option value.
 				$ware['slug'] = $new;
 
-				update_option( 'bazaar_ware_' . $new, wp_json_encode( $ware ), false );
+				$ware_json = wp_json_encode( $ware );
+				if ( false === $ware_json ) {
+					continue;
+				}
+				update_option( 'bazaar_ware_' . $new, $ware_json, false );
 				delete_option( 'bazaar_ware_' . $old );
 			}
 
@@ -105,7 +109,10 @@ final class WareMigration {
 						}
 						$new_index[ $renamed ] = $entry;
 					}
-					update_option( 'bazaar_index', wp_json_encode( $new_index ), false );
+					$index_json = wp_json_encode( $new_index );
+					if ( false !== $index_json ) {
+						update_option( 'bazaar_index', $index_json, false );
+					}
 				}
 			}
 

@@ -5,26 +5,13 @@ declare( strict_types=1 );
 namespace Bazaar\Tests\Unit;
 
 use Bazaar\CspPolicy;
-use Brain\Monkey;
 use Brain\Monkey\Functions;
-use PHPUnit\Framework\TestCase;
+use Bazaar\Tests\WareTestCase;
 
 /**
  * Unit tests for CspPolicy.
  */
-final class CspPolicyTest extends TestCase {
-
-	protected function setUp(): void {
-		parent::setUp();
-		Monkey\setUp();
-		// CspPolicy::load() and save() call sanitize_key() on the slug parameter.
-		Functions\when( 'sanitize_key' )->returnArg();
-	}
-
-	protected function tearDown(): void {
-		Monkey\tearDown();
-		parent::tearDown();
-	}
+final class CspPolicyTest extends WareTestCase {
 
 	// ─── compile ────────────────────────────────────────────────────────────
 

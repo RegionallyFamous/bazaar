@@ -1,6 +1,17 @@
 import type { Palette } from './types.ts';
 
-const KEY = 'bazaar-swatch-v1';
+const KEY    = 'bazaar-swatch-v1';
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
+function isValidSwatch( v: unknown ): boolean {
+  if ( typeof v !== 'object' || v === null ) return false;
+  const s = v as Record<string, unknown>;
+  return (
+    typeof s.id   === 'string' && s.id.length > 0 &&
+    typeof s.hex  === 'string' && HEX_RE.test( s.hex ) &&
+    typeof s.name === 'string'
+  );
+}
 
 function isValidPalette( v: unknown ): v is Palette {
   return (
@@ -8,7 +19,8 @@ function isValidPalette( v: unknown ): v is Palette {
     v !== null &&
     typeof ( v as Palette ).id === 'string' &&
     typeof ( v as Palette ).name === 'string' &&
-    Array.isArray( ( v as Palette ).swatches )
+    Array.isArray( ( v as Palette ).swatches ) &&
+    ( v as Palette ).swatches.every( isValidSwatch )
   );
 }
 

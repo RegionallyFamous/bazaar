@@ -3,8 +3,15 @@ import type { Page }         from './types.ts';
 
 const store = createWaredStore( { slug: 'tome', lsPrefix: 'bzr-tome-' } );
 
+const isValidPage = ( p: unknown ): p is Page =>
+	typeof p === 'object' && p !== null &&
+	typeof ( p as Record<string, unknown> ).id === 'string' &&
+	typeof ( p as Record<string, unknown> ).title === 'string' &&
+	'parentId' in ( p as Record<string, unknown> );
+
 export async function loadPages(): Promise<Page[]> {
-	return ( await store.load<Page[]>( 'pages' ) ) ?? [];
+	const raw = ( await store.load<unknown[]>( 'pages' ) ) ?? [];
+	return raw.filter( isValidPage );
 }
 
 export async function savePages( pages: Page[] ): Promise<void> {

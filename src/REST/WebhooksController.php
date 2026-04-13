@@ -115,13 +115,13 @@ final class WebhooksController extends BazaarController {
 	 * List webhooks.
 	 *
 	 * @param WP_REST_Request $request Description.
-	 * @return WP_REST_Response
+	 * @return WP_REST_Response|WP_Error
 	 */
-	public function list_webhooks( WP_REST_Request $request ): WP_REST_Response {
+	public function list_webhooks( WP_REST_Request $request ): WP_REST_Response|\WP_Error {
 		$slug = sanitize_key( $request->get_param( 'slug' ) );
 		$all  = $this->load_all();
 		if ( is_wp_error( $all ) ) {
-			return new WP_REST_Response( array(), 200 );
+			return $all;
 		}
 		$filtered = array_values( array_filter( $all, fn( $w ) => isset( $w['slug'] ) && $w['slug'] === $slug ) );
 		return new WP_REST_Response( array_map( array( $this, 'without_secret' ), $filtered ), 200 );

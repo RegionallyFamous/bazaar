@@ -26,20 +26,16 @@ final class MyBlockTest extends WPTestCase {
 
 ### Brain Monkey (pure unit — no WP)
 
+Always extend `Bazaar\Tests\WareTestCase` instead of `PHPUnit\Framework\TestCase`. It
+calls `Monkey\setUp()` / `Monkey\tearDown()` for you and pre-stubs the functions that
+appear in almost every test:
+
 ```php
-use Brain\Monkey;
+use Bazaar\Tests\WareTestCase;
 use Brain\Monkey\Functions;
 
-final class FormatterTest extends TestCase {
-    protected function setUp(): void {
-        parent::setUp();
-        Monkey\setUp();
-    }
-
-    protected function tearDown(): void {
-        Monkey\tearDown();
-        parent::tearDown();
-    }
+final class FormatterTest extends WareTestCase {
+    // No setUp/tearDown boilerplate needed — WareTestCase handles it.
 
     public function test_formats_price(): void {
         Functions\when( 'get_option' )->justReturn( '$' );
@@ -48,16 +44,20 @@ final class FormatterTest extends TestCase {
 }
 ```
 
-#### Stub completeness — every WP function called in production code under test needs a stub
+Pre-stubbed by `WareTestCase` (do **not** re-stub these — Brain Monkey throws if you
+stub the same function twice in one test):
 
-Common functions to remember:
+| Function | Behaviour |
+|---|---|
+| `apply_filters` | `returnArg(2)` — returns `$value`, not the hook name |
+| `is_wp_error` | `instanceof \WP_Error` |
+| `esc_html`, `esc_attr`, `esc_url` | passthrough (`returnArg()`) |
+| `sanitize_key`, `sanitize_text_field`, `sanitize_textarea_field` | passthrough |
+| `esc_html__`, `esc_attr__` | passthrough (first arg) |
+
+Functions **not** pre-stubbed (add these yourself):
 ```php
-Functions\when( 'sanitize_key' )->returnArg();
-Functions\when( 'sanitize_text_field' )->returnArg();
-Functions\when( 'sanitize_textarea_field' )->returnArg();
 Functions\when( 'esc_url_raw' )->returnArg();
-Functions\when( 'esc_html' )->returnArg();
-Functions\when( 'esc_html__' )->returnArg();
 Functions\when( 'absint' )->alias( 'intval' );
 Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
 Functions\when( 'gmdate' )->alias( 'gmdate' );   // needs patchwork.json entry — see below
@@ -66,6 +66,20 @@ Functions\when( 'update_option' )->justReturn( true );
 ```
 
 Missing a stub causes `Error: Call to undefined function Bazaar\esc_url_raw()` — CI fails on all PHP versions.
+
+#### ⚠ apply_filters footgun
+
+`returnArg()` returns the **FIRST** argument — the hook name `$tag`, not the value.
+
+```php
+// ❌ Returns the hook name string, not $value.
+Functions\when( 'apply_filters' )->returnArg();
+
+// ✅ Returns the second argument ($value) — what production code expects.
+Functions\when( 'apply_filters' )->returnArg( 2 );
+```
+
+`WareTestCase` registers `returnArg(2)` automatically. Only override it when a specific test needs a particular filter return value.
 
 #### patchwork.json — native PHP functions need explicit opt-in
 

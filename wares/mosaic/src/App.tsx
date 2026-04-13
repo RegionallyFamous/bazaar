@@ -16,7 +16,9 @@ export default function App() {
 	// Keyboard shortcuts
 	useEffect( () => {
 		function onKey( e: KeyboardEvent ) {
-			if ( e.target instanceof HTMLInputElement ) return;
+			const tag      = ( document.activeElement as HTMLElement ).tagName;
+			const editable = ( document.activeElement as HTMLElement ).isContentEditable;
+			if ( tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || editable ) return;
 			if ( ( e.ctrlKey || e.metaKey ) && e.key === 'z' ) {
 				e.preventDefault();
 				editor.undo();
@@ -112,17 +114,18 @@ export default function App() {
 				onUndo={ editor.undo }
 				onRedo={ editor.redo }
 				onClear={ () => {
-					if ( window.confirm( 'Clear the canvas? This cannot be undone.' ) ) editor.clearCanvas();
+					if ( window.confirm( 'Clear the canvas? Your current art will be replaced with a blank canvas.' ) ) editor.clearCanvas();
 				} }
 			/>
 
 				<main className="editor__canvas-area">
 					<div className="editor__canvas-wrap">
-						<Canvas
-							pixels={ editor.pixels }
-							size={ editor.size }
-							zoom={ editor.zoom }
-							showGrid={ editor.showGrid }
+					<Canvas
+						pixels={ editor.pixels }
+						size={ editor.size }
+						zoom={ editor.zoom }
+						showGrid={ editor.showGrid }
+						tool={ editor.tool }
 							onPointerDown={ editor.handlePointerDown }
 							onPointerMove={ editor.handlePointerMove }
 							onPointerUp={ editor.handlePointerUp }

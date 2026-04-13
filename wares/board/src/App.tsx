@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { BoardState, Card, Column } from './types.ts';
 import { loadBoard, saveBoard, uid }     from './store.ts';
 import ColumnComponent                   from './components/Column.tsx';
@@ -84,7 +84,7 @@ export default function App() {
   }, [] );
 
   const handleClearDone = useCallback( ( colId: string ) => {
-    if ( ! confirm( 'Archive all cards in this column?' ) ) return;
+    if ( ! confirm( 'Clear all cards in this column? This cannot be undone.' ) ) return;
     update( draft => {
       const col = draft.columns.find( c => c.id === colId );
       if ( col ) col.cards = [];
@@ -102,6 +102,15 @@ export default function App() {
   }
 
   // ── Drag & drop ────────────────────────────────────────────────────────────
+
+  useEffect( () => {
+    function handleDragEnd() {
+      setDragCard( null );
+      setDragOverCol( null );
+    }
+    window.addEventListener( 'dragend', handleDragEnd );
+    return () => window.removeEventListener( 'dragend', handleDragEnd );
+  }, [] );
 
   function onDragStart( cardId: string, fromColId: string ) {
     setDragCard( { cardId, fromColId } );
@@ -130,8 +139,16 @@ export default function App() {
     } );
   }
 
-  // ── Determine "done" column (last column heuristic) ────────────────────────
-  const doneColId = board.columns.at( -1 )?.id ?? '';
+  // ── Determine "done" column by reserved id ─────────────────────────────────
+  const doneColId = board.columns.find( c => c.id === 'done' )?.id ?? '';
+
+  const handleColumnAddCard = useCallback( ( colId: string, title: string ) => {
+    if ( title ) {
+      handleAddCard( colId, title );
+    } else {
+      openNewCard( colId );
+    }
+  }, [ handleAddCard, openNewCard ] );
 
   return (
     <div className="board">
@@ -147,13 +164,7 @@ export default function App() {
           <ColumnComponent
             key={ col.id }
             column={ col as Column }
-            onAddCard={ ( colId, title ) => {
-              if ( title ) {
-                handleAddCard( colId, title );
-              } else {
-                openNewCard( colId );
-              }
-            } }
+            onAddCard={ handleColumnAddCard }
             onEditCard={ openEditCard }
             onRename={ handleRenameColumn }
             onDelete={ handleDeleteColumn }

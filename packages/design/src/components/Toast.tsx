@@ -2,6 +2,7 @@ import {
 	createContext,
 	useCallback,
 	useContext,
+	useEffect,
 	useReducer,
 	useRef,
 	type ReactNode,
@@ -50,7 +51,16 @@ export interface ToastProviderProps {
 
 export function ToastProvider( { children }: ToastProviderProps ) {
 	const [ toasts, dispatch ] = useReducer( reducer, [] );
-	const counter = useRef( 0 );
+	const counter  = useRef( 0 );
+	// Track all active timer IDs so they can be cleared on unmount.
+	const timersRef = useRef<ReturnType<typeof setTimeout>[]>( [] );
+
+	useEffect( () => {
+		return () => {
+			timersRef.current.forEach( clearTimeout );
+			timersRef.current = [];
+		};
+	}, [] );
 
 	const showToast = useCallback( (
 		message: string,
@@ -60,10 +70,12 @@ export function ToastProvider( { children }: ToastProviderProps ) {
 		const id = `toast-${ ++counter.current }`;
 		dispatch( { type: 'add', payload: { id, message, variant } } );
 
-		setTimeout( () => {
+		const leaveTimer = setTimeout( () => {
 			dispatch( { type: 'leave', id } );
-			setTimeout( () => dispatch( { type: 'remove', id } ), 200 );
+			const removeTimer = setTimeout( () => dispatch( { type: 'remove', id } ), 200 );
+			timersRef.current.push( removeTimer );
 		}, duration );
+		timersRef.current.push( leaveTimer );
 	}, [] );
 
 	return (

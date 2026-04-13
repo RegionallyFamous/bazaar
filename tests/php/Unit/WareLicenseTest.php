@@ -5,36 +5,26 @@ declare( strict_types=1 );
 namespace Bazaar\Tests\Unit;
 
 use Bazaar\WareLicense;
-use Brain\Monkey;
 use Brain\Monkey\Functions;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\TestCase;
+use Bazaar\Tests\WareTestCase;
 
 /**
  * Unit tests for WareLicense.
  */
-final class WareLicenseTest extends TestCase {
+final class WareLicenseTest extends WareTestCase {
 
 	/** @var array<string, mixed> */
 	private array $store = array();
 
 	protected function setUp(): void {
 		parent::setUp();
-		Monkey\setUp();
 		$this->store = array();
 		$this->stub_option_functions();
 	}
 
-	protected function tearDown(): void {
-		Monkey\tearDown();
-		parent::tearDown();
-	}
-
 	private function stub_option_functions(): void {
 		$store = &$this->store;
-
-		Functions\when( 'sanitize_key' )->returnArg();
-		Functions\when( 'sanitize_text_field' )->returnArg();
 
 		Functions\when( 'get_option' )->alias(
 			function ( string $opt, mixed $default = false ) use ( &$store ): mixed {

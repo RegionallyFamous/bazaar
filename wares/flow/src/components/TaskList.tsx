@@ -4,8 +4,8 @@ import { loadTasks, saveTasks }             from '../hooks/useStore.ts';
 import { bzr }                              from '@bazaar/client';
 
 export default function TaskList() {
-	const [ tasks, setTasks ]   = useState<Task[]>( [] );
-	const [ input, setInput ]   = useState( '' );
+	const [ tasks, setTasks ] = useState<Task[]>( [] );
+	const [ input, setInput ] = useState( '' );
 
 	useEffect( () => {
 		loadTasks()
@@ -15,37 +15,44 @@ export default function TaskList() {
 			} );
 	}, [] );
 
-	const persist = useCallback( async ( next: Task[] ) => {
-		setTasks( next );
-		await saveTasks( next );
-	}, [] );
-
-	const addTask = useCallback( async () => {
+	const addTask = useCallback( () => {
 		const text = input.trim();
 		if ( ! text ) return;
-		const next: Task[] = [
-			...tasks,
-			{ id: crypto.randomUUID(), text, done: false },
-		];
 		setInput( '' );
-		await persist( next );
-	}, [ input, tasks, persist ] );
+		setTasks( prev => {
+			const next: Task[] = [ ...prev, { id: crypto.randomUUID(), text, done: false } ];
+			saveTasks( next ).catch( () => bzr.toast( 'Could not save task.', 'error' ) );
+			return next;
+		} );
+	}, [ input ] );
 
-	const toggleTask = useCallback( async ( id: string ) => {
-		await persist( tasks.map( t => t.id === id ? { ...t, done: ! t.done } : t ) );
-	}, [ tasks, persist ] );
+	const toggleTask = useCallback( ( id: string ) => {
+		setTasks( prev => {
+			const next = prev.map( t => t.id === id ? { ...t, done: ! t.done } : t );
+			saveTasks( next ).catch( () => bzr.toast( 'Could not save tasks.', 'error' ) );
+			return next;
+		} );
+	}, [] );
 
-	const removeTask = useCallback( async ( id: string ) => {
-		await persist( tasks.filter( t => t.id !== id ) );
-	}, [ tasks, persist ] );
+	const removeTask = useCallback( ( id: string ) => {
+		setTasks( prev => {
+			const next = prev.filter( t => t.id !== id );
+			saveTasks( next ).catch( () => bzr.toast( 'Could not save tasks.', 'error' ) );
+			return next;
+		} );
+	}, [] );
 
 	const done  = tasks.filter( t => t.done ).length;
 	const total = tasks.length;
 
-	const clearDone = useCallback( async () => {
+	const clearDone = useCallback( () => {
 		if ( ! window.confirm( `Remove ${ done } completed task${ done !== 1 ? 's' : '' }?` ) ) return;
-		await persist( tasks.filter( t => ! t.done ) );
-	}, [ tasks, done, persist ] );
+		setTasks( prev => {
+			const next = prev.filter( t => ! t.done );
+			saveTasks( next ).catch( () => bzr.toast( 'Could not save tasks.', 'error' ) );
+			return next;
+		} );
+	}, [ done ] );
 
 	return (
 		<div className="tasklist">

@@ -12,11 +12,18 @@ const LEVEL_CLASS: Record<string, string> = {
 };
 
 export default function ContrastChecker( { swatches }: Props ) {
-  const [ fg, setFg ] = useState( 0 );
-  const [ bg, setBg ] = useState( 1 );
+  const [ fg, setFg ] = useState<string>( () => swatches[ 0 ]?.id ?? '' );
+  const [ bg, setBg ] = useState<string>( () => swatches[ 1 ]?.id ?? '' );
 
-  const fgHex = swatches[ fg ]?.hex ?? '#000000';
-  const bgHex = swatches[ bg ]?.hex ?? '#ffffff';
+  // Fall back gracefully when the stored ID no longer exists in the palette
+  const fgSwatch = swatches.find( s => s.id === fg ) ?? swatches[ 0 ];
+  const bgSwatch = swatches.find( s => s.id === bg ) ?? swatches[ 1 ] ?? swatches[ 0 ];
+
+  const resolvedFg = fgSwatch?.id ?? '';
+  const resolvedBg = bgSwatch?.id ?? '';
+
+  const fgHex = fgSwatch?.hex ?? '#000000';
+  const bgHex = bgSwatch?.hex ?? '#ffffff';
   const ratio = contrastRatio( fgHex, bgHex );
   const level = wcagLevel( ratio );
 
@@ -29,18 +36,28 @@ export default function ContrastChecker( { swatches }: Props ) {
 
       <div className="contrast__controls">
         <div className="contrast__field">
-          <label className="contrast__label">Foreground</label>
-          <select className="contrast__select" value={ fg } onChange={ e => setFg( Number( e.target.value ) ) }>
-            { swatches.map( ( s, i ) => (
-              <option key={ s.id } value={ i }>{ s.name || s.hex }</option>
+          <label className="contrast__label" htmlFor="contrast-fg">Foreground</label>
+          <select
+            id="contrast-fg"
+            className="contrast__select"
+            value={ resolvedFg }
+            onChange={ e => setFg( e.target.value ) }
+          >
+            { swatches.map( s => (
+              <option key={ s.id } value={ s.id }>{ s.name || s.hex }</option>
             ) ) }
           </select>
         </div>
         <div className="contrast__field">
-          <label className="contrast__label">Background</label>
-          <select className="contrast__select" value={ bg } onChange={ e => setBg( Number( e.target.value ) ) }>
-            { swatches.map( ( s, i ) => (
-              <option key={ s.id } value={ i }>{ s.name || s.hex }</option>
+          <label className="contrast__label" htmlFor="contrast-bg">Background</label>
+          <select
+            id="contrast-bg"
+            className="contrast__select"
+            value={ resolvedBg }
+            onChange={ e => setBg( e.target.value ) }
+          >
+            { swatches.map( s => (
+              <option key={ s.id } value={ s.id }>{ s.name || s.hex }</option>
             ) ) }
           </select>
         </div>

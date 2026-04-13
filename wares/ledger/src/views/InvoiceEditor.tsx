@@ -1,21 +1,27 @@
-import { useState, useCallback }  from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { Invoice, Client, LineItem } from '../types.ts';
 import { invoiceSubtotal, invoiceTax, invoiceDiscount, invoiceTotal, fmtCurrency } from '../types.ts';
 import { exportInvoicePDF }       from '../pdf.ts';
 
 interface Props {
 	invoice:  Invoice;
+	isNew:    boolean;
 	clients:  Client[];
 	onSave:   ( inv: Invoice ) => void;
 	onCancel: () => void;
 }
 
 function blankLine(): LineItem {
-	return { description: '', qty: 1, rate: 0 };
+	return { id: crypto.randomUUID(), description: '', qty: 1, rate: 0 };
 }
 
-export default function InvoiceEditor( { invoice, clients, onSave, onCancel }: Props ) {
-	const [ form, setForm ] = useState<Invoice>( invoice );
+export default function InvoiceEditor( { invoice, isNew, clients, onSave, onCancel }: Props ) {
+	const [ form, setForm ] = useState<Invoice>( () => ( {
+		...invoice,
+		lineItems: invoice.lineItems.map( li => ( li.id ? li : { ...li, id: crypto.randomUUID() } ) ),
+	} ) );
+	const [ clientError, setClientError ] = useState<string | null>( null );
+	const clientSelectRef = useRef<HTMLSelectElement>( null );
 
 	const setField = useCallback( <K extends keyof Invoice>( key: K, val: Invoice[K] ) => {
 		setForm( f => ( { ...f, [ key ]: val } ) );
@@ -39,7 +45,12 @@ export default function InvoiceEditor( { invoice, clients, onSave, onCancel }: P
 
 	const handleExport = useCallback( () => {
 		const client = clients.find( c => c.id === form.clientId );
-		if ( ! client ) { alert( 'Select a client first.' ); return; }
+		if ( ! client ) {
+			setClientError( 'Please select a client before exporting.' );
+			clientSelectRef.current?.focus();
+			return;
+		}
+		setClientError( null );
 		exportInvoicePDF( form, client );
 	}, [ form, clients ] );
 
@@ -47,7 +58,6 @@ export default function InvoiceEditor( { invoice, clients, onSave, onCancel }: P
 	const tax       = invoiceTax( form );
 	const discount  = invoiceDiscount( form );
 	const total     = invoiceTotal( form );
-	const isNew     = ! invoice.createdAt;
 
 	return (
 		<div className="invoice-editor">
@@ -107,19 +117,23 @@ export default function InvoiceEditor( { invoice, clients, onSave, onCancel }: P
 								/>
 							</div>
 						</div>
-						<div className="field-group">
-							<label className="field-label">Client</label>
-							<select
-								className="field-input"
-								value={ form.clientId }
-								onChange={ e => setField( 'clientId', e.target.value ) }
-							>
-								<option value="">— Select client —</option>
-								{ clients.map( c => (
-									<option key={ c.id } value={ c.id }>{ c.name }</option>
-								) ) }
-							</select>
-						</div>
+					<div className="field-group">
+						<label className="field-label">Client</label>
+						<select
+							ref={ clientSelectRef }
+							className="field-input"
+							value={ form.clientId }
+							onChange={ e => { setField( 'clientId', e.target.value ); setClientError( null ); } }
+						>
+							<option value="">— Select client —</option>
+							{ clients.map( c => (
+								<option key={ c.id } value={ c.id }>{ c.name }</option>
+							) ) }
+						</select>
+						{ clientError && (
+							<p className="field-error" role="alert">{ clientError }</p>
+						) }
+					</div>
 						<div className="field-group">
 							<label className="field-label">Status</label>
 							<select
@@ -167,8 +181,8 @@ export default function InvoiceEditor( { invoice, clients, onSave, onCancel }: P
 								</tr>
 							</thead>
 							<tbody>
-								{ form.lineItems.map( ( line, i ) => (
-									<tr key={ i }>
+						{ form.lineItems.map( ( line, i ) => (
+								<tr key={ line.id ?? `line-${ i }` }>
 										<td>
 											<input
 												className="field-input field-input--inline"

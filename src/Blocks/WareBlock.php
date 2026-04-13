@@ -106,8 +106,9 @@ final class WareBlock {
 		if ( '' === $token ) {
 			return '';
 		}
-		$src = rest_url( "bazaar/v1/serve/{$slug}/index.html" );
-		$src = add_query_arg( '_bazaar_block_token', rawurlencode( $token ), $src );
+		$entry = rawurlencode( $ware['entry'] ?? 'index.html' );
+		$src   = rest_url( "bazaar/v1/serve/{$slug}/{$entry}" );
+		$src   = add_query_arg( '_bazaar_block_token', rawurlencode( $token ), $src );
 
 		$unique_id = 'bwb-' . wp_unique_id();
 
@@ -174,7 +175,8 @@ final class WareBlock {
 	 * @return string|false Verified ware slug on success, false on failure.
 	 */
 	public static function verify_token( string $raw_token ): string|false {
-		$json = base64_decode( strtr( $raw_token, '-_', '+/' ) . str_repeat( '=', 4 ) );
+		$b64  = strtr( $raw_token, '-_', '+/' );
+		$json = base64_decode( $b64 . str_repeat( '=', ( 4 - strlen( $b64 ) % 4 ) % 4 ) );
 		if ( false === $json ) {
 			return false;
 		}

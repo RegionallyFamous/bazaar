@@ -8,7 +8,8 @@ interface Props {
 }
 
 export default function Card( { card, onEdit, isDragging }: Props ) {
-  const overdue = card.dueDate && new Date( card.dueDate ) < new Date();
+  // Parse as local midnight so the overdue check is consistent with the display date.
+  const overdue = card.dueDate && new Date( card.dueDate + 'T00:00:00' ) < new Date();
   const hasLabel = card.label !== 'none';
 
   const formatted = card.dueDate

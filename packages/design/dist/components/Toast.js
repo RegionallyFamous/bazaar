@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { createContext, useCallback, useContext, useReducer, useRef, } from 'react';
+import { createContext, useCallback, useContext, useEffect, useReducer, useRef, } from 'react';
 function reducer(state, action) {
     switch (action.type) {
         case 'add':
@@ -16,13 +16,23 @@ const ToastContext = createContext(() => { });
 export function ToastProvider({ children }) {
     const [toasts, dispatch] = useReducer(reducer, []);
     const counter = useRef(0);
+    // Track all active timer IDs so they can be cleared on unmount.
+    const timersRef = useRef([]);
+    useEffect(() => {
+        return () => {
+            timersRef.current.forEach(clearTimeout);
+            timersRef.current = [];
+        };
+    }, []);
     const showToast = useCallback((message, variant = 'default', duration = 3500) => {
         const id = `toast-${++counter.current}`;
         dispatch({ type: 'add', payload: { id, message, variant } });
-        setTimeout(() => {
+        const leaveTimer = setTimeout(() => {
             dispatch({ type: 'leave', id });
-            setTimeout(() => dispatch({ type: 'remove', id }), 200);
+            const removeTimer = setTimeout(() => dispatch({ type: 'remove', id }), 200);
+            timersRef.current.push(removeTimer);
         }, duration);
+        timersRef.current.push(leaveTimer);
     }, []);
     return (_jsxs(ToastContext.Provider, { value: showToast, children: [children, _jsx("div", { className: "bw-toasts", "aria-live": "polite", "aria-atomic": "true", children: toasts.map(toast => (_jsx("div", { className: [
                         'bw-toast',
