@@ -388,13 +388,16 @@ jobs:
         run: npx wp-env stop
 
   # ---------------------------------------------------------------------------
-  # Pin blueprint.json to the released version tag so the Playground demo
-  # always loads the matching zip (github.com/latest redirects drop CORS).
+  # Deploy Playground assets to GitHub Pages (gh-pages branch) on every tag.
+  # GitHub Pages serves with Access-Control-Allow-Origin: * so Playground's
+  # browser-based fetch can download the zip and .wp files without CORS errors.
+  # blueprint.json points to stable versionless URLs on this Pages site so it
+  # never needs to be updated for version bumps.
   # ---------------------------------------------------------------------------
-  update-blueprint:
-    name: Pin blueprint.json version
+  deploy-playground:
+    name: Deploy Playground assets
     runs-on: ubuntu-latest
-    needs: [ release-zip ]
+    needs: [ release-zip, build-wares ]
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
@@ -402,30 +405,39 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: main
+          ref: gh-pages
           token: ${{ github.token }}
 
-      - name: Update blueprint.json to released version
-        run: |
-          VERSION="${GITHUB_REF_NAME}"
-          # Pin plugin zip URL
-          sed -i "s|releases/download/v[^/]*/bazaar\.zip|releases/download/${VERSION}/bazaar.zip|g" blueprint.json
-          # Pin each ware URL (board.wp, flow.wp, …)
-          for WARE in board flow ledger mosaic sine swatch tome; do
-            sed -i "s|releases/download/v[^/]*/${WARE}\.wp|releases/download/${VERSION}/${WARE}.wp|g" blueprint.json
-          done
-          echo "Pinned blueprint.json to ${VERSION}"
+      - name: Download plugin zip artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bazaar-zip
+          path: /tmp/artifacts/
 
-      - name: Commit and push
+      - name: Download ware artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: wares
+          path: /tmp/artifacts/
+
+      - name: Copy assets into gh-pages root
+        run: |
+          # The versioned zip (bazaar-1.x.y.zip) becomes the stable bazaar.zip
+          find /tmp/artifacts -name 'bazaar-*.zip' | head -1 | xargs -I{} cp {} ./bazaar.zip
+          for WARE in board flow ledger mosaic sine swatch tome; do
+            cp /tmp/artifacts/${WARE}.wp ./${WARE}.wp
+          done
+
+      - name: Commit and push to gh-pages
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add blueprint.json
+          git add bazaar.zip board.wp flow.wp ledger.wp mosaic.wp sine.wp swatch.wp tome.wp
           if git diff --cached --quiet; then
-            echo "blueprint.json already up to date."
+            echo "Assets already up to date."
           else
-            git commit -m "chore: pin blueprint.json to ${GITHUB_REF_NAME} [skip ci]"
-            git push origin main
+            git commit -m "deploy: ${GITHUB_REF_NAME} playground assets [skip ci]"
+            git push origin gh-pages
           fi
 
   # ---------------------------------------------------------------------------

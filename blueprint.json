@@ -11,7 +11,7 @@
       "step": "installPlugin",
       "pluginData": {
         "resource": "url",
-        "url": "https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/bazaar.zip"
+        "url": "https://regionallyfamous.github.io/bazaar/bazaar.zip"
       }
     },
     {
@@ -20,31 +20,31 @@
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/board.wp --force"
+      "command": "wp bazaar install https://regionallyfamous.github.io/bazaar/board.wp --force"
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/flow.wp --force"
+      "command": "wp bazaar install https://regionallyfamous.github.io/bazaar/flow.wp --force"
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/ledger.wp --force"
+      "command": "wp bazaar install https://regionallyfamous.github.io/bazaar/ledger.wp --force"
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/mosaic.wp --force"
+      "command": "wp bazaar install https://regionallyfamous.github.io/bazaar/mosaic.wp --force"
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/sine.wp --force"
+      "command": "wp bazaar install https://regionallyfamous.github.io/bazaar/sine.wp --force"
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/swatch.wp --force"
+      "command": "wp bazaar install https://regionallyfamous.github.io/bazaar/swatch.wp --force"
     },
     {
       "step": "wp-cli",
-      "command": "wp bazaar install https://github.com/RegionallyFamous/bazaar/releases/download/v1.3.1/tome.wp --force"
+      "command": "wp bazaar install https://regionallyfamous.github.io/bazaar/tome.wp --force"
     }
   ]
 }
