@@ -12,6 +12,40 @@
   background: var(--bw-bg);
 }
 
+.swatch--empty {
+  align-items: center;
+  justify-content: center;
+}
+
+.swatch__empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  padding: 40px;
+}
+
+.swatch__empty-msg {
+  color: var(--bw-text-2);
+  font-size: 0.9375rem;
+  margin: 0;
+}
+
+.swatch__empty-cta {
+  background: var(--bw-accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.swatch__empty-cta:hover { opacity: 0.88; }
+
 /* ── Sidebar ─────────────────────────────────────────────────────────────────── */
 .swatch__sidebar {
   width: 200px;

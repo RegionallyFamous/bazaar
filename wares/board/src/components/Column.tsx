@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { __ }       from '@wordpress/i18n';
 import type { Column as ColumnType, Card as CardType } from '../types.ts';
 import CardComponent from './Card.tsx';
 
@@ -16,11 +17,15 @@ interface Props {
   onDragStart:  ( cardId: string, fromColId: string ) => void;
   onDragOver:   ( e: React.DragEvent, colId: string ) => void;
   onDrop:       ( e: React.DragEvent, colId: string ) => void;
+  // keyboard dnd
+  liftedCard:    { cardId: string; colId: string } | null;
+  onCardKeyDnd:  ( e: React.KeyboardEvent, cardId: string, colId: string ) => void;
 }
 
 export default function Column( {
   column, onAddCard, onEditCard, onRename, onDelete, onClearDone, isDone,
   dragCardId, dragOverCol, onDragStart, onDragOver, onDrop,
+  liftedCard, onCardKeyDnd,
 }: Props ) {
   const [ adding, setAdding ]   = useState( false );
   const [ newTitle, setNewTitle ] = useState( '' );
@@ -106,9 +111,14 @@ export default function Column( {
               card={ card }
               onEdit={ onEditCard }
               isDragging={ dragCardId === card.id }
+              isLifted={ liftedCard?.cardId === card.id }
+              onKeyDnd={ ( e ) => onCardKeyDnd( e, card.id, column.id ) }
             />
           </div>
         ) ) }
+        { column.cards.length === 0 && (
+          <p className="column__empty-hint">{ __( 'Drop cards here', 'bazaar' ) }</p>
+        ) }
       </div>
 
       { adding ? (
@@ -117,24 +127,24 @@ export default function Column( {
             className="column__add-input"
             value={ newTitle }
             onChange={ e => setNewTitle( e.target.value ) }
-            placeholder="Card title…"
+            placeholder={ __( 'Card title…', 'bazaar' ) }
             autoFocus
             onBlur={ () => { if ( ! newTitle.trim() ) setAdding( false ); } }
           />
           <div className="column__add-actions">
             <button type="submit" className="column__add-btn column__add-btn--primary"
               disabled={ ! newTitle.trim() }>
-              Add
+              { __( 'Add', 'bazaar' ) }
             </button>
             <button type="button" className="column__add-btn"
               onClick={ () => { setAdding( false ); setNewTitle( '' ); } }>
-              Cancel
+              { __( 'Cancel', 'bazaar' ) }
             </button>
           </div>
         </form>
       ) : (
         <button className="column__new-btn" onClick={ () => setAdding( true ) }>
-          + Add card
+          { __( '+ Add card', 'bazaar' ) }
         </button>
       ) }
     </div>

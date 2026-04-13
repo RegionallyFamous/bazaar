@@ -16,10 +16,6 @@ export function toggleFullscreen( root ) {
 	document.body.classList.toggle( 'bsh-fullscreen-active', _fsActive );
 }
 
-export function isFullscreen() {
-	return _fsActive;
-}
-
 // ─── Pop-out ────────────────────────────────────────────────────────────────
 
 /**

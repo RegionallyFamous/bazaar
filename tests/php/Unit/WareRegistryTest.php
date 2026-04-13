@@ -468,6 +468,86 @@ final class WareRegistryTest extends WareTestCase {
 		$this->assertSame( array(), $index, 'Corrupt bazaar_index must yield an empty index, not a PHP error.' );
 	}
 
+	// -------------------------------------------------------------------------
+	// update_field — URL sanitizer + save_index failure propagation
+	// -------------------------------------------------------------------------
+
+	/**
+	 * update_field('dev_url', …) must sanitize the value with esc_url_raw,
+	 * not sanitize_text_field.  We verify this by recording which sanitizer
+	 * was invoked for the dev_url field.
+	 */
+	public function test_update_field_sanitizes_dev_url_with_esc_url_raw(): void {
+		$this->seed_ware( 'crm' );
+
+		$sanitized_via = null;
+		$store         = &$this->store;
+
+		// Track esc_url_raw calls.
+		Functions\when( 'esc_url_raw' )->alias(
+			function ( string $url ) use ( &$sanitized_via ): string {
+				$sanitized_via = 'esc_url_raw';
+				return $url;
+			}
+		);
+		// Track sanitize_text_field calls so we can distinguish them.
+		Functions\when( 'sanitize_text_field' )->alias(
+			function ( string $val ) use ( &$sanitized_via ): string {
+				// Only overwrite if esc_url_raw hasn't been called yet for dev_url.
+				if ( null === $sanitized_via ) {
+					$sanitized_via = 'sanitize_text_field';
+				}
+				return $val;
+			}
+		);
+
+		$registry = new WareRegistry();
+		$result   = $registry->update_field( 'crm', 'dev_url', 'http://localhost:5173' );
+
+		$this->assertTrue( $result );
+		$this->assertSame(
+			'esc_url_raw',
+			$sanitized_via,
+			'update_field must use esc_url_raw (not sanitize_text_field) for dev_url.'
+		);
+	}
+
+	/**
+	 * When save_index() fails (update_option returns false AND the stored value
+	 * doesn't match what we tried to save), update_field must propagate false.
+	 */
+	public function test_update_field_returns_false_when_save_index_fails(): void {
+		$this->seed_ware( 'crm' );
+
+		Functions\when( 'esc_url_raw' )->returnArg();
+		Functions\when( 'sanitize_file_name' )->returnArg();
+
+		$store = &$this->store;
+
+		// update_option always returns false AND stores a different value,
+		// so the "no-change fallback" in save_index also fails.
+		Functions\when( 'update_option' )->alias(
+			function ( string $opt, mixed $val ) use ( &$store ): bool {
+				// Store the new value so the ware write succeeds.
+				if ( str_starts_with( $opt, 'bazaar_ware_' ) ) {
+					$store[ $opt ] = $val;
+					return true;
+				}
+				// The index write always fails AND leaves a stale different value.
+				$store[ $opt ] = 'stale';
+				return false;
+			}
+		);
+
+		$registry = new WareRegistry();
+		$result   = $registry->update_field( 'crm', 'name', 'Updated Name' );
+
+		$this->assertFalse(
+			$result,
+			'update_field must return false when save_index fails.'
+		);
+	}
+
 	/**
 	 * get() must return null when the per-ware option contains invalid JSON.
 	 * A corrupt ware option must not propagate to callers as a crash.

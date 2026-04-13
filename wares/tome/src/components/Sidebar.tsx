@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { __, sprintf }       from '@wordpress/i18n';
 import type { Page } from '../types.ts';
 
 interface Props {
@@ -79,46 +80,57 @@ function PageNode( {
 				style={ { paddingLeft: `${ 12 + depth * 16 }px` } }
 			>
 				{ hasChildren ? (
-				<button
-					className={ `tome-tree__toggle${ expanded ? ' tome-tree__toggle--open' : '' }` }
-					onClick={ ( e ) => { e.stopPropagation(); setExpanded( v => ! v ); } }
-					aria-label={ expanded ? 'Collapse' : 'Expand' }
-					aria-expanded={ expanded }
-				>
+		<button
+				className={ `tome-tree__toggle${ expanded ? ' tome-tree__toggle--open' : '' }` }
+				onClick={ ( e ) => { e.stopPropagation(); setExpanded( v => ! v ); } }
+				aria-label={ expanded ? __( 'Collapse', 'bazaar' ) : __( 'Expand', 'bazaar' ) }
+				aria-expanded={ expanded }
+			>
 					›
 				</button>
 				) : (
 					<span className="tome-tree__toggle-placeholder" />
 				) }
 
-				<button
-					className="tome-tree__title"
-					onClick={ () => onSelect( node.page.id ) }
-				>
-					{ node.page.title || 'Untitled' }
-				</button>
+			<button
+				className="tome-tree__title"
+				onClick={ () => onSelect( node.page.id ) }
+			>
+				{ node.page.title || __( 'Untitled', 'bazaar' ) }
+			</button>
 
-				<div className="tome-tree__actions">
-					<button
-						className="tome-tree__action"
-						onClick={ ( e ) => { e.stopPropagation(); onNew( node.page.id ); } }
-						title="New child page"
-					>
-						+
-					</button>
-				<button
-					className="tome-tree__action tome-tree__action--danger"
-					onClick={ ( e ) => {
-						e.stopPropagation();
-						if ( window.confirm( `Delete "${ node.page.title || 'Untitled' }"? This cannot be undone.` ) ) {
-							onDelete( node.page.id );
-						}
-					} }
-					title="Delete page"
-				>
-					×
-				</button>
-				</div>
+		<div className="tome-tree__actions">
+			<button
+				className="tome-tree__action"
+				onClick={ ( e ) => { e.stopPropagation(); onNew( node.page.id ); } }
+				title={ __( 'New child page', 'bazaar' ) }
+				aria-label={ __( 'New child page', 'bazaar' ) }
+			>
+				+
+			</button>
+		<button
+			className="tome-tree__action tome-tree__action--danger"
+			onClick={ ( e ) => {
+				e.stopPropagation();
+				const title = node.page.title || __( 'Untitled', 'bazaar' );
+				if ( window.confirm( sprintf(
+					/* translators: %s: page title */
+					__( 'Delete "%s"? This cannot be undone.', 'bazaar' ),
+					title
+				) ) ) {
+					onDelete( node.page.id );
+				}
+			} }
+			title={ __( 'Delete page', 'bazaar' ) }
+			aria-label={ sprintf(
+				/* translators: %s: page title */
+				__( 'Delete "%s"', 'bazaar' ),
+				node.page.title || __( 'Untitled', 'bazaar' )
+			) }
+		>
+				×
+			</button>
+			</div>
 			</div>
 
 			{ expanded && hasChildren && (
@@ -160,24 +172,24 @@ export default function Sidebar( { pages, activeId, onSelect, onNew, onDelete }:
 	return (
 		<aside className="tome-sidebar">
 			<div className="tome-sidebar__header">
-				<span className="tome-sidebar__brand">Tome</span>
+				<span className="tome-sidebar__brand">{ __( 'Tome', 'bazaar' ) }</span>
 			</div>
 
 			<div className="tome-sidebar__search">
 				<input
 					type="search"
 					className="tome-sidebar__search-input"
-					placeholder="Search…"
+					placeholder={ __( 'Search…', 'bazaar' ) }
 					value={ query }
 					onChange={ e => setQuery( e.target.value ) }
-					aria-label="Search pages"
+					aria-label={ __( 'Search pages', 'bazaar' ) }
 				/>
 			</div>
 
-			<nav className="tome-sidebar__nav" aria-label="Pages">
+			<nav className="tome-sidebar__nav" aria-label={ __( 'Pages', 'bazaar' ) }>
 				{ tree.length === 0 && (
 					<p className="tome-sidebar__empty">
-						{ query ? 'No results.' : 'No pages yet.' }
+						{ query ? __( 'No results.', 'bazaar' ) : __( 'No pages yet.', 'bazaar' ) }
 					</p>
 				) }
 			<ul className="tome-tree" role="tree">
@@ -200,7 +212,7 @@ export default function Sidebar( { pages, activeId, onSelect, onNew, onDelete }:
 					className="tome-sidebar__new-btn"
 					onClick={ () => onNew( null ) }
 				>
-					<span aria-hidden="true">+</span> New page
+					<span aria-hidden="true">+</span> { __( 'New page', 'bazaar' ) }
 				</button>
 			</div>
 		</aside>

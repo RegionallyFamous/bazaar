@@ -1,0 +1,45 @@
+/*
+ * Sine — ware-level token overrides.
+ * @bazaar/design/css is imported in main.tsx (provides light :root defaults).
+ *
+ * Scoped to .synth so global :root retains the canonical light defaults.
+ * CRT / phosphor-green aesthetic is applied only within the Sine app root.
+ */
+
+.synth {
+  /* CRT phosphor-green palette */
+  --bw-bg:         #060e09;
+  --bw-surface:    #0b1a10;
+  --bw-surface-2:  #0f2218;
+  --bw-border:     #1a3a28;
+  --bw-text:       #4ade80;
+  --bw-text-muted: #86efac;
+  --bw-text-dim:   #2d6b45;
+  --bw-accent:     #10b981;
+  --bw-accent-hi:  #34d399;
+  --bw-accent-bg:  rgba(16, 185, 129, .12);
+  --bw-accent-rgb: 16, 185, 129;
+  --bw-danger:     #f87171;
+
+  /* Monospace font scoped to the synth app */
+  font-family: 'Courier New', 'Lucida Console', monospace;
+  font-size: 12px;
+
+  /* Scanline overlay via pseudo-element — avoids polluting document.body */
+  position: relative;
+}
+
+.synth::before {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 3px,
+    rgba(0, 0, 0, .08) 3px,
+    rgba(0, 0, 0, .08) 4px
+  );
+  z-index: 9999;
+}

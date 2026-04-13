@@ -1,12 +1,12 @@
 /*
- * Pixel Art Editor — ware-level token overrides.
- * @bazaar/design/css is imported in main.tsx.
- * data-theme="dark" is applied on document.documentElement.
+ * Mosaic (Pixel Art Editor) — ware-level token overrides.
+ * @bazaar/design/css is imported in main.tsx (provides light :root defaults).
  *
- * This ware uses the Catppuccin Mocha colour palette.
+ * Scoped to .editor so global :root retains the canonical light defaults.
+ * Catppuccin Mocha palette is applied only within the Mosaic app root.
  */
 
-:root {
+.editor {
   --bw-bg:         #1e1e2e; /* Catppuccin Base */
   --bw-surface:    #181825; /* Catppuccin Mantle */
   --bw-surface-2:  #313244; /* Catppuccin Surface0 */

@@ -1,5 +1,6 @@
 import {
 	sortedEnabled,
+	invalidateSortCache,
 	navOrder,
 	pinnedSet,
 	recentList,
@@ -18,6 +19,7 @@ beforeEach( () => {
 	pinnedSet.clear();
 	recentList.length = 0;
 	healthMap.clear();
+	invalidateSortCache();
 } );
 
 // ─── sortedEnabled ────────────────────────────────────────────────────────────

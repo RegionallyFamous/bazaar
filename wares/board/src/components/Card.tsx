@@ -5,9 +5,11 @@ interface Props {
   card:       CardType;
   onEdit:     ( card: CardType ) => void;
   isDragging: boolean;
+  isLifted:   boolean;
+  onKeyDnd:   ( e: React.KeyboardEvent ) => void;
 }
 
-export default function Card( { card, onEdit, isDragging }: Props ) {
+export default function Card( { card, onEdit, isDragging, isLifted, onKeyDnd }: Props ) {
   // Parse as local midnight so the overdue check is consistent with the display date.
   const overdue = card.dueDate && new Date( card.dueDate + 'T00:00:00' ) < new Date();
   const hasLabel = card.label !== 'none';
@@ -18,14 +20,42 @@ export default function Card( { card, onEdit, isDragging }: Props ) {
       } )
     : null;
 
+  function handleKeyDown( e: React.KeyboardEvent ) {
+    if ( isLifted ) {
+      // All navigation keys when lifted go to the DnD handler.
+      onKeyDnd( e );
+      return;
+    }
+    // Space/Enter opens the edit modal when not lifted.
+    if ( e.key === 'Enter' ) {
+      e.preventDefault();
+      onEdit( card );
+      return;
+    }
+    // Space lifts the card for keyboard DnD.
+    if ( e.key === ' ' ) {
+      e.preventDefault();
+      onKeyDnd( e );
+      return;
+    }
+  }
+
+  const classNames = [
+    'card',
+    isDragging  && 'card--dragging',
+    isLifted    && 'card--lifted',
+  ].filter( Boolean ).join( ' ' );
+
   return (
     <div
-      className={ `card${ isDragging ? ' card--dragging' : '' }` }
-      onClick={ () => onEdit( card ) }
+      className={ classNames }
+      onClick={ () => { if ( ! isLifted ) onEdit( card ); } }
       draggable
       role="button"
       tabIndex={ 0 }
-      onKeyDown={ e => { if ( e.key === 'Enter' || e.key === ' ' ) { e.preventDefault(); onEdit( card ); } } }
+      aria-grabbed={ isLifted }
+      aria-label={ `${ card.title }${ isLifted ? ' (lifted — use arrow keys to move, Space to drop, Escape to cancel)' : '' }` }
+      onKeyDown={ handleKeyDown }
     >
       { hasLabel && (
         <div

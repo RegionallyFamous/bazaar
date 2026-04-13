@@ -119,6 +119,7 @@ const { showError } = initUpload( {
 	onSuccess: ( ware ) => {
 		insertWareCard( ware );
 		updateWareCount( 1 );
+		updateFilterCounts();
 		notifyShell( 'bazaar:ware-installed', { ware } );
 	},
 } );
@@ -223,6 +224,7 @@ async function executeDelete( slug, card ) {
 		} );
 		animateRemoveCard( card );
 		updateWareCount( -1 );
+		updateFilterCounts();
 		notifyShell( 'bazaar:ware-deleted', { slug } );
 	} catch ( err ) {
 		card.classList.remove( 'bazaar-card--loading' );
@@ -342,6 +344,42 @@ function applyFilters() {
 	if ( noResults ) {
 		noResults.hidden = visible > 0 || allCards.length === 0;
 	}
+
+	updateFilterCounts();
+}
+
+/**
+ * Refresh the live count badge on each filter tab.
+ *
+ * Counts are based on the full card set, independent of current search/filter,
+ * so users always see how many wares are in each state.
+ */
+function updateFilterCounts() {
+	if ( ! filterTabs ) {
+		return;
+	}
+	const allCards = [ ...gallery.querySelectorAll( '.bazaar-card' ) ];
+	const totals = {
+		all: allCards.length,
+		enabled: allCards.filter( ( c ) => ( c.dataset.status ?? 'enabled' ) === 'enabled' ).length,
+		disabled: allCards.filter( ( c ) => c.dataset.status === 'disabled' ).length,
+	};
+
+	filterTabs.querySelectorAll( '[data-filter]' ).forEach( ( tab ) => {
+		const filter = tab.dataset.filter;
+		const count = totals[ filter ];
+		if ( count === undefined ) {
+			return;
+		}
+		let badge = tab.querySelector( '.bazaar-filter-tab__count' );
+		if ( ! badge ) {
+			badge = document.createElement( 'span' );
+			badge.className = 'bazaar-filter-tab__count';
+			badge.setAttribute( 'aria-hidden', 'true' );
+			tab.appendChild( badge );
+		}
+		badge.textContent = String( count );
+	} );
 }
 
 let _searchTimer;
@@ -564,3 +602,6 @@ initCoreApps( {
 	updateWareCount,
 	notifyShell,
 } );
+
+// Initialise filter tab counts from the server-rendered card set.
+updateFilterCounts();

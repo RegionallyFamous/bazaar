@@ -86,16 +86,24 @@ export function pushRecent( slug ) {
 
 /**
  * Return enabled wares sorted by: pinned first, then navOrder, then name.
+ *
+ * Result is cached in `_sortCache` and returned as a shallow copy.
+ * Callers must call `invalidateSortCache()` (or `renderNav()`, which does so)
+ * whenever wareMap, pinnedSet, or navOrder change structurally.
+ *
  * @param {Map<string, Object>} wareMap
  * @return {Object[]} Sorted array of enabled ware index entries.
  */
 export function sortedEnabled( wareMap ) {
+	if ( _sortCache ) {
+		return [ ..._sortCache ];
+	}
 	const enabled = [ ...wareMap.values() ].filter( ( w ) => w.enabled );
-	const orderIdx = ( s ) => {
-		const i = navOrder.indexOf( s );
-		return i === -1 ? Infinity : i;
-	};
-	return enabled.sort( ( a, b ) => {
+	// Precompute navOrder positions into a Map so each comparator call is O(1)
+	// instead of O(n) via indexOf — keeps the overall sort at O(n log n).
+	const orderMap = new Map( navOrder.map( ( s, i ) => [ s, i ] ) );
+	const orderIdx = ( s ) => orderMap.get( s ) ?? Infinity;
+	const result = enabled.sort( ( a, b ) => {
 		const ap = pinnedSet.has( a.slug ) ? 0 : 1;
 		const bp = pinnedSet.has( b.slug ) ? 0 : 1;
 		if ( ap !== bp ) {
@@ -105,6 +113,8 @@ export function sortedEnabled( wareMap ) {
 			orderIdx( a.slug ) - orderIdx( b.slug ) || ( a.name ?? '' ).localeCompare( b.name ?? '' )
 		);
 	} );
+	_sortCache = result;
+	return [ ...result ];
 }
 
 // ─── Health dots ────────────────────────────────────────────────────────────

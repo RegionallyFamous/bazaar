@@ -1,3 +1,4 @@
+import { __ }        from '@wordpress/i18n';
 import type { Mode } from '../types.ts';
 import { MODE_COLOR } from '../types.ts';
 
@@ -34,9 +35,9 @@ export default function Ring( { progress, mode, secondsLeft, running, onToggle }
 			className="ring-svg"
 			onClick={ onToggle }
 			onKeyDown={ ( e ) => { if ( e.key === 'Enter' || e.key === ' ' ) { e.preventDefault(); e.stopPropagation(); onToggle(); } } }
-			role="button"
-			tabIndex={ 0 }
-			aria-label={ running ? 'Pause' : 'Start' }
+		role="button"
+		tabIndex={ 0 }
+		aria-label={ running ? __( 'Pause', 'bazaar' ) : __( 'Start', 'bazaar' ) }
 		>
 				{ /* Track */ }
 				<circle
@@ -78,7 +79,7 @@ export default function Ring( { progress, mode, secondsLeft, running, onToggle }
 					fontFamily="system-ui, -apple-system, sans-serif"
 					fill="rgba(255,255,255,.45)"
 				>
-					{ running ? '▐▐  pause' : '▶  start' }
+					{ running ? `▐▐  ${ __( 'pause', 'bazaar' ) }` : `▶  ${ __( 'start', 'bazaar' ) }` }
 				</text>
 			</svg>
 		</div>

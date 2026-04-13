@@ -160,6 +160,33 @@ final class WebhookDispatcherTest extends WareTestCase {
 		$this->assertArrayHasKey( 'timestamp', $captured_body );
 	}
 
+	// ─── payload encode failure ───────────────────────────────────────────────
+
+	/**
+	 * When wp_json_encode returns false (unencodeable payload), dispatch must
+	 * silently skip all hooks — even matching ones — without firing any HTTP requests.
+	 */
+	public function test_dispatch_skips_when_payload_cannot_be_encoded(): void {
+		$this->stub_webhooks(
+			array(
+				array( 'slug' => 'flow', 'event' => 'flow:task-added', 'url' => 'https://example.com/hook' ),
+			)
+		);
+
+		// Force encode failure.
+		Functions\when( 'wp_json_encode' )->justReturn( false );
+
+		$posted = false;
+		Functions\when( 'wp_remote_post' )->alias( static function () use ( &$posted ): array {
+			$posted = true;
+			return array();
+		} );
+
+		WebhookDispatcher::dispatch( 'flow:task-added', array( 'text' => 'Buy milk' ), 'flow' );
+
+		$this->assertFalse( $posted, 'No HTTP request must be made when the payload cannot be encoded.' );
+	}
+
 	// ─── load_all() — malformed option ───────────────────────────────────────
 
 	public function test_dispatch_handles_malformed_webhooks_option_gracefully(): void {

@@ -15,7 +15,7 @@ import { escHtml, escAttr } from '../shared/escape.js';
  * @param {string[]} tags App tags from the registry.
  * @return {string} CSS hex colour for the card accent.
  */
-export function tagToAccent( tags ) {
+function tagToAccent( tags ) {
 	/** @type {Record<string, string>} */
 	const MAP = {
 		creative: '#f59e0b', art: '#f59e0b', editor: '#f59e0b', fun: '#ef4444',
@@ -38,7 +38,7 @@ export function tagToAccent( tags ) {
  * @param {string}  restUrl     REST base URL (for local icon lookup).
  * @return {HTMLElement} The rendered card element.
  */
-export function renderCoreCard( app, isInstalled, restUrl ) {
+function renderCoreCard( app, isInstalled, restUrl ) {
 	const card = document.createElement( 'div' );
 	card.className = 'bazaar-core-card';
 	card.setAttribute( 'role', 'listitem' );
@@ -189,16 +189,34 @@ export function initCoreApps( deps ) {
 		}
 	}
 
+	function renderLoadError() {
+		coreGrid.classList.remove( 'bazaar-core-grid--loading' );
+		coreGrid.innerHTML = `
+			<div class="bazaar-core-load-error">
+				<p class="bazaar-core-load-error__msg">${ escHtml( __( 'Could not load the app catalog.', 'bazaar' ) ) }</p>
+				<button type="button" class="bazaar-core-load-error__retry">${ escHtml( __( 'Try again', 'bazaar' ) ) }</button>
+			</div>`;
+		const retryBtn = coreGrid.querySelector( '.bazaar-core-load-error__retry' );
+		retryBtn?.addEventListener( 'click', () => {
+			coreGrid.innerHTML = '';
+			loadCoreApps();
+		} );
+	}
+
 	async function loadCoreApps() {
 		let apps;
+		// Guard against the grid becoming a permanent skeleton if the request
+		// hangs indefinitely or returns a non-throwing 4xx response.
+		const controller = new AbortController();
+		const timeoutId = setTimeout( () => controller.abort(), 15_000 );
 		try {
-			apps = await apiFetch( { path: '/core-apps' } );
+			apps = await apiFetch( { path: '/core-apps', signal: controller.signal } );
 		} catch ( err ) {
-			coreGrid.classList.remove( 'bazaar-core-grid--loading' );
-			const msg = err?.message || __( 'Could not load the app catalog.', 'bazaar' );
-			coreGrid.innerHTML = `<p class="bazaar-core-error">${ escHtml( msg ) }</p>`;
+			clearTimeout( timeoutId );
+			renderLoadError();
 			return;
 		}
+		clearTimeout( timeoutId );
 
 		coreGrid.classList.remove( 'bazaar-core-grid--loading' );
 		coreGrid.innerHTML = '';

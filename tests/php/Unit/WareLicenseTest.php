@@ -174,6 +174,35 @@ final class WareLicenseTest extends WareTestCase {
 		);
 	}
 
+	// ─── unparseable expiry date ─────────────────────────────────────────────
+
+	/**
+	 * A stored license with an expires value that strtotime() cannot parse
+	 * must be treated as expired, not as "never expires".
+	 * Before the fix, false < time() evaluates to true in PHP, so an
+	 * unparseable date would incorrectly grant access.
+	 */
+	public function test_paid_ware_with_unparseable_expiry_is_not_licensed(): void {
+		$this->store['bazaar_license_crm'] = json_encode(
+			array(
+				'key'       => 'XXXX-YYYY',
+				'validated' => true,
+				'expires'   => 'not-a-date',
+			)
+		);
+
+		$license = new WareLicense();
+		$this->assertFalse(
+			$license->is_licensed(
+				array(
+					'slug'    => 'crm',
+					'license' => array( 'type' => 'key' ),
+				)
+			),
+			'An unparseable expiry date must be treated as expired.'
+		);
+	}
+
 	// ─── set / get_key / delete ──────────────────────────────────────────────
 
 	public function test_set_stores_key_as_unvalidated(): void {

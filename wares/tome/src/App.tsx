@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { __ }    from '@wordpress/i18n';
 import Sidebar    from './components/Sidebar.tsx';
 import PageView   from './components/PageView.tsx';
 import PageEditor from './components/PageEditor.tsx';
@@ -30,7 +31,7 @@ export default function App() {
 			.then( loaded => {
 				if ( attempt !== loadAttempt.current ) return;
 				setPages( loaded );
-				if ( loaded.length > 0 ) setActiveId( loaded[ 0 ].id );
+				if ( loaded.length > 0 ) setActiveId( loaded[ 0 ]!.id );
 			} )
 			.catch( () => { if ( attempt === loadAttempt.current ) setLoadError( true ); } )
 			.finally( () => { if ( attempt === loadAttempt.current ) setLoading( false ); } );
@@ -55,7 +56,7 @@ export default function App() {
 			await savePages( updated );
 			setSaveError( null );
 		} catch {
-			setSaveError( 'Failed to save. Changes may be lost.' );
+			setSaveError( __( 'Failed to save. Changes may be lost.', 'bazaar' ) );
 		}
 	}, [ pages ] );
 
@@ -64,14 +65,14 @@ export default function App() {
 		const updated     = pages.filter( p => ! idsToRemove.has( p.id ) );
 		setPages( updated );
 		if ( activeId !== null && idsToRemove.has( activeId ) ) {
-			setActiveId( updated.length > 0 ? updated[ 0 ].id : null );
+			setActiveId( updated.length > 0 ? updated[ 0 ]!.id : null );
 			setMode( 'view' );
 		}
 		try {
 			await savePages( updated );
 			setSaveError( null );
 		} catch {
-			setSaveError( 'Failed to save. Changes may be lost.' );
+			setSaveError( __( 'Failed to save. Changes may be lost.', 'bazaar' ) );
 		}
 	}, [ pages, activeId ] );
 
@@ -88,18 +89,18 @@ export default function App() {
 			await savePages( updated );
 			setSaveError( null );
 		} catch {
-			setSaveError( 'Failed to save. Changes may be lost.' );
+			setSaveError( __( 'Failed to save. Changes may be lost.', 'bazaar' ) );
 		}
 	}, [ pages, activeId ] );
 
 	useEffect( () => {
 		const handler = ( e: KeyboardEvent ) => {
 			const meta = e.metaKey || e.ctrlKey;
-			if ( meta && e.key === 'n' ) {
-				e.preventDefault();
-				if ( mode === 'edit' ) {
-					if ( ! window.confirm( 'You have unsaved changes. Create a new page anyway?' ) ) return;
-				}
+		if ( meta && e.key === 'n' ) {
+			e.preventDefault();
+			if ( mode === 'edit' ) {
+				if ( ! window.confirm( __( 'You have unsaved changes. Create a new page anyway?', 'bazaar' ) ) ) return;
+			}
 				void handleNew( null );
 			}
 			if ( meta && e.key === 'e' && activePage && mode === 'view' ) { e.preventDefault(); setMode( 'edit' ); }
@@ -117,8 +118,8 @@ export default function App() {
 	if ( loadError ) {
 		return (
 			<div className="tome-loading">
-				<span>Could not load pages.</span>
-				<button onClick={ loadData }>Retry</button>
+				<span>{ __( 'Could not load pages.', 'bazaar' ) }</span>
+				<button onClick={ loadData }>{ __( 'Retry', 'bazaar' ) }</button>
 			</div>
 		);
 	}
@@ -126,7 +127,7 @@ export default function App() {
 	if ( loading ) {
 		return (
 			<div className="tome-loading">
-				<span>Loading Tome…</span>
+				<span>{ __( 'Loading Tome…', 'bazaar' ) }</span>
 			</div>
 		);
 	}
@@ -148,21 +149,21 @@ export default function App() {
 			/>
 
 			<main className="tome-main">
-				{ ! activePage && (
-					<div className="tome-empty">
-						<div className="tome-empty__inner">
-							<p className="tome-empty__icon">📖</p>
-							<h2 className="tome-empty__heading">Your wiki is empty</h2>
-							<p className="tome-empty__sub">Create your first page to get started.</p>
-							<button
-								className="tome-empty__cta"
-								onClick={ () => void handleNew( null ) }
-							>
-								+ New page
-							</button>
-						</div>
+			{ ! activePage && (
+				<div className="tome-empty">
+					<div className="tome-empty__inner">
+						<p className="tome-empty__icon">📖</p>
+						<h2 className="tome-empty__heading">{ __( 'Your wiki is empty', 'bazaar' ) }</h2>
+						<p className="tome-empty__sub">{ __( 'Create your first page to get started.', 'bazaar' ) }</p>
+						<button
+							className="tome-empty__cta"
+							onClick={ () => void handleNew( null ) }
+						>
+							{ __( '+ New page', 'bazaar' ) }
+						</button>
 					</div>
-				) }
+				</div>
+			) }
 
 				{ activePage && mode === 'view' && (
 					<PageView

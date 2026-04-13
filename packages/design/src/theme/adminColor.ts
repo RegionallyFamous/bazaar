@@ -72,7 +72,7 @@ const ADMIN_COLOR_MAP: Record<string, AccentPalette> = {
 	},
 };
 
-const FALLBACK: AccentPalette = ADMIN_COLOR_MAP.fresh;
+const FALLBACK: AccentPalette = ADMIN_COLOR_MAP[ 'fresh' ]!;
 
 /**
  * Apply the WP admin colour scheme as `--bw-accent` overrides on `:root`.

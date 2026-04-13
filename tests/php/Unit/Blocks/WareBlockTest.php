@@ -181,6 +181,135 @@ final class WareBlockTest extends WareTestCase {
 		$this->assertFalse( WareBlock::verify_token( $token ) );
 	}
 
+	// ─── render uses entry field from ware manifest ───────────────────────────
+
+	/**
+	 * The iframe src must use the ware's declared entry filename, not a hardcoded
+	 * 'index.html'. This was broken before the fix.
+	 */
+	public function test_render_uses_ware_entry_field_in_iframe_src(): void {
+		// Override seed to set a custom entry field.
+		$slug = 'board';
+		$ware = array(
+			'slug'        => $slug,
+			'name'        => 'Board',
+			'version'     => '1.0.0',
+			'enabled'     => true,
+			'icon'        => '',
+			'entry'       => 'app.html',
+			'author'      => '',
+			'description' => '',
+			'menu'        => array(
+				'title'      => 'Board',
+				'position'   => null,
+				'capability' => 'manage_options',
+				'parent'     => null,
+				'group'      => null,
+			),
+			'permissions' => array(),
+			'license'     => array( 'type' => 'free', 'url' => '', 'required' => 'false' ),
+			'registry'    => array(),
+			'installed'   => '2025-01-01T00:00:00Z',
+		);
+
+		$index                                 = json_decode( (string) ( $this->store['bazaar_index'] ?? '{}' ), true ) ?? array();
+		$index[ $slug ]                        = array(
+			'slug'        => $slug,
+			'name'        => 'Board',
+			'enabled'     => true,
+			'version'     => '1.0.0',
+			'icon'        => '',
+			'entry'       => 'app.html',
+			'menu_title'  => 'Board',
+			'capability'  => 'manage_options',
+			'group'       => null,
+			'dev_url'     => null,
+			'permissions' => array(),
+		);
+		$this->store['bazaar_index']           = (string) json_encode( $index );
+		$this->store[ 'bazaar_ware_' . $slug ] = (string) json_encode( $ware );
+
+		Functions\when( 'wp_unique_id' )->justReturn( 'uid-entry' );
+		Functions\when( 'rest_url' )->alias(
+			fn( string $path ) => "https://example.com/wp-json/{$path}"
+		);
+		Functions\when( 'add_query_arg' )->alias(
+			function ( string $key, string $val, string $url ): string {
+				return $url . '?' . $key . '=' . rawurlencode( $val );
+			}
+		);
+		Functions\when( 'esc_url' )->returnArg();
+
+		$block = new \Bazaar\Blocks\WareBlock( new \Bazaar\WareRegistry() );
+		$html  = $block->render( array( 'slug' => $slug, 'height' => 600 ), '' );
+
+		$this->assertStringContainsString(
+			'app.html',
+			$html,
+			"iframe src must contain the ware's declared entry 'app.html', not 'index.html'."
+		);
+		$this->assertStringNotContainsString(
+			'index.html',
+			$html,
+			"Hardcoded 'index.html' must not appear when entry is 'app.html'."
+		);
+	}
+
+	// ─── verify_token — all base64 padding lengths ────────────────────────────
+
+	/**
+	 * Tokens whose unpadded base64url length is 0, 1, 2, or 3 mod 4 must all
+	 * round-trip correctly through verify_token. The padding formula
+	 * (4 - len%4)%4 handles all four cases.
+	 */
+	public function test_verify_token_handles_all_base64_padding_lengths(): void {
+		$site = 'https://example.com';
+		$exp  = time() + 3600;
+
+		// Generate tokens whose base64url payloads land in each padding bucket.
+		// We achieve this by varying the slug length until we get payloads whose
+		// base64url length hits each of the 4 remainder classes mod 4.
+		$covered = array();
+
+		for ( $extra = 0; $extra <= 20; $extra++ ) {
+			// Vary slug length to rotate the base64url length through all 4 classes.
+			$slug = 'a' . str_repeat( 'x', $extra );
+
+			$payload = $slug . '|' . $site . '|' . $exp;
+			$sig     = hash_hmac( 'sha256', $payload, BAZAAR_SECRET );
+
+			$token_json = (string) json_encode(
+				array(
+					'slug' => $slug,
+					'site' => $site,
+					'exp'  => $exp,
+					'sig'  => $sig,
+				)
+			);
+			$b64url  = rtrim( strtr( base64_encode( $token_json ), '+/', '-_' ), '=' );
+			$mod     = strlen( $b64url ) % 4;
+			$covered[ $mod ] = true;
+
+			$result = \Bazaar\Blocks\WareBlock::verify_token( $b64url );
+			$this->assertSame(
+				sanitize_key( $slug ),
+				$result,
+				"verify_token must succeed for base64url length mod 4 = {$mod} (slug={$slug})."
+			);
+
+			if ( count( $covered ) === 4 ) {
+				break;
+			}
+		}
+
+		// Confirm we covered at least the common cases (mod 0, 1, 2, or 3).
+		$this->assertGreaterThanOrEqual(
+			3,
+			count( $covered ),
+			'Test must cover at least 3 of the 4 base64 padding remainder classes.'
+		);
+	}
+
 	// ─── generate_token failure: wp_json_encode returns false ────────────────
 
 	public function test_render_returns_empty_string_when_token_encoding_fails(): void {

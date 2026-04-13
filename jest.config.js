@@ -10,4 +10,10 @@ module.exports = {
 		'@wordpress/i18n': '<rootDir>/tests/js/__mocks__/@wordpress/i18n.js',
 	},
 	setupFilesAfterEnv: [ '@testing-library/jest-dom' ],
+	// Use V8's built-in coverage instead of Babel/Istanbul instrumentation.
+	// This avoids the minimatch v10 API incompatibility in test-exclude/babel-plugin-istanbul.
+	coverageProvider: 'v8',
+	coverageThreshold: {
+		global: { lines: 80, branches: 70, functions: 80 },
+	},
 };

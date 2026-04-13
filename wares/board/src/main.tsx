@@ -4,6 +4,7 @@ import { getBazaarContext, setBazaarContext } from '@bazaar/client';
 import { applyAdminColor }                   from '@bazaar/design/theme';
 import { ErrorBoundary }                     from '@bazaar/design';
 import '@bazaar/design/css';
+import { registerErrorReporter } from './errorReporter.ts';
 import App                                   from './App.tsx';
 
 if ( import.meta.env.DEV ) {
@@ -15,6 +16,7 @@ if ( import.meta.env.DEV ) {
 }
 
 applyAdminColor( getBazaarContext().adminColor );
+registerErrorReporter( 'board' );
 
 const root = document.getElementById( 'root' );
 if ( root ) {

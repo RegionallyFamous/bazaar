@@ -37,16 +37,16 @@ final class WareBundler {
 	/**
 	 * WareLoader instance.
 	 *
-	 * @var WareLoader
+	 * @var WareLoaderInterface
 	 */
-	private WareLoader $loader;
+	private WareLoaderInterface $loader;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param WareLoader $loader Description.
+	 * @param WareLoaderInterface $loader Loader used to install individual .wp archives.
 	 */
-	public function __construct( WareLoader $loader ) {
+	public function __construct( WareLoaderInterface $loader ) {
 		$this->loader = $loader;
 	}
 

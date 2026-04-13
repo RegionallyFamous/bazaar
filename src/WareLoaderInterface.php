@@ -31,6 +31,15 @@ interface WareLoaderInterface {
 	public function install( string $tmp_path, string $original_name ): array|WP_Error;
 
 	/**
+	 * Convenience wrapper — install a .wp archive when the filename equals basename($path).
+	 * Used by the bundler, where files are already staged under their final name.
+	 *
+	 * @param string $path Absolute path to the .wp archive.
+	 * @return array<string, mixed>|WP_Error Parsed manifest on success, WP_Error on failure.
+	 */
+	public function install_from_path( string $path ): array|WP_Error;
+
+	/**
 	 * Delete an installed ware's files from disk.
 	 *
 	 * @param string $slug Ware slug.

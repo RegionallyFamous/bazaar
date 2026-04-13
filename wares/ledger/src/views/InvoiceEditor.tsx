@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { __, sprintf }                  from '@wordpress/i18n';
 import type { Invoice, Client, LineItem } from '../types.ts';
 import { invoiceSubtotal, invoiceTax, invoiceDiscount, invoiceTotal, fmtCurrency } from '../types.ts';
 import { exportInvoicePDF }       from '../pdf.ts';
@@ -30,7 +31,7 @@ export default function InvoiceEditor( { invoice, isNew, clients, onSave, onCanc
 	const setLine = useCallback( ( i: number, key: keyof LineItem, val: string | number ) => {
 		setForm( f => {
 			const lines = [ ...f.lineItems ];
-			lines[ i ]  = { ...lines[ i ], [ key ]: val };
+			lines[ i ]  = { ...lines[ i ]!, [ key ]: val };
 			return { ...f, lineItems: lines };
 		} );
 	}, [] );
@@ -46,7 +47,7 @@ export default function InvoiceEditor( { invoice, isNew, clients, onSave, onCanc
 	const handleExport = useCallback( () => {
 		const client = clients.find( c => c.id === form.clientId );
 		if ( ! client ) {
-			setClientError( 'Please select a client before exporting.' );
+			setClientError( __( 'Please select a client before exporting.', 'bazaar' ) );
 			clientSelectRef.current?.focus();
 			return;
 		}
@@ -63,22 +64,28 @@ export default function InvoiceEditor( { invoice, isNew, clients, onSave, onCanc
 		<div className="invoice-editor">
 			<div className="view-header">
 				<h2 className="view-title">
-					{ isNew ? 'New Invoice' : `Edit ${ form.number }` }
+					{ isNew
+						? __( 'New Invoice', 'bazaar' )
+						: sprintf(
+							/* translators: %s: invoice number */
+							__( 'Edit %s', 'bazaar' ),
+							form.number
+						) }
 				</h2>
 				<div className="view-header__actions">
 					{ ! isNew && (
 						<button className="btn btn--ghost" onClick={ handleExport }>
-							↓ Export PDF
+							{ __( '↓ Export PDF', 'bazaar' ) }
 						</button>
 					) }
 					<button className="btn btn--ghost" onClick={ onCancel }>
-						Cancel
+						{ __( 'Cancel', 'bazaar' ) }
 					</button>
 					<button
 						className="btn btn--primary"
 						onClick={ () => onSave( form ) }
 					>
-						Save Invoice
+						{ __( 'Save Invoice', 'bazaar' ) }
 					</button>
 				</div>
 			</div>
@@ -87,9 +94,9 @@ export default function InvoiceEditor( { invoice, isNew, clients, onSave, onCanc
 				{ /* Left column */ }
 				<div className="editor-col">
 					<div className="card">
-						<h3 className="card__heading">Details</h3>
+						<h3 className="card__heading">{ __( 'Details', 'bazaar' ) }</h3>
 						<div className="field-group">
-							<label className="field-label">Invoice Number</label>
+							<label className="field-label">{ __( 'Invoice Number', 'bazaar' ) }</label>
 							<input
 								className="field-input"
 								type="text"
@@ -99,7 +106,7 @@ export default function InvoiceEditor( { invoice, isNew, clients, onSave, onCanc
 						</div>
 						<div className="field-row">
 							<div className="field-group">
-								<label className="field-label">Issue Date</label>
+								<label className="field-label">{ __( 'Issue Date', 'bazaar' ) }</label>
 								<input
 									className="field-input"
 									type="date"
@@ -108,7 +115,7 @@ export default function InvoiceEditor( { invoice, isNew, clients, onSave, onCanc
 								/>
 							</div>
 							<div className="field-group">
-								<label className="field-label">Due Date</label>
+								<label className="field-label">{ __( 'Due Date', 'bazaar' ) }</label>
 								<input
 									className="field-input"
 									type="date"
@@ -118,14 +125,14 @@ export default function InvoiceEditor( { invoice, isNew, clients, onSave, onCanc
 							</div>
 						</div>
 					<div className="field-group">
-						<label className="field-label">Client</label>
+						<label className="field-label">{ __( 'Client', 'bazaar' ) }</label>
 						<select
 							ref={ clientSelectRef }
 							className="field-input"
 							value={ form.clientId }
 							onChange={ e => { setField( 'clientId', e.target.value ); setClientError( null ); } }
 						>
-							<option value="">— Select client —</option>
+							<option value="">{ __( '— Select client —', 'bazaar' ) }</option>
 							{ clients.map( c => (
 								<option key={ c.id } value={ c.id }>{ c.name }</option>
 							) ) }
@@ -135,27 +142,27 @@ export default function InvoiceEditor( { invoice, isNew, clients, onSave, onCanc
 						) }
 					</div>
 						<div className="field-group">
-							<label className="field-label">Status</label>
+							<label className="field-label">{ __( 'Status', 'bazaar' ) }</label>
 							<select
 								className="field-input"
 								value={ form.status }
 								onChange={ e => setField( 'status', e.target.value as Invoice['status'] ) }
 							>
-								<option value="draft">Draft</option>
-								<option value="sent">Sent</option>
-								<option value="paid">Paid</option>
-								<option value="overdue">Overdue</option>
+								<option value="draft">{ __( 'Draft', 'bazaar' ) }</option>
+								<option value="sent">{ __( 'Sent', 'bazaar' ) }</option>
+								<option value="paid">{ __( 'Paid', 'bazaar' ) }</option>
+								<option value="overdue">{ __( 'Overdue', 'bazaar' ) }</option>
 							</select>
 						</div>
 					</div>
 
 					<div className="card">
-						<h3 className="card__heading">Notes</h3>
+						<h3 className="card__heading">{ __( 'Notes', 'bazaar' ) }</h3>
 						<textarea
 							className="field-input field-input--textarea"
 							value={ form.notes }
 							onChange={ e => setField( 'notes', e.target.value ) }
-							placeholder="Payment terms, thank-you note…"
+							placeholder={ __( 'Payment terms, thank-you note…', 'bazaar' ) }
 							rows={ 3 }
 						/>
 					</div>
@@ -165,18 +172,18 @@ export default function InvoiceEditor( { invoice, isNew, clients, onSave, onCanc
 				<div className="editor-col editor-col--wide">
 					<div className="card">
 						<div className="card__heading-row">
-							<h3 className="card__heading">Line Items</h3>
+							<h3 className="card__heading">{ __( 'Line Items', 'bazaar' ) }</h3>
 							<button className="btn btn--ghost btn--sm" onClick={ addLine }>
-								+ Add item
+								{ __( '+ Add item', 'bazaar' ) }
 							</button>
 						</div>
 						<table className="line-table">
 							<thead>
 								<tr>
-									<th>Description</th>
-									<th>Qty</th>
-									<th>Rate</th>
-									<th>Amount</th>
+									<th>{ __( 'Description', 'bazaar' ) }</th>
+									<th>{ __( 'Qty', 'bazaar' ) }</th>
+									<th>{ __( 'Rate', 'bazaar' ) }</th>
+									<th>{ __( 'Amount', 'bazaar' ) }</th>
 									<th></th>
 								</tr>
 							</thead>
@@ -188,7 +195,7 @@ export default function InvoiceEditor( { invoice, isNew, clients, onSave, onCanc
 												className="field-input field-input--inline"
 												type="text"
 												value={ line.description }
-												placeholder="Item description"
+												placeholder={ __( 'Item description', 'bazaar' ) }
 												onChange={ e => setLine( i, 'description', e.target.value ) }
 											/>
 										</td>
@@ -218,6 +225,7 @@ export default function InvoiceEditor( { invoice, isNew, clients, onSave, onCanc
 											{ form.lineItems.length > 1 && (
 												<button
 													className="action-btn action-btn--danger"
+													aria-label={ __( 'Remove line item', 'bazaar' ) }
 													onClick={ () => removeLine( i ) }
 												>
 													✕
@@ -231,12 +239,12 @@ export default function InvoiceEditor( { invoice, isNew, clients, onSave, onCanc
 
 						<div className="totals">
 							<div className="totals__row">
-								<span>Subtotal</span>
+								<span>{ __( 'Subtotal', 'bazaar' ) }</span>
 								<span>{ fmtCurrency( subtotal ) }</span>
 							</div>
 							<div className="totals__row">
 								<label>
-									Tax %
+									{ __( 'Tax %', 'bazaar' ) }
 									<input
 										className="totals__pct"
 										type="number"
@@ -250,7 +258,7 @@ export default function InvoiceEditor( { invoice, isNew, clients, onSave, onCanc
 							</div>
 							<div className="totals__row">
 								<label>
-									Discount %
+									{ __( 'Discount %', 'bazaar' ) }
 									<input
 										className="totals__pct"
 										type="number"
@@ -263,7 +271,7 @@ export default function InvoiceEditor( { invoice, isNew, clients, onSave, onCanc
 								<span>−{ fmtCurrency( discount ) }</span>
 							</div>
 							<div className="totals__row totals__row--total">
-								<span>Total</span>
+								<span>{ __( 'Total', 'bazaar' ) }</span>
 								<span>{ fmtCurrency( total ) }</span>
 							</div>
 						</div>

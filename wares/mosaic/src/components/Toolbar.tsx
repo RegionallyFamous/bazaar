@@ -1,13 +1,14 @@
 import type { Tool } from '../types.ts';
 
 interface Props {
-	tool:    Tool;
-	onTool:  ( t: Tool ) => void;
-	canUndo: boolean;
-	canRedo: boolean;
-	onUndo:  () => void;
-	onRedo:  () => void;
-	onClear: () => void;
+	tool:        Tool;
+	onTool:      ( t: Tool ) => void;
+	canUndo:     boolean;
+	canRedo:     boolean;
+	onUndo:      () => void;
+	onRedo:      () => void;
+	onClear:     () => void;
+	onShortcuts: () => void;
 }
 
 const TOOLS: { id: Tool; label: string; icon: string; title: string }[] = [
@@ -19,7 +20,7 @@ const TOOLS: { id: Tool; label: string; icon: string; title: string }[] = [
 
 const BTN = 'toolbar__btn';
 
-export default function Toolbar( { tool, onTool, canUndo, canRedo, onUndo, onRedo, onClear }: Props ) {
+export default function Toolbar( { tool, onTool, canUndo, canRedo, onUndo, onRedo, onClear, onShortcuts }: Props ) {
 	return (
 		<aside className="toolbar">
 			<div className="toolbar__section">
@@ -60,15 +61,29 @@ export default function Toolbar( { tool, onTool, canUndo, canRedo, onUndo, onRed
 
 			<div className="toolbar__divider" />
 
-			<div className="toolbar__section">
-				<button
-					className={ BTN }
-					title="Clear canvas"
-					onClick={ onClear }
-				>
-					<span className="toolbar__icon">🗑</span>
-				</button>
-			</div>
-		</aside>
+		<div className="toolbar__section">
+			<button
+				className={ BTN }
+				title="Clear canvas"
+				aria-label="Clear canvas"
+				onClick={ onClear }
+			>
+				<span className="toolbar__icon">🗑</span>
+			</button>
+		</div>
+
+		<div className="toolbar__spacer" />
+
+		<div className="toolbar__section">
+			<button
+				className={ BTN }
+				title="Keyboard shortcuts (?)"
+				aria-label="Keyboard shortcuts"
+				onClick={ onShortcuts }
+			>
+				<span className="toolbar__icon">?</span>
+			</button>
+		</div>
+	</aside>
 	);
 }

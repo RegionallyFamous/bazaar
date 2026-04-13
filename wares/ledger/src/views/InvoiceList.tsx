@@ -1,4 +1,5 @@
 import { useState, useMemo }      from 'react';
+import { __, sprintf }           from '@wordpress/i18n';
 import type { Invoice, Client, InvoiceStatus } from '../types.ts';
 import { invoiceTotal, fmtCurrency, fmtDate, STATUS_LABEL } from '../types.ts';
 import type { View } from '../types.ts';
@@ -42,12 +43,12 @@ export default function InvoiceList( {
 	return (
 		<div className="invoice-list">
 			<div className="view-header">
-				<h2 className="view-title">Invoices</h2>
+				<h2 className="view-title">{ __( 'Invoices', 'bazaar' ) }</h2>
 				<button
 					className="btn btn--primary"
 					onClick={ () => onNavigate( 'new-invoice' ) }
 				>
-					+ New Invoice
+					{ __( '+ New Invoice', 'bazaar' ) }
 				</button>
 			</div>
 
@@ -60,7 +61,7 @@ export default function InvoiceList( {
 						aria-pressed={ filter === s }
 						onClick={ () => setFilter( s ) }
 					>
-						{ s === 'all' ? 'All' : STATUS_LABEL[ s ] }
+						{ s === 'all' ? __( 'All', 'bazaar' ) : STATUS_LABEL[ s ] }
 						<span className="filter-tab__count">
 							{ s === 'all'
 								? invoices.length
@@ -72,8 +73,8 @@ export default function InvoiceList( {
 			<input
 				className="search-input"
 				type="search"
-				placeholder="Search invoices…"
-				aria-label="Search invoices"
+				placeholder={ __( 'Search invoices…', 'bazaar' ) }
+				aria-label={ __( 'Search invoices', 'bazaar' ) }
 				value={ search }
 				onChange={ e => setSearch( e.target.value ) }
 			/>
@@ -84,12 +85,12 @@ export default function InvoiceList( {
 					<table className="inv-table">
 						<thead>
 							<tr>
-								<th>Invoice</th>
-								<th>Client</th>
-								<th>Issue Date</th>
-								<th>Due Date</th>
-								<th>Amount</th>
-								<th>Status</th>
+								<th>{ __( 'Invoice', 'bazaar' ) }</th>
+								<th>{ __( 'Client', 'bazaar' ) }</th>
+								<th>{ __( 'Issue Date', 'bazaar' ) }</th>
+								<th>{ __( 'Due Date', 'bazaar' ) }</th>
+								<th>{ __( 'Amount', 'bazaar' ) }</th>
+								<th>{ __( 'Status', 'bazaar' ) }</th>
 								<th></th>
 							</tr>
 						</thead>
@@ -114,26 +115,40 @@ export default function InvoiceList( {
 												) ) }
 											</select>
 										</td>
-										<td className="inv-table__actions">
-											<button
-												className="action-btn"
-												title="Edit"
-												onClick={ () => onNavigate( 'edit-invoice', inv.id ) }
-											>
-												✏
-											</button>
-											<button
-												className="action-btn action-btn--danger"
-												title="Delete"
-												onClick={ () => {
-													if ( confirm( `Delete ${ inv.number }?` ) ) {
-														onDeleteInvoice( inv.id );
-													}
-												} }
-											>
-												✕
-											</button>
-										</td>
+									<td className="inv-table__actions">
+										<button
+											className="action-btn"
+											title={ __( 'Edit', 'bazaar' ) }
+											aria-label={ sprintf(
+												/* translators: %s: invoice number */
+												__( 'Edit invoice %s', 'bazaar' ),
+												inv.number
+											) }
+											onClick={ () => onNavigate( 'edit-invoice', inv.id ) }
+										>
+											✏
+										</button>
+										<button
+											className="action-btn action-btn--danger"
+											title={ __( 'Delete', 'bazaar' ) }
+											aria-label={ sprintf(
+												/* translators: %s: invoice number */
+												__( 'Delete invoice %s', 'bazaar' ),
+												inv.number
+											) }
+											onClick={ () => {
+												if ( confirm( sprintf(
+													/* translators: %s: invoice number */
+													__( 'Delete %s?', 'bazaar' ),
+													inv.number
+												) ) ) {
+													onDeleteInvoice( inv.id );
+												}
+											} }
+										>
+											✕
+										</button>
+									</td>
 									</tr>
 								);
 							} ) }
@@ -144,8 +159,8 @@ export default function InvoiceList( {
 				<div className="empty-state">
 					<p className="empty-state__text">
 						{ search || filter !== 'all'
-							? 'No invoices match your filters.'
-							: 'No invoices yet.' }
+							? __( 'No invoices match your filters.', 'bazaar' )
+							: __( 'No invoices yet.', 'bazaar' ) }
 					</p>
 				</div>
 			) }

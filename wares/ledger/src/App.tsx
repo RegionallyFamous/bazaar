@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { __ }                                        from '@wordpress/i18n';
 import type { Invoice, Client, InvoiceStatus, View } from './types.ts';
 import { loadClients, saveClients, loadInvoices, saveInvoices, loadNextNumber, saveNextNumber } from './store.ts';
 import Dashboard   from './views/Dashboard.tsx';
@@ -26,11 +27,13 @@ function newInvoice( number: string ): Invoice {
 	};
 }
 
-const NAV: { id: View; label: string }[] = [
-	{ id: 'dashboard', label: 'Dashboard' },
-	{ id: 'invoices',  label: 'Invoices'  },
-	{ id: 'clients',   label: 'Clients'   },
-];
+function buildNav(): { id: View; label: string }[] {
+	return [
+		{ id: 'dashboard', label: __( 'Dashboard', 'bazaar' ) },
+		{ id: 'invoices',  label: __( 'Invoices',  'bazaar' ) },
+		{ id: 'clients',   label: __( 'Clients',   'bazaar' ) },
+	];
+}
 
 export default function App() {
 	const [ view, setView ]                   = useState<View>( 'dashboard' );
@@ -80,7 +83,7 @@ export default function App() {
 
 	const handleSaveInvoice = useCallback( async ( inv: Invoice ) => {
 		try {
-			const toSave: Invoice = { ...inv, _isNew: undefined };
+			const { _isNew: _stripInvoiceNew, ...toSave } = inv;
 			const isNew = ! invoices.find( i => i.id === toSave.id );
 			let updated: Invoice[];
 			let nextNumUpdated = nextNum;
@@ -98,9 +101,9 @@ export default function App() {
 			await saveInvoices( updated );
 			setSaveError( null );
 			navigate( 'invoices' );
-		} catch {
-			setSaveError( 'Failed to save invoice. Please try again.' );
-		}
+	} catch {
+		setSaveError( __( 'Failed to save invoice. Please try again.', 'bazaar' ) );
+	}
 	}, [ invoices, nextNum, navigate ] );
 
 	const handleDeleteInvoice = useCallback( async ( id: string ) => {
@@ -110,7 +113,7 @@ export default function App() {
 			await saveInvoices( updated );
 			setSaveError( null );
 		} catch {
-			setSaveError( 'Failed to delete invoice. Please try again.' );
+			setSaveError( __( 'Failed to delete invoice. Please try again.', 'bazaar' ) );
 		}
 	}, [ invoices ] );
 
@@ -122,7 +125,7 @@ export default function App() {
 
 	const handleSaveClient = useCallback( async ( client: Client ) => {
 		try {
-			const toSave: Client = { ...client, _isNew: undefined };
+			const { _isNew: _stripClientNew, ...toSave } = client;
 			const updated = clients.find( c => c.id === toSave.id )
 				? clients.map( c => c.id === toSave.id ? toSave : c )
 				: [ toSave, ...clients ];
@@ -130,7 +133,7 @@ export default function App() {
 			await saveClients( updated );
 			setSaveError( null );
 		} catch {
-			setSaveError( 'Failed to save client. Please try again.' );
+			setSaveError( __( 'Failed to save client. Please try again.', 'bazaar' ) );
 		}
 	}, [ clients ] );
 
@@ -141,14 +144,14 @@ export default function App() {
 			await saveClients( updated );
 			setSaveError( null );
 		} catch {
-			setSaveError( 'Failed to delete client. Please try again.' );
+			setSaveError( __( 'Failed to delete client. Please try again.', 'bazaar' ) );
 		}
 	}, [ clients ] );
 
 	if ( loading ) {
 		return (
 			<div className="app">
-				<div className="loading">Loading…</div>
+				<div className="loading">{ __( 'Loading…', 'bazaar' ) }</div>
 			</div>
 		);
 	}
@@ -158,10 +161,10 @@ export default function App() {
 			<div className="app">
 				<div className="loading">
 					<p style={ { marginBottom: '12px', color: 'var(--bw-danger)' } }>
-						Failed to load data. Check your connection and try again.
+						{ __( 'Failed to load data. Check your connection and try again.', 'bazaar' ) }
 					</p>
 					<button className="btn btn--primary" onClick={ loadData }>
-						Retry
+						{ __( 'Retry', 'bazaar' ) }
 					</button>
 				</div>
 			</div>
@@ -175,6 +178,8 @@ export default function App() {
 			? stagedInvoice
 			: null;
 
+	const NAV = buildNav();
+
 	return (
 		<div className="app">
 			<nav className="app-nav">
@@ -183,7 +188,7 @@ export default function App() {
 						<rect x="1" y="1" width="12" height="15" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
 						<path d="M4 5.5h6M4 8h6M4 10.5h3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
 					</svg>
-					<span className="app-nav__title">Ledger</span>
+					<span className="app-nav__title">{ __( 'Ledger', 'bazaar' ) }</span>
 				</div>
 				<div className="app-nav__links">
 					{ NAV.map( n => (
@@ -202,7 +207,7 @@ export default function App() {
 			{ saveError && (
 				<div className="error-banner" role="alert">
 					{ saveError }
-					<button className="error-banner__dismiss" onClick={ () => setSaveError( null ) }>✕</button>
+					<button className="error-banner__dismiss" aria-label={ __( 'Dismiss error', 'bazaar' ) } onClick={ () => setSaveError( null ) }>✕</button>
 				</div>
 			) }
 			{ editingInvoice ? (

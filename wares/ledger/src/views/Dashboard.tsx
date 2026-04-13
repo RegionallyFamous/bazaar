@@ -1,4 +1,5 @@
 import { useMemo }                from 'react';
+import { __ }                    from '@wordpress/i18n';
 import type { Invoice, Client, InvoiceStatus }  from '../types.ts';
 import { invoiceTotal, fmtCurrency } from '../types.ts';
 import type { View }             from '../types.ts';
@@ -36,45 +37,45 @@ export default function Dashboard( { invoices, clients, onNavigate }: Props ) {
 	return (
 		<div className="dashboard">
 			<div className="view-header">
-				<h2 className="view-title">Dashboard</h2>
+				<h2 className="view-title">{ __( 'Dashboard', 'bazaar' ) }</h2>
 				<button
 					className="btn btn--primary"
 					onClick={ () => onNavigate( 'new-invoice' ) }
 				>
-					+ New Invoice
+					{ __( '+ New Invoice', 'bazaar' ) }
 				</button>
 			</div>
 
 			<div className="stat-grid">
 				<div className="stat-card">
-					<span className="stat-card__label">Total Invoiced</span>
+					<span className="stat-card__label">{ __( 'Total Invoiced', 'bazaar' ) }</span>
 					<span className="stat-card__value">{ fmtCurrency( stats.total ) }</span>
 				</div>
 				<div className="stat-card stat-card--green">
-					<span className="stat-card__label">Collected</span>
+					<span className="stat-card__label">{ __( 'Collected', 'bazaar' ) }</span>
 					<span className="stat-card__value">{ fmtCurrency( stats.paid ) }</span>
 				</div>
 				<div className="stat-card stat-card--amber">
-					<span className="stat-card__label">Outstanding</span>
+					<span className="stat-card__label">{ __( 'Outstanding', 'bazaar' ) }</span>
 					<span className="stat-card__value">{ fmtCurrency( stats.outstanding ) }</span>
 				</div>
 				<div className={ `stat-card${ stats.overdue > 0 ? ' stat-card--red' : '' }` }>
-					<span className="stat-card__label">Overdue</span>
+					<span className="stat-card__label">{ __( 'Overdue', 'bazaar' ) }</span>
 					<span className="stat-card__value">{ stats.overdue }</span>
 				</div>
 			</div>
 
 			{ recent.length > 0 && (
 				<section className="card">
-					<h3 className="card__heading">Recent Invoices</h3>
+					<h3 className="card__heading">{ __( 'Recent Invoices', 'bazaar' ) }</h3>
 					<table className="inv-table">
 						<thead>
 						<tr>
-							<th>Invoice</th>
-							<th>Client</th>
-							<th>Created</th>
-							<th>Amount</th>
-							<th>Status</th>
+							<th>{ __( 'Invoice', 'bazaar' ) }</th>
+							<th>{ __( 'Client', 'bazaar' ) }</th>
+							<th>{ __( 'Created', 'bazaar' ) }</th>
+							<th>{ __( 'Amount', 'bazaar' ) }</th>
+							<th>{ __( 'Status', 'bazaar' ) }</th>
 						</tr>
 						</thead>
 						<tbody>
@@ -107,21 +108,22 @@ export default function Dashboard( { invoices, clients, onNavigate }: Props ) {
 
 			{ invoices.length === 0 && (
 				<div className="empty-state">
-					<p className="empty-state__text">No invoices yet.</p>
+					<p className="empty-state__text">{ __( 'No invoices yet.', 'bazaar' ) }</p>
 					<button
 						className="btn btn--primary"
 						onClick={ () => onNavigate( 'new-invoice' ) }
 					>
-						Create your first invoice
+						{ __( 'Create your first invoice', 'bazaar' ) }
 					</button>
 				</div>
 			) }
 
 			{ clients.length === 0 && invoices.length === 0 && (
 				<div className="tip">
-					<strong>Tip:</strong> Add a client first, then create invoices for them.{' '}
+					<strong>{ __( 'Tip:', 'bazaar' ) }</strong>{ ' ' }
+					{ __( 'Add a client first, then create invoices for them.', 'bazaar' ) }{ ' ' }
 					<button className="tip__link" onClick={ () => onNavigate( 'clients' ) }>
-						Manage clients →
+						{ __( 'Manage clients →', 'bazaar' ) }
 					</button>
 				</div>
 			) }

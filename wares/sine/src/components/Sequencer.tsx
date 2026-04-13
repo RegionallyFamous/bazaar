@@ -1,3 +1,4 @@
+import { __ }                 from '@wordpress/i18n';
 import type { SequencerStep } from '../types.ts';
 import { KEYBOARD_NOTES }     from '../types.ts';
 
@@ -19,17 +20,17 @@ export default function Sequencer( {
   return (
     <div className="sequencer">
       <div className="sequencer__header">
-        <span className="sequencer__title">SEQUENCER</span>
+        <span className="sequencer__title">{ __( 'SEQUENCER', 'bazaar' ) }</span>
         <div className="sequencer__transport">
           <button
             className={ `sequencer__play${ playing ? ' sequencer__play--active' : '' }` }
             onClick={ onPlayStop }
-            aria-label={ playing ? 'Stop sequencer' : 'Play sequencer' }
+            aria-label={ playing ? __( 'Stop sequencer', 'bazaar' ) : __( 'Play sequencer', 'bazaar' ) }
           >
             { playing ? '⏹' : '▶' }
           </button>
           <label className="sequencer__bpm-label">
-            BPM
+            { __( 'BPM', 'bazaar' ) }
             <input
               type="number"
               className="sequencer__bpm"

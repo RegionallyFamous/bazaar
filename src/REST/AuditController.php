@@ -12,7 +12,6 @@
  * ──────
  *   GET  /bazaar/v1/audit                Paginated log (admin only).
  *   GET  /bazaar/v1/audit/{slug}         Log for one ware.
- *   POST /bazaar/v1/audit                Internal — ware-side events.
  *
  * @package Bazaar
  */
@@ -23,7 +22,6 @@ namespace Bazaar\REST;
 
 defined( 'ABSPATH' ) || exit;
 
-use Bazaar\AuditLog;
 use WP_REST_Server;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -46,21 +44,6 @@ final class AuditController extends BazaarController {
 	 * @var string
 	 */
 	protected $rest_base = 'audit';
-
-	/** Valid event types. */
-	public const EVENTS = array(
-		'install',
-		'uninstall',
-		'enable',
-		'disable',
-		'config_change',
-		'license_activated',
-		'license_revoked',
-		'job_ran',
-		'webhook_fired',
-		'error_boundary',
-		'ware_event',
-	);
 
 	/**
 	 * Register all REST routes for this controller.
@@ -130,21 +113,6 @@ final class AuditController extends BazaarController {
 			),
 			200
 		);
-	}
-
-	/**
-	 * Create entry.
-	 *
-	 * @param WP_REST_Request $request Description.
-	 * @return WP_REST_Response
-	 */
-	public function create_entry( WP_REST_Request $request ): WP_REST_Response {
-		AuditLog::record(
-			sanitize_key( $request->get_param( 'slug' ) ),
-			sanitize_text_field( $request->get_param( 'event' ) ),
-			(array) ( $request->get_param( 'meta' ) ?? array() )
-		);
-		return new WP_REST_Response( array( 'recorded' => true ), 201 );
 	}
 
 	// ─── Query helper ─────────────────────────────────────────────────────

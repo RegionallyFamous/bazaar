@@ -63,7 +63,7 @@ const ADMIN_COLOR_MAP = {
         accentRgb: '221, 130, 59',
     },
 };
-const FALLBACK = ADMIN_COLOR_MAP.fresh;
+const FALLBACK = ADMIN_COLOR_MAP['fresh'];
 /**
  * Apply the WP admin colour scheme as `--bw-accent` overrides on `:root`.
  *

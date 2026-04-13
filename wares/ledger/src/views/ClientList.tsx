@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { __, _n, sprintf }       from '@wordpress/i18n';
 import type { Client }           from '../types.ts';
 
 interface Props {
@@ -36,34 +37,34 @@ export default function ClientList( { clients, onSaveClient, onDeleteClient }: P
 	return (
 		<div className="client-list">
 			<div className="view-header">
-				<h2 className="view-title">Clients</h2>
+				<h2 className="view-title">{ __( 'Clients', 'bazaar' ) }</h2>
 				<button
 					className="btn btn--primary"
 					onClick={ () => setEditing( newClient() ) }
 				>
-					+ New Client
+					{ __( '+ New Client', 'bazaar' ) }
 				</button>
 			</div>
 
 			{ editing && (
 				<div className="card client-form">
 			<h3 className="card__heading">
-				{ editing._isNew ? 'New Client' : 'Edit Client' }
+				{ editing._isNew ? __( 'New Client', 'bazaar' ) : __( 'Edit Client', 'bazaar' ) }
 			</h3>
 					<div className="field-row">
 						<div className="field-group">
-							<label className="field-label">Name *</label>
+							<label className="field-label">{ __( 'Name *', 'bazaar' ) }</label>
 							<input
 								className="field-input"
 								type="text"
 								value={ editing.name }
 								onChange={ e => setEditing( { ...editing, name: e.target.value } ) }
-								placeholder="Client or company name"
+								placeholder={ __( 'Client or company name', 'bazaar' ) }
 								autoFocus
 							/>
 						</div>
 						<div className="field-group">
-							<label className="field-label">Email</label>
+							<label className="field-label">{ __( 'Email', 'bazaar' ) }</label>
 							<input
 								className="field-input"
 								type="email"
@@ -74,31 +75,31 @@ export default function ClientList( { clients, onSaveClient, onDeleteClient }: P
 						</div>
 					</div>
 					<div className="field-group">
-						<label className="field-label">Address</label>
+						<label className="field-label">{ __( 'Address', 'bazaar' ) }</label>
 						<textarea
 							className="field-input field-input--textarea"
 							value={ editing.address }
 							onChange={ e => setEditing( { ...editing, address: e.target.value } ) }
-							placeholder="Billing address"
+							placeholder={ __( 'Billing address', 'bazaar' ) }
 							rows={ 2 }
 						/>
 					</div>
 					<div className="field-group">
-						<label className="field-label">Notes</label>
+						<label className="field-label">{ __( 'Notes', 'bazaar' ) }</label>
 						<input
 							className="field-input"
 							type="text"
 							value={ editing.notes }
 							onChange={ e => setEditing( { ...editing, notes: e.target.value } ) }
-							placeholder="Internal notes"
+							placeholder={ __( 'Internal notes', 'bazaar' ) }
 						/>
 					</div>
 					<div className="form-actions">
 						<button className="btn btn--ghost" onClick={ () => setEditing( null ) }>
-							Cancel
+							{ __( 'Cancel', 'bazaar' ) }
 						</button>
 						<button className="btn btn--primary" onClick={ handleSave }>
-							Save Client
+							{ __( 'Save Client', 'bazaar' ) }
 						</button>
 					</div>
 				</div>
@@ -107,13 +108,17 @@ export default function ClientList( { clients, onSaveClient, onDeleteClient }: P
 			<div className="card">
 				<div className="card__heading-row">
 					<h3 className="card__heading">
-						{ clients.length } client{ clients.length !== 1 ? 's' : '' }
+						{ sprintf(
+							/* translators: %d: number of clients */
+							_n( '%d client', '%d clients', clients.length, 'bazaar' ),
+							clients.length
+						) }
 					</h3>
 				<input
 					className="search-input search-input--sm"
 					type="search"
-					placeholder="Search…"
-					aria-label="Search clients"
+					placeholder={ __( 'Search…', 'bazaar' ) }
+					aria-label={ __( 'Search clients', 'bazaar' ) }
 					value={ search }
 					onChange={ e => setSearch( e.target.value ) }
 				/>
@@ -122,9 +127,9 @@ export default function ClientList( { clients, onSaveClient, onDeleteClient }: P
 					<table className="inv-table">
 						<thead>
 							<tr>
-								<th>Name</th>
-								<th>Email</th>
-								<th>Added</th>
+								<th>{ __( 'Name', 'bazaar' ) }</th>
+								<th>{ __( 'Email', 'bazaar' ) }</th>
+								<th>{ __( 'Added', 'bazaar' ) }</th>
 								<th></th>
 							</tr>
 						</thead>
@@ -136,26 +141,40 @@ export default function ClientList( { clients, onSaveClient, onDeleteClient }: P
 									<td className="inv-table__muted">
 										{ new Date( c.createdAt ).toLocaleDateString() }
 									</td>
-									<td className="inv-table__actions">
-										<button
-											className="action-btn"
-											title="Edit"
-											onClick={ () => setEditing( { ...c } ) }
-										>
-											✏
-										</button>
-										<button
-											className="action-btn action-btn--danger"
-											title="Delete"
-											onClick={ () => {
-												if ( confirm( `Delete ${ c.name }?` ) ) {
-													onDeleteClient( c.id );
-												}
-											} }
-										>
-											✕
-										</button>
-									</td>
+								<td className="inv-table__actions">
+									<button
+										className="action-btn"
+										title={ __( 'Edit', 'bazaar' ) }
+										aria-label={ sprintf(
+											/* translators: %s: client name */
+											__( 'Edit %s', 'bazaar' ),
+											c.name
+										) }
+										onClick={ () => setEditing( { ...c } ) }
+									>
+										✏
+									</button>
+									<button
+										className="action-btn action-btn--danger"
+										title={ __( 'Delete', 'bazaar' ) }
+										aria-label={ sprintf(
+											/* translators: %s: client name */
+											__( 'Delete %s', 'bazaar' ),
+											c.name
+										) }
+										onClick={ () => {
+											if ( confirm( sprintf(
+												/* translators: %s: client name */
+												__( 'Delete %s?', 'bazaar' ),
+												c.name
+											) ) ) {
+												onDeleteClient( c.id );
+											}
+										} }
+									>
+										✕
+									</button>
+								</td>
 								</tr>
 							) ) }
 						</tbody>
@@ -163,7 +182,9 @@ export default function ClientList( { clients, onSaveClient, onDeleteClient }: P
 				) : (
 					<div className="empty-state">
 						<p className="empty-state__text">
-							{ search ? 'No clients match.' : 'No clients yet. Add one above.' }
+							{ search
+								? __( 'No clients match.', 'bazaar' )
+								: __( 'No clients yet. Add one above.', 'bazaar' ) }
 						</p>
 					</div>
 				) }

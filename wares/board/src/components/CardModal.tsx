@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { __ }                           from '@wordpress/i18n';
 import { Modal }                        from '@bazaar/design';
 import type { Card, CardLabel }         from '../types.ts';
 import { LABEL_COLORS }                 from '../types.ts';
@@ -12,15 +13,17 @@ interface Props {
 
 const LABELS: CardLabel[] = [ 'none', 'red', 'orange', 'yellow', 'green', 'blue', 'purple' ];
 
-const LABEL_NAMES: Record<CardLabel, string> = {
-  none:   'No label',
-  red:    'Red label',
-  orange: 'Orange label',
-  yellow: 'Yellow label',
-  green:  'Green label',
-  blue:   'Blue label',
-  purple: 'Purple label',
-};
+function getLabelNames(): Record<CardLabel, string> {
+  return {
+    none:   __( 'No label',     'bazaar' ),
+    red:    __( 'Red label',    'bazaar' ),
+    orange: __( 'Orange label', 'bazaar' ),
+    yellow: __( 'Yellow label', 'bazaar' ),
+    green:  __( 'Green label',  'bazaar' ),
+    blue:   __( 'Blue label',   'bazaar' ),
+    purple: __( 'Purple label', 'bazaar' ),
+  };
+}
 
 export default function CardModal( { card, onSave, onDelete, onClose }: Props ) {
   const isNew = card === null;
@@ -47,38 +50,40 @@ export default function CardModal( { card, onSave, onDelete, onClose }: Props ) 
     } );
   }
 
+  const labelNames = getLabelNames();
+
   return (
     <Modal
       open={ true }
       onClose={ onClose }
-      title={ isNew ? 'New Card' : 'Edit Card' }
+      title={ isNew ? __( 'New Card', 'bazaar' ) : __( 'Edit Card', 'bazaar' ) }
     >
       <form onSubmit={ handleSubmit } className="modal__form">
         <label className="modal__label">
-          Title
+          { __( 'Title', 'bazaar' ) }
           <input
             ref={ titleRef }
             className="modal__input"
             value={ title }
             onChange={ e => setTitle( e.target.value ) }
-            placeholder="Card title…"
+            placeholder={ __( 'Card title…', 'bazaar' ) }
             required
           />
         </label>
 
         <label className="modal__label">
-          Description
+          { __( 'Description', 'bazaar' ) }
           <textarea
             className="modal__textarea"
             value={ desc }
             onChange={ e => setDesc( e.target.value ) }
-            placeholder="Optional notes…"
+            placeholder={ __( 'Optional notes…', 'bazaar' ) }
             rows={ 3 }
           />
         </label>
 
         <label className="modal__label">
-          Due Date
+          { __( 'Due Date', 'bazaar' ) }
           <input
             type="date"
             className="modal__input"
@@ -88,7 +93,7 @@ export default function CardModal( { card, onSave, onDelete, onClose }: Props ) 
         </label>
 
         <div className="modal__label">
-          Label
+          { __( 'Label', 'bazaar' ) }
           <div className="modal__labels">
             { LABELS.map( l => (
               <button
@@ -97,8 +102,8 @@ export default function CardModal( { card, onSave, onDelete, onClose }: Props ) 
                 className={ `modal__label-dot${ label === l ? ' modal__label-dot--active' : '' }` }
                 style={ { background: l === 'none' ? '#e5e7eb' : LABEL_COLORS[ l ] } }
                 onClick={ () => setLabel( l ) }
-                aria-label={ LABEL_NAMES[ l ] }
-                title={ LABEL_NAMES[ l ] }
+                aria-label={ labelNames[ l ] }
+                title={ labelNames[ l ] }
               />
             ) ) }
           </div>
@@ -111,14 +116,14 @@ export default function CardModal( { card, onSave, onDelete, onClose }: Props ) 
               className="modal__btn modal__btn--danger"
               onClick={ () => { onDelete( card!.id ); } }
             >
-              Delete
+              { __( 'Delete', 'bazaar' ) }
             </button>
           ) }
           <button type="button" className="modal__btn" onClick={ onClose }>
-            Cancel
+            { __( 'Cancel', 'bazaar' ) }
           </button>
           <button type="submit" className="modal__btn modal__btn--primary" disabled={ ! title.trim() }>
-            { isNew ? 'Add Card' : 'Save' }
+            { isNew ? __( 'Add Card', 'bazaar' ) : __( 'Save', 'bazaar' ) }
           </button>
         </div>
       </form>

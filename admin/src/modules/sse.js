@@ -21,10 +21,9 @@ let _reconnectTimer = null;
 
 /**
  * True while an SSE connection is open and delivering events.
- * Exported as a live binding so shell.js can skip redundant poll requests
- * while SSE is healthy.
+ * Used internally to skip redundant poll requests while SSE is healthy.
  */
-export let sseConnected = false;
+let sseConnected = false;
 
 /**
  * Open an SSE connection to the Bazaar stream endpoint and dispatch incoming

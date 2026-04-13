@@ -43,8 +43,8 @@ export function noteToFreq( note: string ): number {
   const NOTES = [ 'C','C#','D','D#','E','F','F#','G','G#','A','A#','B' ];
   const match = note.match( /^([A-G]#?)(\d)$/ );
   if ( ! match ) return 440;
-  const semitone = NOTES.indexOf( match[1] );
-  const octave   = parseInt( match[2], 10 );
+  const semitone = NOTES.indexOf( match[ 1 ] ?? '' );
+  const octave   = parseInt( match[ 2 ] ?? '4', 10 );
   return 440 * Math.pow( 2, ( ( octave - 4 ) * 12 + semitone - 9 ) / 12 );
 }
 

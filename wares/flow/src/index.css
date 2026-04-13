@@ -1,20 +1,19 @@
 /*
- * Focus — ware-level token overrides.
- * @bazaar/design/css is imported in main.tsx.
- * data-theme="dark" is applied on document.documentElement.
+ * Flow — ware-level token overrides.
+ * @bazaar/design/css is imported in main.tsx (provides light :root defaults).
  *
- * Override the dark-mode surfaces to match Focus's warm near-black aesthetic
- * (Catppuccin Mocha-inspired warm dark tones rather than the cooler default slate).
+ * Scoped to .flow-app so global :root retains the canonical light defaults.
+ * Warm near-black aesthetic is applied only within the Flow app root.
  */
 
-:root {
+.flow-app {
   /* Warm near-black surfaces */
   --bw-bg:        #0c0a09;
   --bw-surface:   #1c1917;
   --bw-surface-2: #27201c;
   --bw-border:    rgba(255, 255, 255, .06);
 
-  /* Text follows the warm dark token overrides */
+  /* Text */
   --bw-text:       #fafaf9;
   --bw-text-muted: rgba(255, 255, 255, .60);
   --bw-text-dim:   rgba(255, 255, 255, .32);

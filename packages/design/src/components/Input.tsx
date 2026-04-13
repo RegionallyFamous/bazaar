@@ -1,10 +1,10 @@
 import type { InputHTMLAttributes, TextareaHTMLAttributes, SelectHTMLAttributes, ReactNode } from 'react';
 
 interface FieldWrapperProps {
-	label?:     string;
-	hint?:      string;
-	error?:     string;
-	className?: string;
+	label?:     string | undefined;
+	hint?:      string | undefined;
+	error?:     string | undefined;
+	className?: string | undefined;
 	children:   ReactNode;
 }
 

@@ -63,6 +63,45 @@ final class JobsControllerTest extends WareTestCase {
 	}
 
 	/**
+	 * When a job declares an interval that is not in wp_get_schedules(), the
+	 * registration must fall back to 'hourly' instead of passing the unknown
+	 * value directly to wp_schedule_event.
+	 */
+	public function test_register_ware_jobs_falls_back_to_hourly_for_unknown_interval(): void {
+		$scheduled_intervals = array();
+
+		Functions\when( 'wp_get_schedules' )->justReturn(
+			array(
+				'hourly' => array( 'interval' => 3600, 'display' => 'Once Hourly' ),
+				'daily'  => array( 'interval' => 86400, 'display' => 'Once Daily' ),
+			)
+		);
+		Functions\when( 'wp_next_scheduled' )->justReturn( false );
+		Functions\when( 'wp_schedule_event' )->alias(
+			function ( int $ts, string $recurrence, string $hook ) use ( &$scheduled_intervals ): void {
+				$scheduled_intervals[] = $recurrence;
+			}
+		);
+		Functions\when( 'add_action' )->justReturn( null );
+
+		JobsController::register_ware_jobs(
+			array(
+				'slug' => 'myware',
+				'jobs' => array(
+					array( 'id' => 'sync', 'interval' => 'every-minute', 'endpoint' => '/sync' ),
+				),
+			)
+		);
+
+		$this->assertCount( 1, $scheduled_intervals );
+		$this->assertSame(
+			'hourly',
+			$scheduled_intervals[0],
+			"Unknown interval 'every-minute' must fall back to 'hourly'."
+		);
+	}
+
+	/**
 	 * deregister_ware_jobs() must skip malformed entries without throwing.
 	 */
 	public function test_deregister_ware_jobs_skips_malformed_entries(): void {

@@ -1,7 +1,6 @@
 /*
  * Mosaic — ware-specific styles.
- * Tokens: @bazaar/design/css + Catppuccin Mocha overrides in index.css.
- * Catppuccin Surface1 (#45475a) is kept hardcoded as it has no token equivalent.
+ * Tokens: @bazaar/design/css + Catppuccin Mocha overrides in index.css (scoped to .editor).
  */
 
 /* ── Layout ── */
@@ -51,7 +50,7 @@
 	width: 12px;
 	height: 12px;
 	border-radius: 2px;
-	border: 1px solid rgba(255,255,255,.2);
+	border: 1px solid var(--bw-border);
 	vertical-align: middle;
 }
 
@@ -76,7 +75,7 @@
 
 .editor__select {
 	background: var(--bw-surface-2);
-	border: 1px solid #45475a;
+	border: 1px solid var(--bw-surface-2);
 	color: var(--bw-text);
 	border-radius: 4px;
 	padding: 2px 6px;
@@ -154,6 +153,96 @@
 	font-style: normal;
 }
 
+/* ── Toolbar spacer (pushes shortcuts button to bottom) ── */
+
+.toolbar__spacer {
+	flex: 1;
+}
+
+/* ── Keyboard shortcuts overlay ── */
+
+.shortcuts-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.45);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 200;
+}
+
+.shortcuts-dialog {
+	background: var(--bw-surface);
+	border: 1px solid var(--bw-border);
+	border-radius: 10px;
+	min-width: 280px;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
+	overflow: hidden;
+}
+
+.shortcuts-dialog__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 14px 16px 12px;
+	border-bottom: 1px solid var(--bw-border);
+}
+
+.shortcuts-dialog__title {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--bw-text);
+	margin: 0;
+}
+
+.shortcuts-dialog__close {
+	background: none;
+	border: none;
+	color: var(--bw-text-dim);
+	font-size: 14px;
+	cursor: pointer;
+	padding: 2px 6px;
+	border-radius: 4px;
+	line-height: 1;
+	transition: background 0.1s;
+}
+
+.shortcuts-dialog__close:hover { background: var(--bw-surface-2); }
+
+.shortcuts-dialog__table {
+	width: 100%;
+	border-collapse: collapse;
+	padding: 8px 0;
+}
+
+.shortcuts-dialog__row {
+	padding: 0;
+}
+
+.shortcuts-dialog__key,
+.shortcuts-dialog__desc {
+	padding: 7px 16px;
+	font-size: 13px;
+	color: var(--bw-text-dim);
+}
+
+.shortcuts-dialog__key {
+	width: 30%;
+	white-space: nowrap;
+}
+
+kbd {
+	display: inline-block;
+	background: var(--bw-bg);
+	border: 1px solid var(--bw-border);
+	border-bottom-width: 2px;
+	border-radius: 4px;
+	padding: 1px 6px;
+	font-family: inherit;
+	font-size: 12px;
+	color: var(--bw-text);
+}
+
 /* ── Canvas area ── */
 
 .editor__canvas-area {
@@ -169,7 +258,7 @@
 	border: 2px solid var(--bw-border);
 	border-radius: 4px;
 	overflow: hidden;
-	box-shadow: 0 8px 32px rgba(0,0,0,.4);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
 }
 
 /* ── Palette sidebar ── */
@@ -245,7 +334,7 @@
 	width: 28px;
 	height: 28px;
 	border-radius: 4px;
-	border: 2px solid rgba(255,255,255,.12);
+	border: 2px solid var(--bw-border);
 	flex-shrink: 0;
 	cursor: pointer;
 	appearance: none;
@@ -288,12 +377,12 @@
 }
 
 .palette__action-btn:hover {
-	background: #45475a;
+	background: var(--bw-surface-2);
 }
 
 .palette__name-input {
 	background: var(--bw-surface-2);
-	border: 1px solid #45475a;
+	border: 1px solid var(--bw-surface-2);
 	color: var(--bw-text);
 	border-radius: 4px;
 	padding: 4px 8px;
@@ -335,7 +424,7 @@
 }
 
 .palette__slot-btn:hover {
-	background: #45475a;
+	background: var(--bw-surface-2);
 	color: var(--bw-text);
 }
 

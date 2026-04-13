@@ -59,7 +59,7 @@ jobs:
   release-zip:
     name: Release zip
     runs-on: ubuntu-latest
-    needs: [ php, js ]
+    needs: [ php, js, test-wares ]
     permissions:
       contents: write
 
@@ -146,6 +146,110 @@ jobs:
         run: npm run typecheck
 
   # ---------------------------------------------------------------------------
+  # Coverage — PHP clover + JS lcov (runs only after php + js are green)
+  # ---------------------------------------------------------------------------
+  coverage:
+    name: Coverage report
+    runs-on: ubuntu-latest
+    needs: [ php, js ]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up PHP 8.2 with pcov
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: zip, mbstring
+          coverage: pcov
+          ini-values: memory_limit=1G
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer packages
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-php8.2-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-php8.2-
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: PHP tests with clover coverage
+        run: composer test -- --coverage-clover coverage/clover.xml
+
+      - name: JS tests with lcov coverage
+        run: npm test -- --coverage --coverageDirectory=coverage/js
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Test wares — Vitest unit + component tests for all 7 React wares
+  # ---------------------------------------------------------------------------
+  test-wares:
+    name: Test wares
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install all workspace dependencies
+        env:
+          HUSKY: '0'
+        run: npm ci
+
+      - name: Test board
+        working-directory: wares/board
+        run: npm test
+
+      - name: Test flow
+        working-directory: wares/flow
+        run: npm test
+
+      - name: Test ledger
+        working-directory: wares/ledger
+        run: npm test
+
+      - name: Test mosaic
+        working-directory: wares/mosaic
+        run: npm test
+
+      - name: Test sine
+        working-directory: wares/sine
+        run: npm test
+
+      - name: Test swatch
+        working-directory: wares/swatch
+        run: npm test
+
+      - name: Test tome
+        working-directory: wares/tome
+        run: npm test
+
+  # ---------------------------------------------------------------------------
   # Build wares — compile and package all .wp files
   # ---------------------------------------------------------------------------
   build-wares:
@@ -215,6 +319,73 @@ jobs:
           name: wares
           path: wares/*.wp
           retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # E2E — Playwright smoke tests against a real WordPress environment
+  # Runs only on main and tag pushes to avoid heavy setup on every PR.
+  # ---------------------------------------------------------------------------
+  e2e:
+    name: E2E smoke tests
+    runs-on: ubuntu-latest
+    needs: [ build-wares, release-zip ]
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: zip, mbstring
+          coverage: none
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        env:
+          HUSKY: '0'
+        run: npm ci
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Download release zip
+        uses: actions/download-artifact@v4
+        with:
+          name: bazaar-zip
+          path: dist/
+
+      - name: Start wp-env
+        run: npx wp-env start
+        timeout-minutes: 5
+
+      - name: Install Bazaar plugin via wp-env
+        run: |
+          ZIP=$(ls dist/bazaar-*.zip | head -1)
+          npx wp-env run cli wp plugin install "$ZIP" --activate
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run E2E smoke tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Stop wp-env
+        if: always()
+        run: npx wp-env stop
 
   # ---------------------------------------------------------------------------
   # Attach wares to GitHub release on v* tags

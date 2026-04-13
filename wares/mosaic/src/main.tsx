@@ -3,6 +3,7 @@ import { createRoot }       from 'react-dom/client';
 import { setBazaarContext } from '@bazaar/client';
 import { ErrorBoundary }    from '@bazaar/design';
 import '@bazaar/design/css';
+import { registerErrorReporter } from './errorReporter.ts';
 import './index.css';
 import App                  from './App.tsx';
 
@@ -14,8 +15,8 @@ if ( import.meta.env.DEV ) {
 	} );
 }
 
-// Catppuccin Mocha dark palette — activate design-system dark token layer.
-document.documentElement.setAttribute( 'data-theme', 'dark' );
+
+registerErrorReporter( 'mosaic' );
 
 createRoot( document.getElementById( 'root' )! ).render(
 	<StrictMode>

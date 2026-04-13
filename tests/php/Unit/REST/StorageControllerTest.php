@@ -330,6 +330,55 @@ final class StorageControllerTest extends WareTestCase {
 		$this->assertSame( 'storage_full', $res->get_error_code() );
 	}
 
+	// ─── update_user_meta false-on-no-change = success ───────────────────────
+
+	/**
+	 * WordPress's update_user_meta() returns false both on genuine DB failure AND
+	 * when the stored value is identical to what is being saved.  set_value must
+	 * treat the latter case as success (200), not as a write_error (500).
+	 */
+	public function test_set_value_succeeds_when_update_user_meta_returns_false_but_value_unchanged(): void {
+		$this->seed_ware( 'board' );
+
+		$key      = 'state';
+		$value    = array( 'cols' => 3 );
+		$encoded  = (string) json_encode( $value );
+		$meta_key = 'bazaar_store_board_state';
+
+		// Pre-populate usermeta with the same encoded value.
+		$this->usermeta[] = array( 'key' => $meta_key, 'value' => $encoded );
+
+		// Override update_user_meta to always return false (simulates "no change").
+		Functions\when( 'update_user_meta' )->justReturn( false );
+
+		// get_user_meta must return the already-stored value (so the guard passes).
+		$usermeta = &$this->usermeta;
+		Functions\when( 'get_user_meta' )->alias(
+			function ( int $uid, string $key_arg, bool $single = false ) use ( &$usermeta, $meta_key, $encoded ): mixed {
+				if ( $key_arg === $meta_key ) {
+					return $encoded;
+				}
+				foreach ( $usermeta as $row ) {
+					if ( $row['key'] === $key_arg ) {
+						return $row['value'];
+					}
+				}
+				return '';
+			}
+		);
+
+		$ctrl = $this->make_controller();
+		$req  = $this->make_request( array( 'slug' => 'board', 'key' => $key, 'value' => $value ) );
+		$res  = $ctrl->set_value( $req );
+
+		$this->assertInstanceOf( WP_REST_Response::class, $res );
+		$this->assertSame(
+			200,
+			$res->get_status(),
+			'set_value must return 200 when update_user_meta returns false due to unchanged value.'
+		);
+	}
+
 	// ─── absent key returns null, not 404 ────────────────────────────────────
 
 	public function test_get_value_returns_null_for_absent_key(): void {

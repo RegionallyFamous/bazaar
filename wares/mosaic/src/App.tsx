@@ -1,8 +1,10 @@
 import { useEffect, useCallback, useState } from 'react';
+import { __ }                                from '@wordpress/i18n';
 import { usePixelEditor }                    from './hooks/usePixelEditor.ts';
 import Canvas                                from './components/Canvas.tsx';
 import Toolbar                               from './components/Toolbar.tsx';
 import Palette                               from './components/Palette.tsx';
+import ShortcutsHelp                         from './components/ShortcutsHelp.tsx';
 import type { CanvasSize, ZoomLevel }        from './types.ts';
 import './App.css';
 
@@ -12,6 +14,7 @@ const ZOOM_LEVELS: ZoomLevel[]   = [ 1, 2, 4, 8, 16 ];
 export default function App() {
 	const editor = usePixelEditor();
 	const [ hoveredColor, setHoveredColor ] = useState<string | null>( null );
+	const [ showShortcuts, setShowShortcuts ] = useState( false );
 
 	// Keyboard shortcuts
 	useEffect( () => {
@@ -35,6 +38,8 @@ export default function App() {
 				editor.setTool( 'eyedropper' );
 			} else if ( e.key === 'g' || e.key === 'G' ) {
 				editor.setShowGrid( v => ! v );
+			} else if ( e.key === '?' ) {
+				setShowShortcuts( v => ! v );
 			}
 		}
 		window.addEventListener( 'keydown', onKey );
@@ -42,7 +47,7 @@ export default function App() {
 	}, [ editor ] );
 
 	const handleLoad = useCallback( ( i: number ) => {
-		editor.loadSlot( editor.saveSlots[ i ] );
+		editor.loadSlot( editor.saveSlots[ i ]! );
 	}, [ editor ] );
 
 	const handleSave = useCallback( () => {
@@ -54,7 +59,7 @@ export default function App() {
 			{ /* ── Top bar ── */ }
 			<header className="editor__header">
 				<div className="editor__header-left">
-					<span className="editor__title">Mosaic</span>
+					<span className="editor__title">{ __( 'Mosaic', 'bazaar' ) }</span>
 					<span className="editor__meta">
 						{ editor.size }×{ editor.size }
 						{ hoveredColor && (
@@ -69,8 +74,8 @@ export default function App() {
 					</span>
 				</div>
 				<div className="editor__controls">
-					<label className="editor__control-group">
-						Size
+				<label className="editor__control-group">
+					{ __( 'Size', 'bazaar' ) }
 						<select
 							className="editor__select"
 							value={ editor.size }
@@ -81,8 +86,8 @@ export default function App() {
 							) ) }
 						</select>
 					</label>
-					<label className="editor__control-group">
-						Zoom
+				<label className="editor__control-group">
+					{ __( 'Zoom', 'bazaar' ) }
 						<select
 							className="editor__select"
 							value={ editor.zoom }
@@ -99,24 +104,25 @@ export default function App() {
 							checked={ editor.showGrid }
 							onChange={ e => editor.setShowGrid( e.target.checked ) }
 						/>
-						Grid
-					</label>
+					{ __( 'Grid', 'bazaar' ) }
+				</label>
 				</div>
 			</header>
 
 			{ /* ── Main workspace ── */ }
 			<div className="editor__workspace">
-			<Toolbar
-				tool={ editor.tool }
-				onTool={ editor.setTool }
-				canUndo={ editor.canUndo }
-				canRedo={ editor.canRedo }
-				onUndo={ editor.undo }
-				onRedo={ editor.redo }
-				onClear={ () => {
-					if ( window.confirm( 'Clear the canvas? Your current art will be replaced with a blank canvas.' ) ) editor.clearCanvas();
-				} }
-			/>
+		<Toolbar
+			tool={ editor.tool }
+			onTool={ editor.setTool }
+			canUndo={ editor.canUndo }
+			canRedo={ editor.canRedo }
+			onUndo={ editor.undo }
+			onRedo={ editor.redo }
+			onClear={ () => {
+				if ( window.confirm( 'Clear the canvas? Your current art will be replaced with a blank canvas.' ) ) editor.clearCanvas();
+			} }
+			onShortcuts={ () => setShowShortcuts( v => ! v ) }
+		/>
 
 				<main className="editor__canvas-area">
 					<div className="editor__canvas-wrap">
@@ -134,17 +140,22 @@ export default function App() {
 					</div>
 				</main>
 
-				<Palette
-					primaryColor={ editor.primaryColor }
-					onColorChange={ editor.setPrimaryColor }
-					saveSlots={ editor.saveSlots }
-					saveName={ editor.saveName }
-					onSaveNameChange={ editor.setSaveName }
-					onSave={ handleSave }
-					onLoad={ handleLoad }
-					onExport={ editor.exportPNG }
-				/>
-			</div>
+			<Palette
+				primaryColor={ editor.primaryColor }
+				onColorChange={ editor.setPrimaryColor }
+				saveSlots={ editor.saveSlots }
+				saveName={ editor.saveName }
+				onSaveNameChange={ editor.setSaveName }
+				onSave={ handleSave }
+				onLoad={ handleLoad }
+				onExport={ editor.exportPNG }
+			/>
 		</div>
+
+		<ShortcutsHelp
+			open={ showShortcuts }
+			onClose={ () => setShowShortcuts( false ) }
+		/>
+	</div>
 	);
 }

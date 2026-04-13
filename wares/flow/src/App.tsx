@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from 'react';
+import { __ }                     from '@wordpress/i18n';
 import { useTimer }               from './hooks/useTimer.ts';
 import Ring                       from './components/Ring.tsx';
 import TaskList                   from './components/TaskList.tsx';
@@ -45,37 +46,38 @@ export default function App() {
 		<div className="flow-app" style={ { '--mode-color': color } as React.CSSProperties }>
 			{ /* ── Header ── */ }
 			<header className="flow-header">
-				<span className="flow-header__title">Flow</span>
-				<div className="flow-header__stats">
-					<span className="flow-stat">
-						<strong>{ timer.sessionsToday }</strong> today
-					</span>
-					<span className="flow-stat">
-						<strong>{ timer.totalSessions }</strong> total
-					</span>
-				</div>
-			<button
-				className="flow-header__settings-btn"
-				onClick={ () => timer.setShowSettings( s => ! s ) }
-				title="Settings"
-				aria-expanded={ timer.showSettings }
-				aria-controls="flow-settings-panel"
-			>
-				⚙
-			</button>
+			<span className="flow-header__title">{ __( 'Flow', 'bazaar' ) }</span>
+			<div className="flow-header__stats">
+				<span className="flow-stat">
+					<strong>{ timer.sessionsToday }</strong> { __( 'today', 'bazaar' ) }
+				</span>
+				<span className="flow-stat">
+					<strong>{ timer.totalSessions }</strong> { __( 'total', 'bazaar' ) }
+				</span>
+			</div>
+		<button
+			className="flow-header__settings-btn"
+			onClick={ () => timer.setShowSettings( s => ! s ) }
+			title="Settings"
+			aria-label="Settings"
+			aria-expanded={ timer.showSettings }
+			aria-controls="flow-settings-panel"
+		>
+			⚙
+		</button>
 			</header>
 
 			{ /* ── Settings panel ── */ }
 		{ timer.showSettings && (
-			<div className="settings-panel" id="flow-settings-panel">
-					{ (
-						[
-							[ 'workMinutes',       'Focus',       1, 120 ],
-							[ 'shortBreakMinutes', 'Short Break', 1, 30  ],
-							[ 'longBreakMinutes',  'Long Break',  1, 60  ],
-							[ 'sessionsUntilLong', 'Sessions until long break', 1, 10 ],
-						] as [ keyof Settings, string, number, number ][]
-					).map( ( [ key, label, min, max ] ) => (
+		<div className="settings-panel" id="flow-settings-panel">
+				{ (
+					[
+						[ 'workMinutes',       __( 'Focus', 'bazaar' ),                     1, 120 ],
+						[ 'shortBreakMinutes', __( 'Short Break', 'bazaar' ),               1, 30  ],
+						[ 'longBreakMinutes',  __( 'Long Break', 'bazaar' ),                1, 60  ],
+						[ 'sessionsUntilLong', __( 'Sessions until long break', 'bazaar' ), 1, 10  ],
+					] as [ keyof Settings, string, number, number ][]
+				).map( ( [ key, label, min, max ] ) => (
 						<label key={ key } className="settings-row">
 							<span>{ label }</span>
 							<div className="settings-row__control">
@@ -91,11 +93,11 @@ export default function App() {
 									handleSettingChange( key, clamped );
 								} }
 								/>
-								{ key !== 'sessionsUntilLong' && <span className="settings-unit">min</span> }
+								{ key !== 'sessionsUntilLong' && <span className="settings-unit">{ __( 'min', 'bazaar' ) }</span> }
 							</div>
 						</label>
 					) ) }
-				</div>
+			</div>
 			) }
 
 			<main className="flow-main">
@@ -126,32 +128,35 @@ export default function App() {
 					/>
 
 					<div className="timer-controls">
-						<button
-							className="ctrl-btn"
-							onClick={ timer.reset }
-							title="Reset (R)"
-						>
-							↺
-						</button>
-						<button
-							className="ctrl-btn ctrl-btn--primary"
-							onClick={ timer.toggle }
-							title="Start / Pause (Space)"
-						>
-							{ timer.running ? '▐▐' : '▶' }
-						</button>
-						<button
-							className="ctrl-btn"
-							onClick={ timer.skip }
-							title="Skip (S)"
-						>
-							⏭
-						</button>
-					</div>
+					<button
+						className="ctrl-btn"
+						onClick={ timer.reset }
+						title="Reset (R)"
+						aria-label="Reset timer"
+					>
+						↺
+					</button>
+					<button
+						className="ctrl-btn ctrl-btn--primary"
+						onClick={ timer.toggle }
+						title="Start / Pause (Space)"
+						aria-label={ timer.running ? 'Pause timer' : 'Start timer' }
+					>
+						{ timer.running ? '▐▐' : '▶' }
+					</button>
+					<button
+						className="ctrl-btn"
+						onClick={ timer.skip }
+						title="Skip (S)"
+						aria-label="Skip to next session"
+					>
+						⏭
+					</button>
+				</div>
 
-					<p className="timer-hint">
-						Space to start · S to skip · R to reset
-					</p>
+				<p className="timer-hint">
+					{ __( 'Space to start · S to skip · R to reset', 'bazaar' ) }
+				</p>
 				</section>
 
 				{ /* ── Right panel ── */ }

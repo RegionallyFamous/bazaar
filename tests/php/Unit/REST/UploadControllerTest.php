@@ -140,6 +140,11 @@ final class UploadControllerTest extends WareTestCase {
 				return $this->install_result;
 			}
 
+			/** @return array<string, mixed>|WP_Error */
+			public function install_from_path( string $path ): array|WP_Error {
+				return $this->install_result;
+			}
+
 			public function delete( string $slug ): bool|WP_Error {
 				$this->deleted_slugs[] = $slug;
 				return true;

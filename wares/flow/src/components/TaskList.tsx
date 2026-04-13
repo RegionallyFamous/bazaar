@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { __, _n, sprintf }                 from '@wordpress/i18n';
 import type { Task }                        from '../types.ts';
 import { loadTasks, saveTasks }             from '../hooks/useStore.ts';
 import { bzr }                              from '@bazaar/client';
@@ -11,7 +12,7 @@ export default function TaskList() {
 		loadTasks()
 			.then( setTasks )
 			.catch( () => {
-				bzr.toast( 'Could not load tasks. Please refresh.', 'error' );
+				bzr.toast( __( 'Could not load tasks. Please refresh.', 'bazaar' ), 'error' );
 			} );
 	}, [] );
 
@@ -21,7 +22,7 @@ export default function TaskList() {
 		setInput( '' );
 		setTasks( prev => {
 			const next: Task[] = [ ...prev, { id: crypto.randomUUID(), text, done: false } ];
-			saveTasks( next ).catch( () => bzr.toast( 'Could not save task.', 'error' ) );
+			saveTasks( next ).catch( () => bzr.toast( __( 'Could not save task.', 'bazaar' ), 'error' ) );
 			return next;
 		} );
 	}, [ input ] );
@@ -29,7 +30,7 @@ export default function TaskList() {
 	const toggleTask = useCallback( ( id: string ) => {
 		setTasks( prev => {
 			const next = prev.map( t => t.id === id ? { ...t, done: ! t.done } : t );
-			saveTasks( next ).catch( () => bzr.toast( 'Could not save tasks.', 'error' ) );
+			saveTasks( next ).catch( () => bzr.toast( __( 'Could not save tasks.', 'bazaar' ), 'error' ) );
 			return next;
 		} );
 	}, [] );
@@ -37,7 +38,7 @@ export default function TaskList() {
 	const removeTask = useCallback( ( id: string ) => {
 		setTasks( prev => {
 			const next = prev.filter( t => t.id !== id );
-			saveTasks( next ).catch( () => bzr.toast( 'Could not save tasks.', 'error' ) );
+			saveTasks( next ).catch( () => bzr.toast( __( 'Could not save tasks.', 'bazaar' ), 'error' ) );
 			return next;
 		} );
 	}, [] );
@@ -46,10 +47,14 @@ export default function TaskList() {
 	const total = tasks.length;
 
 	const clearDone = useCallback( () => {
-		if ( ! window.confirm( `Remove ${ done } completed task${ done !== 1 ? 's' : '' }?` ) ) return;
+		if ( ! window.confirm( sprintf(
+			/* translators: %d: number of completed tasks */
+			_n( 'Remove %d completed task?', 'Remove %d completed tasks?', done, 'bazaar' ),
+			done
+		) ) ) return;
 		setTasks( prev => {
 			const next = prev.filter( t => ! t.done );
-			saveTasks( next ).catch( () => bzr.toast( 'Could not save tasks.', 'error' ) );
+			saveTasks( next ).catch( () => bzr.toast( __( 'Could not save tasks.', 'bazaar' ), 'error' ) );
 			return next;
 		} );
 	}, [ done ] );
@@ -57,10 +62,14 @@ export default function TaskList() {
 	return (
 		<div className="tasklist">
 			<div className="tasklist__header">
-				<span className="tasklist__title">Tasks</span>
+				<span className="tasklist__title">{ __( 'Tasks', 'bazaar' ) }</span>
 				{ done > 0 && (
 					<button className="tasklist__clear" onClick={ clearDone }>
-						Clear done ({ done })
+						{ sprintf(
+							/* translators: %d: number of completed tasks */
+							__( 'Clear done (%d)', 'bazaar' ),
+							done
+						) }
 					</button>
 				) }
 				{ total > 0 && (
@@ -77,10 +86,10 @@ export default function TaskList() {
 					type="text"
 					value={ input }
 					onChange={ e => setInput( e.target.value ) }
-					placeholder="Add a task for this session…"
+					placeholder={ __( 'Add a task for this session…', 'bazaar' ) }
 					maxLength={ 100 }
 				/>
-				<button className="tasklist__add-btn" type="submit">+</button>
+				<button className="tasklist__add-btn" type="submit" aria-label={ __( 'Add task', 'bazaar' ) }>+</button>
 			</form>
 
 			{ tasks.length > 0 && (
@@ -90,7 +99,7 @@ export default function TaskList() {
 							<button
 								className="tasklist__check"
 								onClick={ () => toggleTask( task.id ) }
-								aria-label={ task.done ? 'Mark undone' : 'Mark done' }
+								aria-label={ task.done ? __( 'Mark undone', 'bazaar' ) : __( 'Mark done', 'bazaar' ) }
 							>
 								{ task.done ? '✓' : '○' }
 							</button>
@@ -98,7 +107,7 @@ export default function TaskList() {
 							<button
 								className="tasklist__remove"
 								onClick={ () => removeTask( task.id ) }
-								aria-label="Remove task"
+								aria-label={ __( 'Remove task', 'bazaar' ) }
 							>
 								✕
 							</button>

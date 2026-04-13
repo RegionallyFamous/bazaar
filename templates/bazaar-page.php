@@ -88,12 +88,16 @@ defined( 'ABSPATH' ) || exit;
 			<?php esc_html_e( 'Upload a custom .wp file', 'bazaar' ); ?>
 		</h2>
 
+		<?php
+		$max_size_mb = absint( get_option( 'bazaar_max_ware_size', BAZAAR_MAX_UNCOMPRESSED_SIZE ) ) / 1024 / 1024;
+		?>
 		<div
 			class="bazaar-dropzone"
 			id="bazaar-dropzone"
 			role="button"
 			tabindex="0"
 			aria-label="<?php esc_attr_e( 'Drop a .wp file here or click to browse', 'bazaar' ); ?>"
+			data-max-size-mb="<?php echo esc_attr( (string) $max_size_mb ); ?>"
 		>
 			<span class="bazaar-dropzone__icon-wrap" aria-hidden="true">
 				<span class="dashicons dashicons-upload bazaar-dropzone__icon"></span>
@@ -105,7 +109,13 @@ defined( 'ABSPATH' ) || exit;
 				</label>
 			</p>
 			<p class="bazaar-dropzone__hint">
-				<?php esc_html_e( '.wp files only', 'bazaar' ); ?>
+				<?php
+				printf(
+					/* translators: %d: maximum file size in MB */
+					esc_html__( 'Accepts .wp files · Max %d MB', 'bazaar' ),
+					(int) $max_size_mb
+				);
+				?>
 			</p>
 			<input
 				type="file"

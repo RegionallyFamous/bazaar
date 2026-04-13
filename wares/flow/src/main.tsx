@@ -3,6 +3,7 @@ import { createRoot }       from 'react-dom/client';
 import { setBazaarContext } from '@bazaar/client';
 import { ErrorBoundary }    from '@bazaar/design';
 import '@bazaar/design/css';
+import { registerErrorReporter } from './errorReporter.ts';
 import './index.css';
 import App                  from './App.tsx';
 
@@ -14,8 +15,8 @@ if ( import.meta.env.DEV ) {
 	} );
 }
 
-// Flow uses a warm-dark CRT aesthetic — activate design-system dark tokens.
-document.documentElement.setAttribute( 'data-theme', 'dark' );
+
+registerErrorReporter( 'flow' );
 
 createRoot( document.getElementById( 'root' )! ).render(
 	<StrictMode>

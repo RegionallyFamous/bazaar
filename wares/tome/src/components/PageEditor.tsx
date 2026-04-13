@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { __ }       from '@wordpress/i18n';
 import type { Page } from '../types.ts';
 
 interface Props {
@@ -27,7 +28,7 @@ export default function PageEditor( { page, onSave, onCancel }: Props ) {
 
 	const handleCancel = useCallback( () => {
 		const isDirty = title !== initialTitle.current || content !== initialContent.current;
-		if ( isDirty && ! window.confirm( 'Discard unsaved changes?' ) ) return;
+		if ( isDirty && ! window.confirm( __( 'Discard unsaved changes?', 'bazaar' ) ) ) return;
 		onCancel();
 	}, [ title, content, onCancel ] );
 
@@ -49,21 +50,21 @@ export default function PageEditor( { page, onSave, onCancel }: Props ) {
 					type="text"
 					value={ title }
 					onChange={ e => setTitle( e.target.value ) }
-					placeholder="Page title"
-					aria-label="Page title"
+					placeholder={ __( 'Page title', 'bazaar' ) }
+					aria-label={ __( 'Page title', 'bazaar' ) }
 				/>
 				<div className="tome-editor__actions">
 					<button
 						className="tome-editor__btn tome-editor__btn--save"
 						onClick={ () => onSave( { title, content } ) }
 					>
-						Save
+						{ __( 'Save', 'bazaar' ) }
 					</button>
 					<button
 						className="tome-editor__btn tome-editor__btn--cancel"
 						onClick={ handleCancel }
 					>
-						Cancel
+						{ __( 'Cancel', 'bazaar' ) }
 					</button>
 				</div>
 			</div>
@@ -73,13 +74,13 @@ export default function PageEditor( { page, onSave, onCancel }: Props ) {
 				className="tome-editor__body"
 				value={ content }
 				onChange={ e => setContent( e.target.value ) }
-				placeholder="Write in markdown…"
-				aria-label="Page content"
+				placeholder={ __( 'Write in markdown…', 'bazaar' ) }
+				aria-label={ __( 'Page content', 'bazaar' ) }
 				spellCheck
 			/>
 
 			<p className="tome-editor__hint">
-				⌘S to save · Esc to cancel · Markdown supported
+				{ __( '⌘S to save · Esc to cancel · Markdown supported', 'bazaar' ) }
 			</p>
 		</div>
 	);

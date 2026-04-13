@@ -67,7 +67,8 @@ export function useTimer() {
 		const updated = [ ...currentHistory ];
 		const dayIdx  = updated.findIndex( d => d.date === today );
 		if ( dayIdx >= 0 ) {
-			updated[ dayIdx ] = { ...updated[ dayIdx ], sessions: updated[ dayIdx ].sessions + 1 };
+			const existing    = updated[ dayIdx ]!;
+			updated[ dayIdx ] = { ...existing, sessions: existing.sessions + 1 };
 		} else {
 			updated.push( { date: today, sessions: 1 } );
 		}

@@ -57,7 +57,7 @@ function floodFill(
 ): Uint8Array {
 	const idx    = ( y * size + x ) * 4;
 	const target: [ number, number, number, number ] = [
-		pixels[ idx ], pixels[ idx + 1 ], pixels[ idx + 2 ], pixels[ idx + 3 ],
+		pixels[ idx ]!, pixels[ idx + 1 ]!, pixels[ idx + 2 ]!, pixels[ idx + 3 ]!,
 	];
 	if ( sameColor( new Uint8Array( fillColor ), 0, target ) ) return pixels;
 
@@ -130,7 +130,7 @@ export function usePixelEditor() {
 	const undo = useCallback( () => {
 		setUndoStack( prev => {
 			if ( prev.length === 0 ) return prev;
-			const undone = prev[ prev.length - 1 ];
+			const undone = prev[ prev.length - 1 ]!;
 			setRedoStack( r => [ pixelsRef.current, ...r ] );
 			setPixels( undone );
 			return prev.slice( 0, -1 );
@@ -142,7 +142,7 @@ export function usePixelEditor() {
 			if ( prev.length === 0 ) return prev;
 			const [ next, ...rest ] = prev;
 			setUndoStack( u => [ ...u, pixelsRef.current ] );
-			setPixels( next );
+			setPixels( next! );
 			return rest;
 		} );
 	}, [] );
@@ -177,8 +177,8 @@ export function usePixelEditor() {
 		if ( tool === 'eyedropper' ) {
 			const cur = pixelsRef.current;
 			const idx = ( py * size + px ) * 4;
-			if ( cur[ idx + 3 ] > 0 ) {
-				setPrimary( rgbaToHex( cur[ idx ], cur[ idx + 1 ], cur[ idx + 2 ] ) );
+			if ( ( cur[ idx + 3 ] ?? 0 ) > 0 ) {
+				setPrimary( rgbaToHex( cur[ idx ]!, cur[ idx + 1 ]!, cur[ idx + 2 ]! ) );
 			}
 			return;
 		}

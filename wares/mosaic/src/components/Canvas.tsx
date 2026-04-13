@@ -40,12 +40,12 @@ function renderPixels(
 	for ( let py = 0; py < size; py++ ) {
 		for ( let px = 0; px < size; px++ ) {
 			const src = ( py * size + px ) * 4;
-			const a   = pixels[ src + 3 ];
+			const a   = pixels[ src + 3 ]!;
 			if ( a === 0 ) continue;
 
-			const r = pixels[ src ];
-			const g = pixels[ src + 1 ];
-			const b = pixels[ src + 2 ];
+			const r = pixels[ src ]!;
+			const g = pixels[ src + 1 ]!;
+			const b = pixels[ src + 2 ]!;
 
 			for ( let dy = 0; dy < zoom; dy++ ) {
 				for ( let dx = 0; dx < zoom; dx++ ) {
@@ -115,8 +115,8 @@ export default function Canvas( {
 				const py   = Math.floor( ( e.clientY - rect.top ) / zoom );
 				if ( px >= 0 && px < size && py >= 0 && py < size ) {
 					const idx = ( py * size + px ) * 4;
-					onHover( pixels[ idx + 3 ] > 0
-						? rgbaToHex( pixels[ idx ], pixels[ idx + 1 ], pixels[ idx + 2 ] )
+					onHover( ( pixels[ idx + 3 ] ?? 0 ) > 0
+						? rgbaToHex( pixels[ idx ]!, pixels[ idx + 1 ]!, pixels[ idx + 2 ]! )
 						: null,
 					);
 				} else {

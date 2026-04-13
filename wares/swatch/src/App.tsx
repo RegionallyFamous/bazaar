@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { __, _n, sprintf }       from '@wordpress/i18n';
 import type { Palette, Swatch }  from './types.ts';
 import { loadPalettes, savePalettes, uid } from './store.ts';
 import { Modal }           from '@bazaar/design';
@@ -84,15 +85,24 @@ export default function App() {
     } );
   }, [ activeId ] );
 
-  if ( ! active ) return null;
+  if ( ! active ) {
+    return (
+      <div className="swatch swatch--empty">
+        <div className="swatch__empty-state">
+          <p className="swatch__empty-msg">{ __( 'No palette selected — create one to get started.', 'bazaar' ) }</p>
+          <button className="swatch__empty-cta" onClick={ addPalette }>{ __( 'Create palette', 'bazaar' ) }</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="swatch">
       { /* ── Sidebar ──────────────────────────────────────────────────────── */ }
       <aside className="swatch__sidebar">
         <div className="swatch__sidebar-header">
-          <h1 className="swatch__app-title">Swatch</h1>
-          <button className="swatch__sidebar-add" onClick={ addPalette } title="New palette">+</button>
+          <h1 className="swatch__app-title">{ __( 'Swatch', 'bazaar' ) }</h1>
+          <button className="swatch__sidebar-add" onClick={ addPalette } title={ __( 'New palette', 'bazaar' ) } aria-label={ __( 'New palette', 'bazaar' ) }>+</button>
         </div>
 
         <ul className="swatch__palette-list">
@@ -132,7 +142,8 @@ export default function App() {
                 <button
                   className="swatch__palette-delete"
                   onClick={ () => deletePalette( p.id ) }
-                  title="Delete palette"
+                  title={ __( 'Delete palette', 'bazaar' ) }
+                  aria-label={ sprintf( /* translators: %s: palette name */ __( 'Delete palette %s', 'bazaar' ), p.name ) }
                 >
                   ✕
                 </button>
@@ -146,7 +157,12 @@ export default function App() {
       <main className="swatch__main">
         <div className="swatch__palette-header">
           <h2 className="swatch__palette-title">{ active.name }</h2>
-          <span className="swatch__palette-meta">{ active.swatches.length } / 12 swatches</span>
+          <span className="swatch__palette-meta">{ sprintf(
+            /* translators: %1$d: current swatch count, %2$d: max swatches */
+            __( '%1$d / %2$d swatches', 'bazaar' ),
+            active.swatches.length,
+            12
+          ) }</span>
         </div>
 
         { /* Swatch grid */ }
@@ -157,14 +173,16 @@ export default function App() {
                 className="swatch__swatch-color"
                 style={ { background: s.hex } }
                 onClick={ () => setEditSwatch( s ) }
-                title={ `Edit ${ s.hex }` }
+                title={ sprintf( /* translators: %s: hex color value */ __( 'Edit %s', 'bazaar' ), s.hex ) }
+                aria-label={ sprintf( /* translators: %s: hex color value */ __( 'Edit swatch %s', 'bazaar' ), s.hex ) }
               />
               <span className="swatch__swatch-hex">{ s.hex }</span>
               { s.name && <span className="swatch__swatch-name">{ s.name }</span> }
               <button
                 className="swatch__swatch-remove"
                 onClick={ () => deleteSwatch( s.id ) }
-                title="Remove swatch"
+                title={ __( 'Remove swatch', 'bazaar' ) }
+                aria-label={ sprintf( /* translators: %s: hex color value */ __( 'Remove swatch %s', 'bazaar' ), s.hex ) }
               >
                 ✕
               </button>
@@ -172,46 +190,88 @@ export default function App() {
           ) ) }
 
           { active.swatches.length < 12 && (
-            <button className="swatch__swatch-add" onClick={ () => addSwatch() } title="Add swatch">
+            <button className="swatch__swatch-add" onClick={ () => addSwatch() } title={ __( 'Add swatch', 'bazaar' ) } aria-label={ __( 'Add swatch', 'bazaar' ) }>
               +
             </button>
           ) }
         </div>
 
-        { /* Panel tabs */ }
-        <div className="swatch__panel-tabs" role="tablist" aria-label="Color tools">
-          { ( [ 'harmony', 'contrast', 'export' ] as Panel[] ).map( t => (
-            <button
-              key={ t }
-              role="tab"
-              aria-selected={ panel === t }
-              className={ `swatch__panel-tab${ panel === t ? ' swatch__panel-tab--active' : '' }` }
-              onClick={ () => setPanel( t ) }
-            >
-              { t === 'harmony' ? 'Harmony' : t === 'contrast' ? 'Contrast' : 'Export' }
-            </button>
-          ) ) }
-        </div>
+        { /* Panel tabs — accessible roving-tabindex pattern */ }
+        { (() => {
+          const PANELS: Panel[] = [ 'harmony', 'contrast', 'export' ];
+          const LABELS: Record<Panel, string> = {
+            harmony: __( 'Harmony', 'bazaar' ),
+            contrast: __( 'Contrast', 'bazaar' ),
+            export: __( 'Export', 'bazaar' ),
+          };
+          const activeIdx = PANELS.indexOf( panel );
 
-        <div className="swatch__panel" role="tabpanel">
-          { panel === 'harmony' && (
-            <HarmonyPanel swatches={ active.swatches } onAddSwatch={ addSwatch } />
-          ) }
-          { panel === 'contrast' && active.swatches.length >= 2 && (
-            <ContrastChecker swatches={ active.swatches } />
-          ) }
-          { panel === 'contrast' && active.swatches.length < 2 && (
-            <p className="swatch__panel-hint">Add at least 2 swatches to check contrast.</p>
-          ) }
-          { panel === 'export' && <ExportPanel palette={ active } /> }
-        </div>
+          function handleTabKeyDown( e: React.KeyboardEvent, idx: number ) {
+            let next = idx;
+            if ( e.key === 'ArrowRight' || e.key === 'ArrowDown' ) {
+              next = ( idx + 1 ) % PANELS.length;
+            } else if ( e.key === 'ArrowLeft' || e.key === 'ArrowUp' ) {
+              next = ( idx - 1 + PANELS.length ) % PANELS.length;
+            } else if ( e.key === 'Home' ) {
+              next = 0;
+            } else if ( e.key === 'End' ) {
+              next = PANELS.length - 1;
+            } else {
+              return;
+            }
+            e.preventDefault();
+            setPanel( PANELS[ next ]! );
+            document.getElementById( `swatch-tab-${ PANELS[ next ] }` )?.focus();
+          }
+
+          return (
+            <>
+              <div className="swatch__panel-tabs" role="tablist" aria-label={ __( 'Color tools', 'bazaar' ) }>
+                { PANELS.map( ( t, idx ) => (
+                  <button
+                    key={ t }
+                    id={ `swatch-tab-${ t }` }
+                    role="tab"
+                    aria-selected={ panel === t }
+                    aria-controls="swatch-panel"
+                    tabIndex={ panel === t ? 0 : -1 }
+                    className={ `swatch__panel-tab${ panel === t ? ' swatch__panel-tab--active' : '' }` }
+                    onClick={ () => setPanel( t ) }
+                    onKeyDown={ ( e ) => handleTabKeyDown( e, idx ) }
+                  >
+                    { LABELS[ t ] }
+                  </button>
+                ) ) }
+              </div>
+
+              <div
+                id="swatch-panel"
+                className="swatch__panel"
+                role="tabpanel"
+                aria-labelledby={ `swatch-tab-${ PANELS[ activeIdx ] }` }
+              >
+                { panel === 'harmony' && (
+                  <HarmonyPanel swatches={ active.swatches } onAddSwatch={ addSwatch } />
+                ) }
+                { panel === 'contrast' && active.swatches.length >= 2 && (
+                  <ContrastChecker swatches={ active.swatches } />
+                ) }
+                { panel === 'contrast' && active.swatches.length < 2 && (
+                  <p className="swatch__panel-hint">{ __( 'Add at least 2 swatches to check contrast.', 'bazaar' ) }</p>
+                ) }
+                { panel === 'export' && <ExportPanel palette={ active } /> }
+              </div>
+            </>
+          );
+        } )() }
+        
       </main>
 
       { /* ── Swatch editor modal ──────────────────────────────────────────── */ }
       <Modal
         open={ !! editSwatch }
         onClose={ () => setEditSwatch( null ) }
-        title="Edit Swatch"
+        title={ __( 'Edit Swatch', 'bazaar' ) }
         size="sm"
       >
         { editSwatch && (
