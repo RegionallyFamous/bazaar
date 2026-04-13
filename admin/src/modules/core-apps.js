@@ -180,9 +180,12 @@ export function initCoreApps( deps ) {
 		} catch ( err ) {
 			btn.disabled = false;
 			btn.textContent = __( 'Install', 'bazaar' );
-			showError(
-				err?.message ?? __( 'Installation failed. Please try again.', 'bazaar' )
-			);
+			// apiFetch attaches the WP_Error message. For 502 gateway errors the
+			// remote asset download failed — surface that rather than a generic string.
+			const msg = err?.message
+				? err.message
+				: __( 'Installation failed. Please try again.', 'bazaar' );
+			showError( msg );
 		}
 	}
 

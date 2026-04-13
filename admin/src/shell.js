@@ -856,7 +856,16 @@ function recordView( newSlug ) {
 
 function renderToolbarContext( slug ) {
 	if ( 'startViewTransition' in document ) {
-		document.startViewTransition( () => _renderToolbarContextInner( slug ) );
+		document
+			.startViewTransition( () => _renderToolbarContextInner( slug ) )
+			.finished
+			.catch( ( e ) => {
+				// AbortError is expected when a navigation supersedes this animation.
+				if ( e?.name !== 'AbortError' ) {
+					// eslint-disable-next-line no-console
+					console.error( '[bazaar] toolbar context transition error', e );
+				}
+			} );
 	} else {
 		_renderToolbarContextInner( slug );
 	}
