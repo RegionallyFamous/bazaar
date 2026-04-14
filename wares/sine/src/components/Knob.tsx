@@ -65,30 +65,38 @@ export default function Knob( { label, value, min, max, step = 0.01, unit = '', 
           if ( e.key === 'ArrowDown' ) { e.preventDefault(); onChange( Math.max( min, value - nudge ) ); }
         } }
       >
-        <svg viewBox="0 0 44 44" width="44" height="44">
+        <svg viewBox="0 0 48 48" width="48" height="48">
+          { /* Outer ring shadow */ }
+          <circle cx="24" cy="24" r="20" fill="#040c07" />
           { /* Track ring */ }
-          <circle cx="22" cy="22" r="18" fill="none" stroke="#1a3a2a" strokeWidth="4"/>
+          <circle cx="24" cy="24" r="18" fill="none" stroke="#173026" strokeWidth="4"/>
           { /* Value arc */ }
           <circle
-            cx="22" cy="22" r="18"
+            cx="24" cy="24" r="18"
             fill="none"
-            stroke="#10b981"
+            stroke="#0dca8a"
             strokeWidth="4"
             strokeDasharray={ `${ pct * 113 } 113` }
             strokeLinecap="round"
-            transform="rotate(-225 22 22)"
-            opacity="0.9"
+            transform="rotate(-225 24 24)"
+            opacity="0.95"
           />
-          { /* Pointer */ }
-          <line
-            x1="22" y1="22"
-            x2={ 22 + 13 * Math.cos( ( deg - 90 ) * Math.PI / 180 ) }
-            y2={ 22 + 13 * Math.sin( ( deg - 90 ) * Math.PI / 180 ) }
-            stroke="#10b981"
-            strokeWidth="2.5"
-            strokeLinecap="round"
+          { /* Knob face */ }
+          <circle cx="24" cy="24" r="12" fill="#0b1a10" />
+          <circle cx="24" cy="24" r="12" fill="url(#knob-grad)" opacity="0.6" />
+          { /* Pointer dot */ }
+          <circle
+            cx={ 24 + 8 * Math.cos( ( deg - 90 ) * Math.PI / 180 ) }
+            cy={ 24 + 8 * Math.sin( ( deg - 90 ) * Math.PI / 180 ) }
+            r="2.5"
+            fill="#0dca8a"
           />
-          <circle cx="22" cy="22" r="4" fill="#0f2a1e"/>
+          <defs>
+            <radialGradient id="knob-grad" cx="40%" cy="30%" r="70%">
+              <stop offset="0%" stopColor="#1a3a28" />
+              <stop offset="100%" stopColor="#040c07" />
+            </radialGradient>
+          </defs>
         </svg>
       </div>
       <span className="knob__value">{ displayValue }</span>

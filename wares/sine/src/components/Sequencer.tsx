@@ -55,6 +55,7 @@ export default function Sequencer( {
           >
             <button
               className="sequencer__step-btn"
+              data-num={ idx + 1 }
               onClick={ () => onToggleStep( idx ) }
               aria-label={ `Step ${ idx + 1 } ${ step.active ? 'on' : 'off' }` }
             />

@@ -55,7 +55,7 @@ describe( 'App', () => {
 
   it( 'renders the SINE header logo', () => {
     render( <App /> );
-    expect( screen.getByText( '⬡ SINE' ) ).toBeTruthy();
+    expect( screen.getByText( 'SINE' ) ).toBeTruthy();
   } );
 
   it( 'renders waveform selector buttons', () => {

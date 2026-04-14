@@ -10,36 +10,47 @@ import SequencerGrid                       from './components/Sequencer.tsx';
 import Knob                                from './components/Knob.tsx';
 import './App.css';
 
-const WAVEFORMS = [ 'sine', 'square', 'sawtooth', 'triangle' ] as const;
+const WAVEFORMS: Array<{ id: 'sine' | 'square' | 'sawtooth' | 'triangle'; label: string; path: string }> = [
+  {
+    id:    'sine',
+    label: 'Sine',
+    path:  'M2,12 C5,12 6,4 10,4 C14,4 15,20 19,20 C23,20 24,12 27,12',
+  },
+  {
+    id:    'square',
+    label: 'Square',
+    path:  'M2,18 L2,6 L14,6 L14,18 L26,18 L26,6',
+  },
+  {
+    id:    'sawtooth',
+    label: 'Saw',
+    path:  'M2,18 L14,6 L14,18 L26,6',
+  },
+  {
+    id:    'triangle',
+    label: 'Tri',
+    path:  'M2,18 L8,6 L14,18 L20,6 L26,18',
+  },
+];
 
 export default function App() {
-  const [ params, setParams ]         = useState<SynthParams>( DEFAULT_PARAMS );
-  const [ steps, setSteps ]           = useState<SequencerStep[]>( DEFAULT_STEPS );
-  const [ bpm, setBpm ]               = useState( 120 );
-  const [ playing, setPlaying ]       = useState( false );
-  const [ activeStep, setActiveStep ] = useState<number | null>( null );
+  const [ params, setParams ]           = useState<SynthParams>( DEFAULT_PARAMS );
+  const [ steps, setSteps ]             = useState<SequencerStep[]>( DEFAULT_STEPS );
+  const [ bpm, setBpm ]                 = useState( 120 );
+  const [ playing, setPlaying ]         = useState( false );
+  const [ activeStep, setActiveStep ]   = useState<number | null>( null );
   const [ activeNotes, setActiveNotes ] = useState<Set<string>>( new Set() );
 
   const seqRef = useRef<SeqEngine | null>( null );
 
-  // Keep sequencer up to date with latest state
-  useEffect( () => {
-    seqRef.current?.update( steps, params, bpm );
-  }, [ steps, params, bpm ] );
+  useEffect( () => { seqRef.current?.update( steps, params, bpm ); }, [ steps, params, bpm ] );
 
-  // Stop the sequencer when the component unmounts to prevent audio leaks.
   useEffect( () => {
-    return () => {
-      seqRef.current?.stop();
-    };
+    return () => { seqRef.current?.stop(); };
   }, [] );
 
-  // Keep audio engine in sync with param changes
-  useEffect( () => {
-    engine.applyParams( params );
-  }, [ params ] );
+  useEffect( () => { engine.applyParams( params ); }, [ params ] );
 
-  // ── Keyboard ──────────────────────────────────────────────────────────────
   const onNoteOn = useCallback( ( note: Note ) => {
     engine.noteOn( note, params );
     setActiveNotes( prev => new Set( [ ...prev, note ] ) );
@@ -50,7 +61,6 @@ export default function App() {
     setActiveNotes( prev => { const n = new Set( prev ); n.delete( note ); return n; } );
   }, [ params ] );
 
-  // ── Params helpers ────────────────────────────────────────────────────────
   function setParam<K extends keyof SynthParams>( key: K, val: SynthParams[ K ] ) {
     setParams( p => ( { ...p, [ key ]: val } ) );
   }
@@ -63,7 +73,6 @@ export default function App() {
     setParams( p => ( { ...p, filter: { ...p.filter, [ key ]: val } } ) );
   }
 
-  // ── Sequencer ─────────────────────────────────────────────────────────────
   function togglePlayStop() {
     if ( playing ) {
       seqRef.current?.stop();
@@ -90,13 +99,17 @@ export default function App() {
 
   return (
     <div className="synth">
-      { /* ── Title bar ──────────────────────────────────────────────────── */ }
+
+      { /* ── Title bar ──────────────────────────────────────────────── */ }
       <header className="synth__header">
-        <span className="synth__logo">⬡ { __( 'SINE', 'bazaar' ) }</span>
-        <span className="synth__subtitle">{ __( 'WEB AUDIO API · ZERO DEPS', 'bazaar' ) }</span>
+        <div className="synth__header-left">
+          <span className="synth__status-dot" />
+          <span className="synth__logo">SINE</span>
+        </div>
+        <span className="synth__subtitle">WEB AUDIO API · ZERO DEPS</span>
       </header>
 
-      { /* ── Top panel: oscillator + ADSR + Filter ───────────────────────── */ }
+      { /* ── Top panel ───────────────────────────────────────────────── */ }
       <div className="synth__top">
 
         { /* Oscillator */ }
@@ -105,17 +118,16 @@ export default function App() {
           <div className="synth__wave-btns" role="group" aria-label={ __( 'Waveform', 'bazaar' ) }>
             { WAVEFORMS.map( w => (
               <button
-                key={ w }
-                className={ `synth__wave-btn${ params.waveform === w ? ' synth__wave-btn--active' : '' }` }
-                onClick={ () => setParam( 'waveform', w ) }
-                title={ w }
-                aria-pressed={ params.waveform === w }
+                key={ w.id }
+                className={ `synth__wave-btn${ params.waveform === w.id ? ' synth__wave-btn--active' : '' }` }
+                onClick={ () => setParam( 'waveform', w.id ) }
+                aria-pressed={ params.waveform === w.id }
+                title={ w.label }
               >
-                { w === 'sine'     && '∿' }
-                { w === 'square'   && '⊓' }
-                { w === 'sawtooth' && '⋀' }
-                { w === 'triangle' && '△' }
-                <span className="synth__wave-label">{ w }</span>
+                <svg viewBox="0 0 28 24" width="40" height="28" className="synth__wave-svg">
+                  <path d={ w.path } fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span className="synth__wave-label">{ w.label }</span>
               </button>
             ) ) }
           </div>
@@ -148,23 +160,24 @@ export default function App() {
           <h2 className="synth__module-title">{ __( 'FILTER', 'bazaar' ) }</h2>
           <div className="synth__knob-row">
             <Knob label={ __( 'CUTOFF', 'bazaar' ) } value={ params.filter.cutoff } min={ 80 } max={ 18000 } step={ 10 }
-              format={ v => v >= 1000 ? `${ ( v / 1000 ).toFixed( 1 ) }kHz` : `${ Math.round( v ) }Hz` }
+              format={ v => v >= 1000 ? `${ ( v / 1000 ).toFixed( 1 ) }k` : `${ Math.round( v ) }` }
               onChange={ v => setFilter( 'cutoff', v ) } />
             <Knob label={ __( 'RESO', 'bazaar' ) } value={ params.filter.resonance } min={ 0.1 } max={ 20 } step={ 0.1 }
               format={ v => `Q${ v.toFixed( 1 ) }` }
               onChange={ v => setFilter( 'resonance', v ) } />
           </div>
         </section>
+
       </div>
 
-      { /* ── Keyboard ────────────────────────────────────────────────────── */ }
+      { /* ── Keyboard ────────────────────────────────────────────────── */ }
       <Keyboard
         activeNotes={ activeNotes }
         onNoteOn={ onNoteOn }
         onNoteOff={ onNoteOff }
       />
 
-      { /* ── Sequencer ───────────────────────────────────────────────────── */ }
+      { /* ── Sequencer ───────────────────────────────────────────────── */ }
       <SequencerGrid
         steps={ steps }
         activeStep={ activeStep }
@@ -175,6 +188,7 @@ export default function App() {
         onBpmChange={ setBpm }
         onPlayStop={ togglePlayStop }
       />
+
     </div>
   );
 }
