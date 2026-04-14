@@ -6,20 +6,20 @@
 
 .synth {
   /* ── Background layers ── */
-  --bw-bg:           #040c07;
-  --bw-surface:      #091409;
-  --bw-surface-deep: #060e07;
-  --bw-surface-2:    #0d1f0f;
-  --bw-surface-3:    #112614;
+  --bw-bg:           #030a06;
+  --bw-surface:      #081208;
+  --bw-surface-deep: #050d06;
+  --bw-surface-2:    #0c1c0e;
+  --bw-surface-3:    #102214;
 
   /* ── Borders ── */
-  --bw-border:    #183022;
-  --bw-border-hi: #204030;
+  --bw-border:    #1c3a26;
+  --bw-border-hi: #2a5038;
 
   /* ── Text ── */
-  --bw-text:       #5eeba0;
-  --bw-text-muted: #34c974;
-  --bw-text-dim:   #2a5c3f;
+  --bw-text:       #6af5ac;
+  --bw-text-muted: #3ed882;
+  --bw-text-dim:   #4a8f68;   /* lifted from #2a5c3f — must be readable on dark surfaces */
 
   /* ── Accent ── */
   --bw-accent:     #0dca8a;
