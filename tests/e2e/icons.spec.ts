@@ -7,7 +7,8 @@ test.describe( 'Ware icons render', () => {
 	} );
 
 	test( 'all core app catalog icons render without error', async ( { page } ) => {
-		await page.goto( '/wp-admin/admin.php?page=bazaar' );
+		// The catalog grid lives on the manage page, not the shell page.
+		await page.goto( '/wp-admin/admin.php?page=bazaar-manage' );
 		// Wait for the catalog grid to finish loading
 		await page.waitForSelector( '.bazaar-core-card__icon', { timeout: 20_000 } );
 		// Give lazy-loaded images a moment to settle
@@ -30,7 +31,7 @@ test.describe( 'Ware icons render', () => {
 	} );
 
 	test( 'installed ware gallery icons render without error', async ( { page } ) => {
-		await page.goto( '/wp-admin/admin.php?page=bazaar' );
+		await page.goto( '/wp-admin/admin.php?page=bazaar-manage' );
 		await page.waitForTimeout( 2_000 );
 
 		const icons = page.locator( '.bazaar-card__icon' );
