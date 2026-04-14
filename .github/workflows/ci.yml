@@ -136,6 +136,21 @@ jobs:
       - name: JS lint
         run: npm run lint
 
+      - name: Validate registry.json icon_url values
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+          data = json.load(open("wares/registry.json"))
+          errors = []
+          for w in data["wares"]:
+              url = w.get("icon_url", "")
+              if not url.startswith("https://raw.githubusercontent.com/"):
+                  errors.append(f"{w['slug']}: icon_url must use raw.githubusercontent.com, got: {url}")
+          if errors:
+              print("\n".join(errors)); sys.exit(1)
+          print(f"OK: all {len(data['wares'])} icon_url values use raw.githubusercontent.com")
+          EOF
+
       - name: Build
         run: npm run build
 
@@ -282,6 +297,26 @@ jobs:
         working-directory: packages/client
         run: npm run build
 
+      - name: Validate icon SVGs (UTF-8 + well-formed XML)
+        run: |
+          python3 - <<'EOF'
+          import glob, xml.etree.ElementTree as ET, sys
+          errors = []
+          for path in sorted(glob.glob("wares/*/public/icon.svg")):
+              try:
+                  data = open(path, "rb").read()
+                  data.decode("utf-8")
+                  root = ET.fromstring(data)
+                  if "svg" not in root.tag:
+                      errors.append(f"{path}: root element is not <svg>")
+              except Exception as e:
+                  errors.append(f"{path}: {e}")
+          if errors:
+              print("\n".join(errors)); sys.exit(1)
+          count = len(glob.glob("wares/*/public/icon.svg"))
+          print(f"OK: {count} icon SVGs are valid UTF-8 XML")
+          EOF
+
       - name: Build mosaic
         working-directory: wares/mosaic
         run: npm run package
@@ -315,6 +350,7 @@ jobs:
           for f in wares/*.wp; do
             echo "✓ $f ($(du -sh "$f" | cut -f1))"
             unzip -l "$f" | grep manifest.json
+            unzip -l "$f" | grep icon.svg || { echo "ERROR: icon.svg missing from $f" >&2; exit 1; }
           done
 
       - name: Upload ware artifacts
